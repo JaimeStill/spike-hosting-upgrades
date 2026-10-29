@@ -70,10 +70,13 @@ ssh <short name> bash -s < ${CLAUDE_SKILL_DIR}/scripts/probe.sh
 Each engine container, and each model a llama.cpp router lists, carries a `flags` line: its
 launch arguments filtered to the ones that shape serving (context, parallel slots, batching, KV
 cache, offload, memory), which is the incumbent's configuration step 6 weighs. A flag the line
-doesn't show is at the engine's default at the probed version.
+doesn't show was not passed on the command line, and is at the engine's default unless it was set
+another way the probe doesn't read (an environment variable such as `LLAMA_ARG_CTX_SIZE`, a
+preset or config file); a flag outside the filter's list doesn't show either.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
-fact too, and the report keeps it. The probe reads no network address and redacts any that slips
-through, so its output can go into the report as is.
+fact too, and the report keeps it. The probe reads no network address, and a final guard redacts
+any IPv4 address, tailnet IPv6 address, or MagicDNS name that slips through, so its output can go
+into the report as is.
 
 - If SSH fails, stop and say the host is unreachable, quoting the error. Don't work around it.
 - If the probe's output is incomplete (a section is missing, or docker reports no permission),
@@ -125,7 +128,9 @@ Every claim in the report cites its source inline, with its URL and the date it 
 (`probe == memory ==`); a claim from the architect cites the answer and the date. A figure the
 run works out on paper rather than reads from a measurement is marked **estimate** and names its
 method, for example "estimate: per-slot context = `--ctx-size` / `--parallel` when the KV cache
-isn't unified, from `llama-context.cpp` at the probed build".
+isn't unified, from `llama-context.cpp` at the probed build". A citation names the page the run
+read itself; a search engine's result summary points to a page to read and is never the cited
+source.
 
 ### 5. Hardware configuration
 
@@ -156,8 +161,9 @@ descriptor declares.
    step 3 settled on), with its version, its backend, and its configuration from the probe's
    `flags` lines: context, parallel slots, KV cache (unified or split), batching, offload. Read
    each flag the line doesn't show at its default from the engine's source or docs at the probed
-   version, and cite it. Note where the configuration works against a declared purpose (a
-   per-slot context too short for agent sessions, slots that can't share a cache).
+   version, and cite it, naming it a default read rather than a probed value. Note where the
+   configuration works against a declared purpose (a per-slot context too short for agent
+   sessions, slots that can't share a cache).
 2. **The seed list, filtered to the backend.** Weigh the incumbent against llama.cpp, vLLM,
    SGLang, and TensorRT-LLM, keeping only what the probed backend supports: TensorRT-LLM only on
    NVIDIA, and on AMD only what the engine's own docs or published images list for the probed gfx
