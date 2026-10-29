@@ -2,7 +2,7 @@
 # Shellchecks every tracked file whose first line is a sh or bash shebang, and checks that every
 # relative link in a tracked Markdown file resolves to a tracked or present file. Reads no network.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 
 fail=0
 
