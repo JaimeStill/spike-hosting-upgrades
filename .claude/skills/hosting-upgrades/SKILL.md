@@ -200,20 +200,78 @@ architect answers, the adjustment is hold.
 
 ### 7. Models
 
-*Placeholder.* Specified in a later slice.
+The models that could serve each declared purpose, judged against the incumbent. The gates and
+their checks are in [models.md](models.md); this step says what the section holds.
+
+1. **The incumbents.** For each purpose, the model step 3 mapped to it, with its format and its
+   configuration from the `flags` lines. When nothing serves and the probe doesn't show which
+   stored model an engine would load (a router's presets live in a file the probe doesn't read),
+   the incumbent for a purpose is the stored model mapped to it that ranks first by this step's
+   own gates and sort among the stored models, and the report says so.
+2. **The candidates.** Every stored model that isn't an incumbent, the newest models of the
+   publishers in [sources.md](sources.md), "Models", and what a web search finds. A model whose
+   card serves several purposes (a multimodal model that takes text, images, and audio) is a
+   candidate for each, and the report says which incumbents it would replace.
+3. **The gates, in order**: the policy (the origin rule, then the quantization floor, as
+   `docs/policy.md` states them), a fit in the probed memory, and the host's engine serving the
+   architecture on its backend. A model that fails a gate stops there and is listed with the gate
+   it failed and why.
+4. **Excluded on origin.** A model of an origin the policy excludes, or a fine-tune of such a
+   base, goes in the section's "excluded on origin" list, with the source that shows its origin,
+   and never reaches a verdict.
+5. **Sort and judge.** Models that pass every gate sort by published speed on the same hardware
+   class, then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6),
+   with its citations: a model's gain is measured speed on the same host class and backend, or a
+   card eval for the purpose, against the incumbent's.
+
+Order each purpose's rows verify, hold, skip; within a verdict, by speed, then by evals; a model
+that failed a gate is skip and comes after the passing skips. When a gate needs a policy value
+the document doesn't state, or a model's origin is unclear, pause (see "When to pause").
 
 ### 8. Model set
 
-*Placeholder.* Specified in a later slice.
+The most effective combination of one model per declared purpose, which the host can serve at
+once.
+
+1. **The candidates per purpose**: the top three from step 7 that pass every gate, plus the
+   incumbent, so at most four per purpose. The report states this bound and how many sets it
+   weighed. A model that serves several purposes can fill each of them in one set, and its memory
+   counts once.
+2. **Keep the sets that fit together**: the estimated memory of every model in the set, loaded at
+   its configured context and slots, leaves the policy's headroom of the GPU-reachable ceiling
+   free.
+3. **Keep the sets the chosen engine can serve side by side**: the engine is the conclusion of
+   step 6. Either one process holds several models (a llama.cpp router), or each model runs in its
+   own process with its own memory reservation (vLLM's `--gpu-memory-utilization`, a share of the
+   whole device), and the reservations, not the weights, must fit within the headroom.
+4. **Recommend** the most effective set kept: compared first by the agent purpose's model (its
+   place in step 7's order), then by the other purposes' places summed, then by memory left free.
+   Give its estimated memory, marked **estimate** with its method (see [models.md](models.md),
+   "Memory estimate"), why it wins, and the runner-up with why it lost. When no set but the
+   incumbents fits, say so.
 
 ### 9. Verify next
 
-*Placeholder.* Specified in a later slice.
+One closing line naming a single item from across the sections: the verify item with the largest
+claimed gain on the agent purpose, and among equal claimed gains, the lowest risk first (no root
+and rolled back by removing a flag, before a root step with a rollback, before a reboot), with a
+one-line reason. When no item is verify, say so, and name the best hold item by the same order,
+with what would raise it to verify.
 
 ### 10. Proposed changes
 
-*Placeholder.* Specified in a later slice; it collects the discrepancies and stale descriptor
-lines steps 1 and 3 noted.
+Every change the run would make to a document it reads, each with its reason, for the architect
+to accept or reject one by one. The run applies none of them (see "What a run writes"). Four
+lists, each "None" when empty:
+
+- **Descriptor watch items** (`docs/hosts/<host>.md`): a watch item to add, such as a scan finding
+  worth checking each run, or one the probe can't reach (step 3); the descriptor's stale lines
+  (step 1) and the purposes a discrepancy answer drops (step 3).
+- **Trusted sources** ([sources.md](sources.md)): a source found beyond the list that meets its
+  tier's bar (step 4).
+- **Blocklist** ([blocklist.md](blocklist.md)): a source met in the run that fails a criterion,
+  with what was found (step 4).
+- **Engine seed list** (step 6): a newly found engine to weigh every run.
 
 ### 11. Write the report
 
@@ -240,17 +298,24 @@ Step 5's adjustments, verify, then hold, then skip.
 Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
 
 ## Models
+Step 7: per declared purpose, the incumbent and its candidates, each with its gates, speed,
+evals, and verdict; then the models excluded on origin.
+
 ## Model set
+Step 8: the bound on candidates per purpose, the sets weighed and kept, the recommended set with
+its estimated memory and why it wins, and the runner-up.
+
 ## Verify next
+Step 9's one line.
+
 ## Proposed changes
+Step 10's four lists.
 
 ## Sources
 Every source cited, with its tier, URL, and read date.
 ```
 
-Models, Model set, Verify next, and Proposed changes are named placeholders, specified in a
-later slice; until then the run writes their headings with "Not yet specified" and keeps the
-discrepancies and proposals steps 1 to 6 noted in a list under "Proposed changes".
+Within every section, items are ordered verify, then hold, then skip.
 
 ## When to pause
 
