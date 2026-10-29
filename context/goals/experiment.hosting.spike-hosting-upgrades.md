@@ -141,7 +141,7 @@ Door          two-way: the task adds a skill, project documents, and reports to 
 
 ## Progress
 
-slices 3/3 committed · standards — · spec — · editor — · walkthrough (architect) —
+slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor — · walkthrough (architect) —
 
 ## Decisions
 
