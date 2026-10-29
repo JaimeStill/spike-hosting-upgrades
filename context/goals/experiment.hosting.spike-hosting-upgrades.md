@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** building
+- **State:** brief ready
 - **Task:** skill
 - **Branch:** skill
 
