@@ -11,9 +11,12 @@ Run by the session on 2026-10-29, at slices 1, 2, and 3 and at the spec review, 
 repository root:
 
 ```sh
-ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
-ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
+ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework.txt
+ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1.txt
 ```
+
+The spec review ran the same command under `timeout 120`, redirecting each host's output to a
+scratch file outside the repository.
 
 No run used sudo, and no host was changed: the probe only reads.
 
