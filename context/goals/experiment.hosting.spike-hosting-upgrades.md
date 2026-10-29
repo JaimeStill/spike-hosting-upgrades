@@ -141,7 +141,7 @@ Door          two-way: the task adds a skill, project documents, and reports to 
 
 ## Progress
 
-slices 2/3 committed · slice 3 WIP, uncommitted (SKILL.md steps 7-10 drafted; models.md and the gb10-1 scratch report remain) · standards — · spec — · editor — · walkthrough (architect) —
+slices 3/3 committed · standards — · spec — · editor — · walkthrough (architect) —
 
 ## Decisions
 
