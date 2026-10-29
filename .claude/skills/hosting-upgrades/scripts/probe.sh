@@ -38,6 +38,37 @@ probe() {
   }
   gib() { awk -v b="$1" 'BEGIN { printf "%.1f GiB", b / 1073741824 }'; }
 
+  # Reads an engine's launch arguments, one per line, and prints on one line only the flags that
+  # shape serving (context, parallel slots, batching, offload, attention, KV cache, memory), each
+  # with its value. Only these flags print, so no model path, address, or key on the command line
+  # reaches the output. Both --flag value and --flag=value forms are read.
+  serving_flags() {
+    awk '
+      BEGIN {
+        n = split("--ctx-size -c --parallel -np --cont-batching -cb --no-cont-batching -nocb " \
+          "--batch-size -b --ubatch-size -ub --n-gpu-layers --gpu-layers -ngl --flash-attn -fa " \
+          "--cache-type-k -ctk --cache-type-v -ctv --kv-unified -kvu --no-kv-unified " \
+          "--kv-unified-per-slot --load-mode -lm --cache-reuse --swa-full --n-cpu-moe -ncmoe --cpu-moe --no-mmap --mlock --threads -t " \
+          "--max-num-seqs --max-model-len --gpu-memory-utilization --max-num-batched-tokens " \
+          "--enable-chunked-prefill --no-enable-chunked-prefill --enable-prefix-caching " \
+          "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
+          "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
+          "--attention-backend --enforce-eager", w, " ")
+        for (i = 1; i <= n; i++) want[w[i]] = 1
+      }
+      { t[NR] = $0 }
+      END {
+        out = ""
+        for (i = 1; i <= NR; i++) {
+          f = t[i]; v = ""
+          if (f ~ /^-[^=]*=/) { v = " " substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1) }
+          else if (i < NR && t[i + 1] !~ /^-/) v = " " t[i + 1]
+          if (f in want) out = out " " f v
+        }
+        print (out == "" ? " none of the serving flags" : out)
+      }'
+  }
+
   # Prints the installed version of each named package (globs allowed), on pacman or dpkg hosts,
   # as "package: <name> <version>" lines, which the guard reads as versions, not addresses.
   packages() {
@@ -201,6 +232,10 @@ probe() {
       docker inspect "$name" \
         --format '{{range .Mounts}}  mount {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' |
         sed '/^$/d'
+      # The container's command line, filtered to its serving flags (an engine's configuration).
+      printf '  flags%s\n' "$(docker inspect "$name" \
+        --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}' |
+        serving_flags)"
     done
   else
     skip "containers: docker unavailable"
@@ -252,9 +287,20 @@ probe() {
     else
       echo "  engine unidentified (no /props, /get_server_info, or /version)"
     fi
-    # The router's model list carries each model's launch arguments; only the id and status print.
+    # The router's model list carries each model's launch arguments; the id and status print, and
+    # under each, its serving flags only (no path, address, or alias).
     if have jq; then
-      jq -r '.data[] | "  model \(.id)  status \(.status.value // "served")"' <<<"$models"
+      local id
+      while read -r id; do
+        jq -r --arg id "$id" \
+          '.data[] | select(.id == $id) | "  model \(.id)  status \(.status.value // "served")"' \
+          <<<"$models"
+        if jq -e --arg id "$id" '.data[] | select(.id == $id) | .status.args | length > 0' \
+          <<<"$models" >/dev/null 2>&1; then
+          printf '    flags%s\n' "$(jq -r --arg id "$id" \
+            '.data[] | select(.id == $id) | .status.args[]' <<<"$models" | serving_flags)"
+        fi
+      done < <(jq -r '.data[].id' <<<"$models")
     else
       grep -o '"id":"[^"]*"' <<<"$models" | cut -d'"' -f4 | sed 's/^/  model /'
     fi

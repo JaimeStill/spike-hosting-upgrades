@@ -23,8 +23,8 @@ The architecture pages that apply, in the architecture repository:
 
 ## Docs
 
-- A report is dated, `docs/reports/<YYYY-MM-DD>.md`, and is never edited after its date; a later
-  run writes a new report.
+- A report is per host and dated, `docs/reports/<host>/<YYYY-MM-DD>.md`, and is never edited after
+  its date; a later run writes a new report.
 - A finding, under `docs/findings/<task>.md`, says what was measured, when, on which engine
   version, host stack, and network path, and stays dated.
 - Every command a session or the architect runs appears in a finding exactly as run. No tailnet

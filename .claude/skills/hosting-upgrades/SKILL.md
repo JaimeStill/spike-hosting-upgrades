@@ -67,6 +67,10 @@ ssh <short name> bash -s < ${CLAUDE_SKILL_DIR}/scripts/probe.sh
 [scripts/probe.sh](scripts/probe.sh) is read-only and needs no root. It prints labeled sections
 (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `== memory ==`,
 `== container-runtime ==`, `== engines ==`, `== endpoints ==`, `== models ==`, `== skipped ==`).
+Each engine container, and each model a llama.cpp router lists, carries a `flags` line: its
+launch arguments filtered to the ones that shape serving (context, parallel slots, batching, KV
+cache, offload, memory), which is the incumbent's configuration step 6 weighs. A flag the line
+doesn't show is at the engine's default at the probed version.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
 fact too, and the report keeps it. The probe reads no network address and redacts any that slips
 through, so its output can go into the report as is.
@@ -94,16 +98,105 @@ Record each answer the architect gives; the report cites it as the architect's.
 
 ### 4. Sources
 
-*Placeholder.* Gathering and tiering the public record for the host's hardware, engines, and
-models is specified in a later slice.
+Gather the public record for what the probe found, from the sources in
+[sources.md](sources.md), which lists each by kind (hardware and host stack, engines, models,
+benchmarks) and by vendor or project, with its URL and how to read it. Read the machine-readable
+endpoint where one exists (the GitHub releases API, the Hugging Face API, Arch's package JSON),
+and read it fresh: what a source said on an earlier run is not evidence today.
+
+- **Read for the probed versions.** For each component the probe names (OS image, kernel,
+  firmware, BIOS, driver or Mesa, each engine and its build), find what is newer, what changed
+  between the probed version and the newest, and what is known to break.
+- **Search beyond the list.** A web search finds benchmarks and reports the list doesn't hold.
+  A found source is tiered by the same bar as a listed one, and a good one is proposed for the
+  list under "Proposed changes".
+- **Tier every source** as primary, attributed benchmark, or lead, by the bar in
+  [sources.md](sources.md), "Tiers". A lead names something to check and never carries a verify
+  verdict alone.
+- **Never cite a blocklisted source** ([blocklist.md](blocklist.md)). When one carries a figure
+  worth having, follow it to its original and cite that, or leave the figure out. A source met
+  in this run that fails a blocklist criterion is proposed for the blocklist, with its reason,
+  under "Proposed changes".
+
+#### Citing
+
+Every claim in the report cites its source inline, with its URL and the date it was read, as
+`([name](https://...), read YYYY-MM-DD)`. A claim from the probe cites its section
+(`probe == memory ==`); a claim from the architect cites the answer and the date. A figure the
+run works out on paper rather than reads from a measurement is marked **estimate** and names its
+method, for example "estimate: per-slot context = `--ctx-size` / `--parallel` when the KV cache
+isn't unified, from `llama-context.cpp` at the probed build".
 
 ### 5. Hardware configuration
 
-*Placeholder.* Specified in a later slice.
+Recommend adjustments to the host's hardware configuration, one per component that has a
+candidate: kernel, firmware (linux-firmware, GPU firmware), BIOS, OS image, driver or Mesa, and
+the GPU-reachable memory ceiling (the TTM limit on AMD; on GB10, the system memory). A component
+already at its newest, with nothing known to break, gets one line saying so, with the source that
+shows it.
+
+Each adjustment gives:
+
+- **From and to**: the probed version and the candidate.
+- **Sources**: each with its tier and its citation.
+- **Claimed gain**: what the sources claim, in their own terms, or "none claimed".
+- **Risk**: what is known to break, whether it needs root, and its rollback (a package
+  downgrade, a BIOS reflash, removing a modprobe file).
+- **Verdict**: verify, hold, or skip, by the rules in "Verdicts" below, with the reason.
+
+Order the adjustments verify first, then hold, then skip. A fact the probe can't read without
+root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root" says.
 
 ### 6. Engines
 
-*Placeholder.* Specified in a later slice.
+An objective look at the most effective engine setup on the probed hardware, for the purposes the
+descriptor declares.
+
+1. **The incumbent.** Name the engine that serves (or, when nothing serves, the installed engines
+   step 3 settled on), with its version, its backend, and its configuration from the probe's
+   `flags` lines: context, parallel slots, KV cache (unified or split), batching, offload. Read
+   each flag the line doesn't show at its default from the engine's source or docs at the probed
+   version, and cite it. Note where the configuration works against a declared purpose (a
+   per-slot context too short for agent sessions, slots that can't share a cache).
+2. **The seed list, filtered to the backend.** Weigh the incumbent against llama.cpp, vLLM,
+   SGLang, and TensorRT-LLM, keeping only what the probed backend supports: TensorRT-LLM only on
+   NVIDIA, and on AMD only what the engine's own docs or published images list for the probed gfx
+   target. Judge a packager (Ollama, LM Studio) by the engine and build it embeds, not as an engine
+   of its own. For each engine kept, say whether its newest release supports the backend, how the
+   host would install it, and what any attributed benchmark on the same hardware class measured
+   against the incumbent.
+3. **The scan.** Look each run for emerging capabilities and engines: a backend an engine newly
+   supports (vLLM on Vulkan, or on ROCm for the probed gfx target), a change that improves
+   concurrent-session throughput, a new engine built for the hardware. A newly found engine is
+   weighed in this run like a seed-list engine, and proposed for the seed list under "Proposed
+   changes".
+4. **The watch items.** Answer each of the descriptor's watch items by name, under its own
+   heading: what the sources say now, cited, and what changed since the last report if there is
+   one.
+5. **The conclusion.** Name the most effective engine platform and configuration to date for the
+   host: either an adjustment to the incumbent (a version, a backend, a flag) or a migration to
+   another engine, with its verdict by the same rules. Then list the other candidates, ordered
+   verify, hold, skip.
+
+An engine change is judged within how the host installs engines, which the probe shows (a
+container from the engine's published image, a systemd unit, a package). A candidate that needs
+another install method (building an image locally, installing from source on the host) is skip
+until the architect changes the method, and the report says what it would take.
+
+#### Verdicts
+
+Every adjustment in steps 5 and 6 takes one verdict:
+
+- **verify**: a source that names its hardware, engine version, and method (an attributed
+  benchmark) measured a gain on the same host class and backend, and no such source reports a
+  regression. A verify verdict is a reason to measure on this host, not a decision to adopt.
+- **hold**: the only claim is release notes, or comes from another hardware class, or the
+  upgrade needs a root step with no rollback.
+- **skip**: sources show no gain or show a regression, or the upgrade breaks a rule: the policy,
+  or an engine change outside how the host installs engines.
+
+Two attributed sources that disagree on the gain are a pause (see "When to pause"); until the
+architect answers, the adjustment is hold.
 
 ### 7. Models
 
@@ -124,8 +217,40 @@ lines steps 1 and 3 noted.
 
 ### 11. Write the report
 
-*Placeholder.* Specified in a later slice. The report is the run's only write, a dated file in
-`docs/reports/`.
+The report is the run's only write: one file per host per date, at
+`docs/reports/<host>/<YYYY-MM-DD>.md`, dated the day the run read its sources. A report is never
+edited after its date; a later run writes a new report, and reads the last one only to say what
+changed. If a report for the host already carries today's date, ask the architect whether this
+run replaces it (the same day's run, redone) or waits for tomorrow.
+
+The report's sections, in order:
+
+```markdown
+# <host>: hosting upgrades, <YYYY-MM-DD>
+
+## Inventory
+The probe's findings, by section, and the descriptor and policy the run read. Says plainly when
+nothing serves, and what the run ranks against instead. Lists every probe skip, every fact that
+needed root (with the architect's read-out or "declined"), and every pause with its answer.
+
+## Hardware configuration
+Step 5's adjustments, verify, then hold, then skip.
+
+## Engines
+Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
+
+## Models
+## Model set
+## Verify next
+## Proposed changes
+
+## Sources
+Every source cited, with its tier, URL, and read date.
+```
+
+Models, Model set, Verify next, and Proposed changes are named placeholders, specified in a
+later slice; until then the run writes their headings with "Not yet specified" and keeps the
+discrepancies and proposals steps 1 to 6 noted in a list under "Proposed changes".
 
 ## When to pause
 
