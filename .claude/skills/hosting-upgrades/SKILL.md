@@ -74,9 +74,10 @@ doesn't show was not passed on the command line, and is at the engine's default 
 another way the probe doesn't read (an environment variable such as `LLAMA_ARG_CTX_SIZE`, a
 preset or config file); a flag outside the filter's list doesn't show either.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
-fact too, and the report keeps it. The probe reads no network address, and a final guard redacts
-any IPv4 address, tailnet IPv6 address, or MagicDNS name that slips through, so its output can go
-into the report as is.
+fact too, and the report keeps it. The probe prints no network address: it reads listening ports
+from `ss -Hltn` and `docker port` and drops the address from each, and a final guard redacts any
+IPv4 address, tailnet IPv6 address, or MagicDNS name that slips through, so its output can go into
+the report as is.
 
 - If SSH fails, stop and say the host is unreachable, quoting the error. Don't work around it.
 - If the probe's output is incomplete (a section is missing, or docker reports no permission),
@@ -130,7 +131,9 @@ run works out on paper rather than reads from a measurement is marked **estimate
 method, for example "estimate: per-slot context = `--ctx-size` / `--parallel` when the KV cache
 isn't unified, from `llama-context.cpp` at the probed build". A citation names the page the run
 read itself; a search engine's result summary points to a page to read and is never the cited
-source.
+source. A Sources-table row that names a group, such as "every model named above", does not
+stand in for a claim's inline citation: each model's origin, base, and format claims cite that
+model's own page.
 
 ### 5. Hardware configuration
 
@@ -223,8 +226,8 @@ their checks are in [models.md](models.md); this step says what the section hold
    architecture on its backend. A model that fails a gate stops there and is listed with the gate
    it failed and why.
 4. **Excluded on origin.** A model of an origin the policy excludes, or a fine-tune of such a
-   base, goes in the section's "excluded on origin" list, with the source that shows its origin,
-   and never reaches a verdict.
+   base, goes in the section's "excluded on origin" list and never reaches a verdict. Each entry
+   cites, inline, the URL and read date of the source that shows its origin.
 5. **Sort and judge.** Models that pass every gate sort by published speed on the same hardware
    class, then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6),
    with its citations: a model's gain is measured speed on the same host class and backend, or a
