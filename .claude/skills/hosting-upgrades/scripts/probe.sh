@@ -48,7 +48,8 @@ probe() {
         n = split("--ctx-size -c --parallel -np --cont-batching -cb --no-cont-batching -nocb " \
           "--batch-size -b --ubatch-size -ub --n-gpu-layers --gpu-layers -ngl --flash-attn -fa " \
           "--cache-type-k -ctk --cache-type-v -ctv --kv-unified -kvu --no-kv-unified " \
-          "--kv-unified-per-slot --load-mode -lm --cache-reuse --swa-full --n-cpu-moe -ncmoe --cpu-moe --no-mmap --mlock --threads -t " \
+          "--kv-unified-per-slot --load-mode -lm --cache-reuse --swa-full --n-cpu-moe -ncmoe " \
+          "--cpu-moe --no-mmap --mlock --threads -t " \
           "--max-num-seqs --max-model-len --gpu-memory-utilization --max-num-batched-tokens " \
           "--enable-chunked-prefill --no-enable-chunked-prefill --enable-prefix-caching " \
           "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
@@ -385,15 +386,17 @@ probe() {
 # The guard: redacts every IPv4 address, tailnet IPv6 address (fd7a:115c:a1e0::/48), and
 # MagicDNS name or suffix still in the output. A "package:" line comes from the package database
 # and its four-part versions (vulkan-icd-loader 1.4.363.0) read as addresses, so only tailnet
-# addresses are redacted there; every other line loses every IPv4 address, version or not.
+# addresses are redacted there; every other line loses every IPv4 address, version or not. An
+# address ending a sentence ("10.0.0.1.") is still an address: only a dot followed by a digit
+# makes it part of a longer version. Hex and DNS names are matched in either case.
 redact() {
   sed -E \
     -e 's/(^|[^0-9.])100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])(\.[0-9]{1,3}){2}/\1[tailnet-ipv4]/g' \
     -e '/^package: /!{' -e ':a' \
-    -e 's/(^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}($|[^0-9.])/\1[ipv4]\3/' -e 'ta' -e '}' \
-    -e 's/fd7a:115c:a1e0:[0-9a-fA-F:]*/[tailnet-ipv6]/g' \
-    -e 's/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.ts\.net/[magicdns-name]/g' \
-    -e 's/\.ts\.net/[magicdns-suffix]/g'
+    -e 's/(^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}($|[^0-9.]|\.$|\.[^0-9])/\1[ipv4]\3/' -e 'ta' -e '}' \
+    -e 's/[Ff][Dd]7[Aa]:115[Cc]:[Aa]1[Ee]0:[0-9a-fA-F:]*/[tailnet-ipv6]/g' \
+    -e 's/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[Tt][Ss]\.[Nn][Ee][Tt]/[magicdns-name]/g' \
+    -e 's/\.[Tt][Ss]\.[Nn][Ee][Tt]/[magicdns-suffix]/g'
 }
 
 probe </dev/null 2>&1 | redact
