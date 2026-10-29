@@ -141,7 +141,7 @@ Door          two-way: the task adds a skill, project documents, and reports to 
 
 ## Progress
 
-slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor — · walkthrough (architect) —
+slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor ✓ · walkthrough (architect) —
 
 ## Decisions
 
@@ -203,6 +203,28 @@ slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor
   and each top upgrade's sources.
 - skill: reports are per host and dated, at docs/reports/<host>/<YYYY-MM-DD>.md; STANDARDS.md's
   report rule changes in this task.
+- skill: the skill is named `hosting-upgrades`, at `.claude/skills/hosting-upgrades/`.
+- skill: the inputs live at `docs/hosts/<host>.md` and `docs/policy.md`.
+- skill: the policy's memory headroom is a placeholder, 10% of the GPU-reachable ceiling, for the
+  architect to adjust.
+- skill: the watch items are seeded from the architect's examples and the open items of
+  spike-model-engines' answer.
+- skill: when a host port fails, the probe reads the engine's endpoints from inside its container
+  on localhost.
+- skill: the probe's redaction also covers tailnet IPv6 and uppercase forms; it drops DGX serial
+  numbers.
+- skill: the probe prints no network address: it reads listening ports and drops the address,
+  reading behavior 5's "reads no network address" as "prints none".
+- skill: when nothing serves, each purpose's incumbent is the stored model that ranks first under
+  the skill's step 7 gates.
+- skill: a run asks before replacing a report that already carries today's date.
+- skill: the probe reads no engine settings set by environment variables or preset files; a later
+  task takes them up.
+- skill: the base_model origin trace and the same-day report check stay prose in the skill, not
+  scripts.
+- skill: a group row in a report's Sources never replaces an inline citation, and a search summary
+  is never the cited source.
+- skill: `docs/findings/skill.md` records the probe runs.
 
 ## Pending edits
 

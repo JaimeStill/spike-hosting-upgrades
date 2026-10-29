@@ -20,12 +20,15 @@ model host, or its models) from what others publish rather than benchmarks of ou
 
 ## The evidence
 
-1. One project-local Claude Code skill, under `.claude/skills/`. It takes an inventory of host
-   class × engine × model and gathers engine releases, public benchmarks, model cards, and
-   host-stack notes, each cited with its URL and the date it was read.
-2. A dated report of ranked upgrades per host class (framework, gb10-1), in three kinds: hardware
-   configuration, model host, and models. Each upgrade carries its sources, the gain they claim,
-   its risk, and a verdict: verify, hold, or skip.
+1. One project-local Claude Code skill, `.claude/skills/hosting-upgrades/`. It reads the
+   project's host descriptors (`docs/hosts/`) and policy (`docs/policy.md`), probes the host's
+   inventory of hardware, engines, and models read-only and without root, and gathers engine
+   releases, public benchmarks, model cards, and host-stack notes, each cited with its URL and the
+   date it was read.
+2. A dated report of ranked upgrades per host (framework, gb10-1), at
+   `docs/reports/<host>/<YYYY-MM-DD>.md`, in three kinds: hardware configuration, model host, and
+   models. Each upgrade carries its sources, the gain they claim, its risk, and a verdict:
+   verify, hold, or skip.
 3. Each host's top-ranked upgrade, verified by anchors A and B before and after in one session on
    that host, then adopted or rolled back. An anchor that moves beyond run noise is a finding.
 4. The pool's candidates screened from sources per host class. A candidate the sources support is
@@ -61,8 +64,12 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 
 ## Capabilities
 
-- **The skill:** the project-local Claude Code skill that gathers, cites, and ranks.
-- **The dated reports:** ranked upgrades per host class.
+- **The skill:** `.claude/skills/hosting-upgrades/`, the project-local Claude Code skill that
+  probes a host and gathers, cites, and ranks what others publish. Its read-only probe is
+  `scripts/probe.sh`.
+- **The host descriptors and policy:** `docs/hosts/<host>.md` and `docs/policy.md`, the skill's
+  inputs.
+- **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`.
 - **The anchor scenarios:** anchors A and B, for the incumbent and for a candidate.
 - **The verification findings:** before and after, adopted or rolled back.
 - **The screened pool:** the pool's candidates, kept or dropped per host class.
@@ -72,8 +79,8 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 
 The tasks, in the order they run; each cites the evidence it proves.
 
-1. `skill`: the skill and its first dated report, on paper, for framework and gb10-1, with no host
-   step (evidence 1, 2).
+1. `skill`: the skill and its first dated report for each of framework and gb10-1, with
+   read-only, no-root host probes (evidence 1, 2).
 2. `verify-framework`: framework's top-ranked upgrade, verified by anchors A and B before and
    after, then adopted or rolled back; the skill gains its verification step (evidence 3, 5).
 3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
@@ -84,8 +91,9 @@ The tasks, in the order they run; each cites the evidence it proves.
 
 ## References
 
-The spike reads these repositories and never writes to them. Each is a key in the coordinator's
-`references.toml`, with its local checkout in `references.local.toml`:
+The spike reads these repositories for its setup, the anchors, and the verify and screen tasks,
+and never writes to them; the skill takes none of them as inputs. Each is a key in the
+coordinator's `references.toml`, with its local checkout in `references.local.toml`:
 
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.

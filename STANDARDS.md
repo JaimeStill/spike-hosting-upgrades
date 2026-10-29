@@ -18,7 +18,8 @@ The architecture pages that apply, in the architecture repository:
 ## Scripts
 
 - Only a step that must be idempotent is scripted. Engine changes on a host run spike-model-engines'
-  `engines` suite read-only from its clone; this spike adds no host scripts.
+  `engines` suite read-only from its clone; this spike adds no script that changes a host, and
+  the skill's read-only probe is its one host script.
 - No Python is authored, and a mise task runs one script or one command.
 
 ## Docs
