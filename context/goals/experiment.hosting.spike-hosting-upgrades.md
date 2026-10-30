@@ -290,7 +290,7 @@ Slices
 
 ## Progress
 
-slices 4/5 committed (slice 5 is revision 2's tuning) · standards — · spec — · editor — · validation (architect, slice 6) —
+slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) · editor ✓ · validation (architect, slice 6) —
 
 ## Decisions
 
@@ -464,6 +464,26 @@ slices 4/5 committed (slice 5 is revision 2's tuning) · standards — · spec �
 - skill: the wording is "origin" (who was involved) and "build" (how a file was made), not
   "provenance", which the team wouldn't readily understand.
 - skill: the task runs six slices, a second exception the architect approved with revision 2.
+- skill: revision 2's D labels: D1 is the floor's three paths; D2 is origin, any involvement of an
+  adversarial entity at any level; D3 is that conventions aren't involvement; D4 is that components
+  are judged as shipped; D5 is the five sources the architect ruled leads in the framework run of
+  2026-10-30; D6 is the evidence chain for origin.
+- skill: revision 2's behavior 22 supersedes "the probe reads no engine settings set by ... preset
+  files"; the probe still reads no engine settings set by environment variables.
+- skill: take needs a known rollback; a root step with no rollback is hold; an engine build is
+  never take.
+- skill: the probe prints the remote user's home as `~`; container-side paths such as /home/vllm
+  stay.
+- skill: slice 5's standards review fixes: the checkupdates warning lines are guarded; the preset
+  file has a size bound, and a path-named section prints as a file name; screen.sh validates its
+  download, uses https only, and passes names after `--`; normalization drops dotted abbreviations
+  and more company suffixes, after "Samata" missed "SAMATA S.A.".
+- skill: the agent bar (architect, 2026-10-30): a card's published BFCL figures for the matching
+  categories count against the floors, with the gap stated; tool reliability is always "needs
+  measurement", so a candidate that clears the floors is hold, never verify, until measured locally.
+- skill: the framework walkthrough (architect, 2026-10-30): its report and the seven rules are
+  committed as 12067db; its six sampled claims and the blocklist review are done. It ran in auto
+  mode, so whether the exact ssh rule matches outside auto mode is untested.
 
 ## Pending edits
 

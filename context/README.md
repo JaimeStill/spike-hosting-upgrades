@@ -3,6 +3,8 @@
 spike-hosting-upgrades is where the hosting stack learns to keep itself current from what others
 publish. An agent skill reads the public record for each host class, engine, and model (engine
 releases, public benchmarks, model cards), cites it, and writes a dated report of ranked upgrades.
+Beside the upgrades, it finds and ranks what a workstation has fallen behind on, such as pending
+system updates and failed units, and applies nothing.
 Two anchor cells verify each upgrade on our own host before it is adopted, so local runs are
 reserved for what no one publishes. The convention and its cadence are evidence for
 v1.ai.hosting; the spike decides nothing itself.
@@ -27,9 +29,9 @@ model host, or its models) from what others publish rather than benchmarks of ou
    date it was read. Before the probe, it prints the permission rules the workspace needs and
    never writes settings.
 2. A dated report of ranked upgrades per host (framework, gb10-1), at
-   `docs/reports/<host>/<YYYY-MM-DD>.md`, in three kinds: hardware configuration, model host, and
-   models. Each upgrade carries its sources, the gain they claim, its risk, and a verdict:
-   verify, hold, or skip.
+   `docs/reports/<host>/<YYYY-MM-DD>.md`, in four kinds: hardware configuration, system updates
+   and debt, model host, and models. Each upgrade carries its sources, the gain they claim, its
+   risk, and a verdict: verify, take, hold, or skip.
 3. Each host's top-ranked upgrade, verified by anchors A and B before and after in one session on
    that host, then adopted or rolled back. An anchor that moves beyond run noise is a finding.
 4. The pool's candidates screened from sources per host class. A candidate the sources support is
@@ -60,7 +62,8 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 - **Engines.** A host's engine changes through spike-model-engines' `engines` suite, run read-only
   from its clone with the version as its argument. A candidate needing its own preset arguments
   is an escalation.
-- **Quantization floor** and **model origin**, as `ai-hosting.md` and `ai-strategy.md` state them.
+- **Quantization floor** and **model origin**, as `docs/policy.md` states them; its origin rule is
+  stricter than `ai-strategy.md`'s.
 - **Hosts.** framework and gb10-1; gb10-2 is reserved for spike-ai-pipeline.
 
 ## Capabilities
@@ -85,7 +88,8 @@ The tasks, in the order they run; each cites the evidence it proves.
 1. `skill`: the skill and its first dated report for each of framework and gb10-1, with
    read-only, no-root host probes (evidence 1, 2).
 2. `verify-framework`: framework's top-ranked upgrade, verified by anchors A and B before and
-   after, then adopted or rolled back; the skill gains its verification step (evidence 3, 5).
+   after, then adopted or rolled back; it also applies the run's take items, with rollbacks, and
+   the skill gains its verification step (evidence 3, 5).
 3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
 4. `screen`: the pool's candidates screened for both host classes, each supported one verified
    beside its role's incumbent (evidence 4).
@@ -95,13 +99,14 @@ The tasks, in the order they run; each cites the evidence it proves.
 ## References
 
 The spike reads these repositories for its setup, the anchors, and the verify and screen tasks,
-and never writes to them; the skill takes none of them as inputs. Each is a key in the
+and never writes to them. The skill takes none of them as inputs, except the findings a host
+descriptor lists under Measurements. Each is a key in the
 coordinator's `references.toml`, with its local checkout in `references.local.toml`:
 
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.
 - `spike-model-hosting`: the pool document (`docs/pool.md`), its admission rules and speed floors,
-  and the model-card method.
+  the model-card method, and the measurements `docs/policy.md`'s agent quality bar is drawn from.
 - `claude-plugins`: the skill layout and the check, for the plugin the intake may route there.
 - `dotfiles`: gb10-1's host-stack setup (`platforms/dgx/system-setup.sh`).
 - `spike-harness-driver`: how harnesses load a skill.

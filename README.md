@@ -10,7 +10,8 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
 
 - The skill: `.claude/skills/hosting-upgrades/`. It probes one host a run, read-only and
   without root, and reads the project's host descriptors (`docs/hosts/`) and policy
-  (`docs/policy.md`). Before each run, its readiness check prints the permission rules the
+  (`docs/policy.md`). Beside the upgrades, it finds and ranks what the host has fallen behind on,
+  such as pending system updates and failed units, and applies nothing. Before each run, its readiness check prints the permission rules the
   workspace needs and never writes settings; `/hosting-upgrades setup` runs the check alone.
 - The dated reports: `docs/reports/<host>/<YYYY-MM-DD>.md`.
 - The verification findings: `docs/findings/`.
