@@ -489,3 +489,4 @@ slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) �
 
 - coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
 - coordinator · roadmap: verify-framework's and verify-gb10's summaries gain "applies the run's take and verify items, with rollbacks".
+- coordinator · roadmap: experiment.hosting.spike-model-layout's summary gains the architect's idea of 2026-10-30: split hosts by role, with one GB10 for the agent model alone (about 49 GiB of KV after weights and headroom, roughly 10 concurrent 128K sessions by estimate), the second GB10 or the Framework for the capability models (vision, audio, embedding), and the remaining workstation routing overflow. Open points: gb10-2's reservation for spike-ai-pipeline, the routing layer, and whether the capability host's backend changes which builds pass the floor.
