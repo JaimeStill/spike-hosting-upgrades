@@ -1,6 +1,17 @@
 {
   "plansDirectory": "./.claude/plans",
   "permissions": {
-    "allow": ["Bash(mise run:*)", "Bash(mise tasks:*)", "Skill(marathon:marathon)"]
+    "allow": [
+      "Bash(gh search issues *)",
+      "Bash(gh search prs *)",
+      "Bash(mise run:*)",
+      "Bash(mise tasks:*)",
+      "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
+      "Bash(ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
+      "Edit(docs/reports/**)",
+      "Skill(marathon:marathon)",
+      "WebSearch",
+      "WebFetch"
+    ]
   }
 }
