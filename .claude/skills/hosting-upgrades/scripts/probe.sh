@@ -93,15 +93,26 @@ probe() {
   # repository key's value (--spec-draft-hf, -hfd, -hfrd, --hf-repo-draft) as the repository name
   # it gives, and vLLM's --speculative-model, or the "model" in its --speculative-config JSON, as
   # either, by its form. Any other speculative key (spec-*, speculative-*, *draft*) prints by its
-  # name alone, since it shapes speculation without naming a model.
+  # name alone, since it shapes speculation without naming a model. A drafter key whose value
+  # can't be read prints as "<key> (value unread)", never as "none". A shell-form command line
+  # (sh -c "llama-server ...") arrives as one argument, and is read word by word.
   drafters() {
     awk '
       # A path (absolute, home, relative, or a URL) or a model file prints by its last part only.
       function name(v, as_file) {
         gsub(/^[[:space:]"\047]+|[[:space:]"\047]+$/, "", v)
-        if (as_file || v ~ /^[\/~.]/ || v ~ /:\/\// || v ~ /\.(gguf|safetensors|bin|pt|pth|ckpt)$/)
-          sub(/.*\//, "", v)
+        if (as_file || v ~ /^[\/~.]/ || v ~ /:\/\// ||
+          v ~ /\.(gguf|safetensors|bin|pt|pth|ckpt)$/) {
+          sub(/\/+$/, "", v); sub(/.*\//, "", v)
+        }
         return v
+      }
+      # The key a flag names, as file or repo hold it: a preset key arrives as --<key>, so a short
+      # key (md) arrives as --md.
+      function key(f) {
+        s = substr(f, 2)
+        if (f ~ /^--/ && !(f in file) && !(f in repo) && (s in file || s in repo)) return s
+        return f
       }
       BEGIN {
         n = split("--spec-draft-model -md --model-draft", w, " ")
@@ -109,23 +120,35 @@ probe() {
         n = split("--spec-draft-hf -hfd -hfrd --hf-repo-draft --speculative-model", w, " ")
         for (i = 1; i <= n; i++) repo[w[i]] = 1
       }
-      { t[NR] = $0 }
+      # An argument with spaces that is not a drafter key value or JSON is a shell-form command
+      # line: its words are read as arguments.
+      {
+        p = (n_t ? key(t[n_t]) : "")
+        if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/ &&
+          !(p in file) && !(p in repo) && p != "--speculative-config") {
+          n = split($0, w, /[[:space:]]+/)
+          for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
+        } else t[++n_t] = $0
+      }
       END {
         out = ""; keys = ""
-        for (i = 1; i <= NR; i++) {
+        for (i = 1; i <= n_t; i++) {
           f = t[i]; v = ""; has = 0
           if (f !~ /^-/) continue
-          if (f ~ /^-[^=]*=/) { v = substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1); has = 1 }
-          else if (i < NR && t[i + 1] !~ /^-/) { v = t[i + 1]; has = 1 }
-          # A preset key reaches here as --<key>, so a short key (md) arrives as --md.
-          k = substr(f, 2)
-          if (f ~ /^--/ && !(f in file) && !(f in repo) && (k in file || k in repo)) f = k
-          if (f in file) { if (has) out = out ", " name(v, 1) }
-          else if (f in repo) { if (has) out = out ", " name(v, 0) }
+          if (f ~ /^-[^=]*=/) {
+            v = substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1); has = 1
+          } else if (i < n_t && t[i + 1] !~ /^-/) { v = t[i + 1]; has = 1 }
+          f = key(f)
+          if (f in file || f in repo) {
+            d = (has ? name(v, f in file) : "")
+            if (d == "") { d = f; sub(/^-+/, "", d); d = d " (value unread)" }
+            out = out ", " d
+          }
           else if (f == "--speculative-config") {
             if (match(v, /"model"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
               m = substr(v, RSTART, RLENGTH); sub(/^"model"[[:space:]]*:[[:space:]]*"/, "", m)
-              sub(/"$/, "", m); out = out ", " name(m, 0)
+              sub(/"$/, "", m); m = name(m, 0)
+              out = out ", " (m == "" ? "speculative-config model (value unread)" : m)
             } else keys = keys ", speculative-config"
           }
           else if (f ~ /^--?(spec-|speculative-)/ || f ~ /draft/) {
