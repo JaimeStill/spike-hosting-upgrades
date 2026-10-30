@@ -12,37 +12,51 @@ Checked first, because a model the policy excludes isn't weighed further.
 ### Origin
 
 The policy names what counts as an adversarial entity, the levels of a model at which involvement
-excludes it, and the bar a model must clear to pass. There is no model-provenance registry, so the
-run builds the evidence chain itself, most authoritative source first, and cites each link inline.
+excludes it, and the bar a model must clear to pass. No registry records a model's origin, so
+the run builds the evidence chain itself, most authoritative source first, and cites each link
+inline. "Origin" here is who was involved in a model; "build" (Quantization floor) is how the
+file the host would load was made.
 
 1. **Publisher identity.** Establish who published the model and who uploaded the file the host
    would load, which can differ for a conversion or quantization:
-   - the Hugging Face organization and whether it is verified (sources.md, "Provenance")
+   - the Hugging Face organization and whether it is verified (sources.md, "Origin and build
+     checks")
    - then the entity named on the publisher's own domain, linked from the organization or card
    - then that entity's legal domicile, and who owns or controls it
 
    Check the entity and its domicile against the foreign-adversary list, 15 CFR 791.4, read fresh
-   from eCFR, and against the Consolidated Screening List (sources.md, "Provenance").
+   from eCFR, and against the Consolidated Screening List (sources.md, "Origin and build
+   checks").
 2. **The publisher's own documents.** Read the technical report or paper, and the card's base,
    distillation, and training-data sections, for every level the policy names: the base chain,
    followed through each record's `cardData.base_model` from the API record
    (`https://huggingface.co/api/models/<org>/<name>`) until a record names none; a distillation
-   teacher; a synthetic-data generator or a model the card says it was "improved using"; and each
-   component (a vision or audio encoder, the tokenizer, a drafter, a projector). These documents
-   are authoritative for what they disclose, and only for that.
+   teacher; a synthetic-data generator, a judge, a labeler, or a translator, or a model the card
+   says it was "improved using"; and each component the publisher ships (a vision or audio
+   encoder, the tokenizer, a drafter, a projector). Read the training-data sections for the
+   datasets too: a dataset is involvement only as the policy's data rule says (below), and the
+   row lists the human-made datasets from adversary-origin institutions under "dataset sources".
+   These documents are authoritative for what they disclose, and only for that.
 3. **Artifact checks.** These find contradictions with what the documents say; they can't prove a
    model clean. A check that ties the model to an adversarial entity is detected involvement.
    - the config's `architectures` and `model_type`
-   - the tokenizer's vocabulary size and hash, against known families
-   - the chat template
+   - the tokenizer's vocabulary size and hash, against known families. Compare two vocabularies
+     by shared token IDs (the same string at the same ID), not shared strings: 50-70% string
+     overlap is normal across byte-level BPE vocabularies, so string overlap alone shows nothing.
+   - the chat template. A template, tool-call format, or input-placeholder layout shared with an
+     excluded family is a convention, which the policy may say is not involvement (below); it
+     prompts a closer look at the levels, and doesn't exclude by itself.
    - the LICENSE text, such as a Qwen or DeepSeek licence
    - the GGUF metadata from `https://huggingface.co/api/models/<id>?expand[]=gguf`: its parameter
      count (`gguf.total`) and architecture, and `general.base_model.*` where the record exposes it.
-     As read 2026-10-30 the record doesn't carry `general.base_model.*`; the base the card's model
-     tree names (`cardData.base_model`) stands in for it, cited as such.
+     As read 2026-10-30 the record doesn't carry `general.base_model.*`, and ggml-org's GGUF
+     headers often lack it too; the base the card's model tree names (`cardData.base_model`)
+     stands in for it, cited as such, and for a ggml-org file its `.src_sha` is the better pin
+     (item 4).
 4. **Conversions.** A conversion or quantization passes when its converter is the publisher, or
-   when it is `ggml-org` with base metadata that names the publisher's model and shapes (the
-   parameter count and architecture) that match it. Any other converter's file takes item 5.
+   when it is `ggml-org` with a `.src_sha` file that pins the publisher's repository and shapes
+   (the parameter count and architecture) that match the publisher's model (sources.md, "Origin
+   and build checks"). Any other converter's file takes item 5.
 5. **Further research**, when items 1 to 4 leave the model short of the pass bar with no
    involvement found. The run researches until it reaches a definitive answer, citing each item:
    - the uploader's or converter's identity and affiliation: their Hugging Face profile
@@ -54,13 +68,23 @@ run builds the evidence chain itself, most authoritative source first, and cites
      the uploader
    - the uploader's other published work
 
-   For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16` passed as IBM-origin: the run's
-   further research traced the uploader and the conversion to IBM's model. When the research
-   can't settle a conversion, the remedy is a local conversion from the publisher's weights,
-   which makes the project the authority for the file. That conversion is a host step for a task
-   to plan; the run names it under "Proposed changes" and never takes it.
+   For example, a community conversion whose uploader's profile names their employer as the
+   publisher, and whose shapes match the publisher's `config.json`, can pass; one with no card
+   and an uploader with no stated tie to the publisher can't. When the research can't settle a
+   conversion, the remedy is the project's own conversion from the publisher's weights, which
+   makes the project the authority for the file. That conversion is a host step for a task to
+   plan; the run names it under "Proposed changes" and never takes it.
 
-Then judge the model:
+Then judge the model, reading the policy's own limits on what counts:
+
+- **Conventions**: what the policy says is not involvement (a chat template, a tool-call format,
+  an input-placeholder layout copied from an excluded family) excludes nothing. The row names
+  the convention and the family it comes from.
+- **Components as shipped**: judge the model with the components its publisher ships. An
+  excluded component excludes the model even when a flag would leave it out.
+- **Data**: only the data the policy's data rule names excludes. A dataset that holds such a
+  subset, used without saying which subsets, makes the model origin unclear. A human-made
+  dataset from an adversary-origin institution goes in the row under "dataset sources".
 
 - **Excluded on origin**: any disclosed or detected involvement at any level. The model goes in
   the section's "excluded on origin" list, with the level and the source that shows it, cited
@@ -78,8 +102,12 @@ Then judge the model:
 ### Quantization floor
 
 The policy names three paths to the floor. The run first establishes which path a file takes,
-from its provenance, never from the repository id or the quant label: a label such as Q4_0 or
-MXFP4 names the format, not how the weights were made.
+from its build, never from the repository id or the quant label: a label such as Q4_0 or MXFP4
+names the format, not how the weights were made. The build, not the label, is one of:
+
+- the publisher's native or QAT release of the model
+- the publisher's post-training checkpoint
+- a third party's conversion
 
 1. **Read the format** from the files (`siblings`: a GGUF's quant type in its name, a
    `quantization_config` in `config.json`) or from the probe's stored model.
@@ -90,8 +118,8 @@ MXFP4 names the format, not how the weights were made.
      converter's post-training file points to the full-precision model. Read
      `general.base_model.*` from `?expand[]=gguf` where the record exposes it, and otherwise the
      card's `cardData.base_model` (Origin, item 3).
-   - A file labelled like a trained-in format whose provenance shows a post-training conversion
-     takes path 2 or 3, not path 1.
+   - A file labelled like a trained-in format whose build is a post-training conversion takes
+     path 2 or 3, not path 1.
 
    For example: `ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0` is a post-training Q4_0, path 3, and
    fails; `google/gemma-4-26B-A4B-it-qat-q4_0-gguf` is QAT, path 1, and passes.
@@ -108,17 +136,18 @@ MXFP4 names the format, not how the weights were made.
    a kind of model or a size. Count size as the policy says (the parameters the card names as
    effective).
 6. **A rule's edge** is a pause: a format the floor doesn't name, or a file whose path its
-   provenance doesn't settle. The default is that the model fails the floor until the architect
+   build doesn't settle. The default is that the model fails the floor until the architect
    answers. The report still shows the gates it would otherwise pass, so the architect sees what
    the answer decides.
 
 ### A model's row
 
 Each model's row names the exact repository and file the host would load (for a GGUF,
-`<org>/<repo>` and the `.gguf` file name), the floor path it took, and, when the model has a
-projector (`mmproj`), the projector's repository, file, and precision. For a vision or audio
-model the projector is part of the model's precision: record it beside the weights' format. It is
-not a gate of its own.
+`<org>/<repo>` and the `.gguf` file name), its build (the publisher's native or QAT release, the
+publisher's post-training checkpoint, or a third party's conversion, named), the floor path the
+build gave it, and, when the model has a projector (`mmproj`), the projector's repository, file,
+and precision. For a vision or audio model the projector is part of the model's precision: record
+it beside the weights' format. It is not a gate of its own.
 
 ## Gate 2: fit
 
@@ -140,6 +169,8 @@ Always marked **estimate**, naming this method:
 - **Engine reservation**: on vLLM, `--gpu-memory-utilization` x the ceiling, which replaces the
   sum above, because vLLM claims that share whatever the model needs. On llama.cpp, the weights
   and KV cache plus a compute buffer, about 1 to 2 GiB per loaded model (estimate).
+- **A model serving two purposes** is estimated once, at the more demanding purpose's
+  configuration: the larger context and the more slots of the two.
 
 ## Gate 3: the engine
 
@@ -154,9 +185,26 @@ architecture on the probed backend:
   capability). An open tracker report that the format crashes or corrupts output on the backend
   fails the gate, cited.
 
+## Gate 4: the agent quality bar
+
+For the agent purpose only. The policy's agent quality bar names evals with floors and a
+tool-reliability check; a candidate must clear it before speed sorts it, so a fast model that
+can't call tools never outranks a slower one that can.
+
+- **Clears the bar**: a comparable figure (the same benchmark, version, and category the policy
+  names) at or above every floor, and the tool-reliability check met. It goes on to the sort.
+- **Fails the bar**: a comparable figure under a floor, or the check failed. It is skip, listed
+  with the eval and the figure.
+- **Needs measurement**: no comparable figure for a named eval, or no tool-reliability
+  measurement. It is hold, "needs measurement", whatever its speed, and the row names the
+  measurement that would place it.
+
+When the policy states no agent quality bar, the gate is a pause (SKILL.md, "When to pause").
+
 ## Sort
 
-Models that pass all three gates sort by:
+Models that pass every gate (for the agent purpose, the four gates; for any other, the first
+three) sort by:
 
 1. **Published speed on the same hardware class**: decode and prefill from an attributed
    benchmark (sources.md, "Tiers"), at a concurrency that fits the purpose. A model with no
@@ -175,5 +223,11 @@ The verdict rules are the same as SKILL.md's "Verdicts". For a model:
 
 - **verify**: an attributed benchmark on the same host class and backend measured it ahead of the
   incumbent, or at the incumbent's speed with better card evals for the purpose.
-- **hold**: its speed on the class is unpublished, comes from another class, or is a lead.
+- **take**: a new revision of the incumbent's own file (the same repository, the same build)
+  whose publisher claims nothing for it and reports no regression; applied with the next host
+  update.
+- **hold**: its speed on the class is unpublished, comes from another class, or is a lead; or it
+  is an agent candidate that needs measurement (Gate 4); or it is measured slower than the
+  incumbent but ahead on the card's evals for the purpose. Measured slower but ahead on evals is
+  always hold, never verify or skip: the trade is the architect's to weigh.
 - **skip**: it is measured behind the incumbent with no eval gain, or it failed a gate.

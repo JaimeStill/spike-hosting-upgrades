@@ -31,8 +31,33 @@ entity at any of these levels:
 - the publisher, and the uploader of a conversion or quantization
 - every ancestor in the base chain
 - a distillation teacher
-- a synthetic-data generator, or a model the card says the model was "improved using"
+- a synthetic-data generator, a judge, a labeler, or a translator, or a model the card says the
+  model was "improved using"
 - a component: a vision or audio encoder, the tokenizer, a drafter, or a projector
+
+**Conventions are not involvement.** A chat template, a tool-call format, or an
+input-placeholder layout copied from an adversary-origin family doesn't exclude a model. These
+are conventions, not weights or training signal: a model that formats its tool calls like
+GLM-4.5, or places its image tokens like Qwen3-VL, is judged by its levels above, not by its
+format.
+
+**Components are judged as shipped.** A model is judged with the components its publisher ships
+it with, not as we might configure it. A model that ships an excluded component is excluded,
+even when a configuration flag would leave that component out.
+
+**Data.** Only data an adversary-origin model generated, labelled, judged, or translated excludes
+a model, and that includes such a subset inside a larger dataset. The rule follows the threat: a
+model compromised on purpose, through content an adversary's model chose token by token.
+
+- A human-made dataset from an adversary-origin institution doesn't exclude a model. The run
+  records it under "dataset sources" in the model's row.
+- A model that trained on a dataset holding a subset an adversary-origin model made, and that
+  doesn't say which subsets it used, is "origin unclear": its relevant subsets can't be told
+  apart.
+
+The reason: excluding every adversary-authored dataset would punish disclosure. Nearly every
+model trains on public datasets and few cards list them, so such a rule would exclude the
+publishers who disclose their data and pass the ones who stay silent.
 
 **The pass bar.** A model passes only when its publisher is an identified entity that is not an
 adversarial entity, the publisher's own documents establish its lineage, and no check finds
@@ -45,19 +70,28 @@ involvement found, the run researches further to reach a definitive answer, citi
 
 - the uploader's or converter's identity and affiliation: their Hugging Face profile,
   organization membership, linked GitHub, and employer as they state it
-- the conversion against the publisher's own weights: the GGUF `general.base_model.*`, the
-  parameter count, the architecture, and tensor shapes that match the publisher's config
+- the conversion against the publisher's own weights: the parameter count, the architecture, and
+  tensor shapes that match the publisher's config; for a ggml-org conversion, the `.src_sha` file
+  that pins the publisher's repository, since ggml-org's GGUF headers often lack
+  `general.base_model.*`
+- the tokenizer against the publisher's, compared by shared token IDs, not shared strings:
+  50-70% string overlap is normal across byte-level BPE vocabularies
 - the publisher's own repositories, announcements, and documentation naming the conversion or
   the uploader
 - the uploader's other published work
 
 The model passes when that research meets the pass bar, and its row records the evidence that
-settled it. For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16` passed as IBM-origin:
-the run's further research traced the uploader and the conversion to IBM's model.
+settled it.
 
 **Origin unclear.** Only when the further research can't settle it is the model held out as
 "origin unclear", without a pause. It never reaches a verdict or a model set. The report lists it
 beside "excluded on origin", with everything the run checked.
+
+For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16`, framework's embedding model on
+2026-10-30, is origin unclear: its repository has no card, and the conversion isn't the
+publisher's. The remedy is the project's own conversion from IBM's weights,
+`ibm-granite/granite-embedding-english-r2`, which makes the project the authority for the file.
+That conversion is a host step for a task to plan; a run names it and never takes it.
 
 ## Quantization floor
 
@@ -69,7 +103,7 @@ As `ai-hosting.md` states it, under "The rules":
 > Q8_0 or FP8 or better.
 
 **Reading: three paths.** The evals clause attaches to the post-training formats only. A format
-meets the floor by one of three paths:
+meets the floor by one of three paths, and the file's build decides which, not its label:
 
 1. **Trained-in formats** pass by name, at any size, when the publisher releases them as its own
    format of the model. These are native formats, such as gpt-oss's MXFP4, and quantization-aware
@@ -86,6 +120,42 @@ meets the floor by one of three paths:
 **Reading: a model's size.** Size is counted by the parameters the card names as effective.
 Gemma 4 E4B is "4.5B effective (8B with embeddings)", and its per-layer embeddings are lookups,
 not compute, so it counts as under 8B.
+
+## Agent quality bar
+
+A candidate for the agent purpose must clear this bar before speed sorts it: an agent model that
+is fast but can't call tools is no upgrade. The floors below are **proposed, for the architect to
+confirm in the validation run**. They are spike-model-hosting's bars for the agent role
+(spike-model-hosting `docs/pool.md`, whose profiles name "set A's BFCL bars"; the values are in
+`evaluation/bars.toml` and `docs/findings/baseline.md`, "Quality: each tier's two scores, spread
+and bar"): set A's gpt-oss-120b, measured twice on llama.cpp b11715, less its two-run spread.
+
+**Named evals and their floors.**
+
+| Eval | Measure | Floor | Set A's two runs |
+|---|---|---|---|
+| BFCL single-turn | accuracy | at least 0.630 | 0.65, 0.69 |
+| BFCL multi-turn | accuracy | at least 0.325 | 0.40, 0.35 |
+
+spike-model-hosting measured these on fixed samples: BFCL single-turn 100 and multi-turn 20,
+from Gorilla at `dac44e7`, drawn with seed 20261016, at the card's sampling. A published figure
+counts against a floor only when it names the same benchmark, version, and category; a card's
+BFCL overall score, or another version's, is not comparable.
+
+**The tool-reliability check.** The model, on the host's engine, fits the consumer harness:
+`conform` pass^5 through Pi, every capability that applies passing 5 of 5 trials, with 0 invalid
+requests (an invalid request is one the server can't parse, such as a 500 "does not match the
+expected peg-native format"). It is spike-model-hosting's harness-fit bar
+(spike-model-hosting `docs/findings/tool-reliability.md`, "Harness fit on b11715: set A's
+baseline"), which set A's agent model met in both baseline runs. An open report on the engine's
+tracker that its parser rejects the model's tool calls fails the check.
+
+**Reading the bar.**
+
+- A candidate that clears every floor and the check is sorted by speed with the others that do.
+- A candidate with a comparable figure under a floor, or that fails the check, fails the bar.
+- A candidate with no comparable figure for a named eval, or no tool-reliability measurement, is
+  hold, "needs measurement": the run can't place it, and says which measurement would.
 
 ## Memory headroom
 

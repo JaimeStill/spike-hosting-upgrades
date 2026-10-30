@@ -1,7 +1,7 @@
 # <host>
 
 <!-- A host descriptor for the hosting-upgrades skill. Save it in the project as
-     docs/hosts/<host>.md, where <host> is the SSH short name. It holds only the three sections
+     docs/hosts/<host>.md, where <host> is the SSH short name. It holds only the sections
      below; the skill probes every other fact (hardware, OS, kernel, engines, models) live. -->
 
 ## SSH short name
@@ -23,3 +23,12 @@
      none. -->
 
 - <engine> support for <backend> on <hardware>
+
+## Measurements
+
+<!-- Optional. The workspace's own dated findings measured on this host, which a run counts as
+     attributed benchmarks on it. Give each as the repository's reference name plus its path, not
+     a machine path, so the line holds on every checkout. A run compares only cells from one
+     session. Write "None." or delete the section if there are none. -->
+
+- <reference name> `<path to a dated finding>`

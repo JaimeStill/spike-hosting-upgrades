@@ -31,12 +31,15 @@ writes neither.
   - the declared model purposes: what the host serves or is meant to serve (agent, vision, audio,
     embedding, or whatever it serves), naming no model
   - optional engine watch items: named things the run must check, beside its own scan
+  - optional measurements: the workspace's own dated findings on this host, each a reference
+    name plus a path, which the run counts as attributed benchmarks ([sources.md](sources.md),
+    "Tiers")
 
   Every other fact about the host comes from probing it. [templates/host.md](templates/host.md)
   gives the shape, for an environment writing its own.
-- **The policy**, `docs/policy.md`. It states the model-origin rule, the quantization floor, and
-  the memory headroom a model set must leave. [templates/policy.md](templates/policy.md) gives
-  the shape.
+- **The policy**, `docs/policy.md`. It states the model-origin rule, the quantization floor, the
+  agent quality bar, and the memory headroom a model set must leave.
+  [templates/policy.md](templates/policy.md) gives the shape.
 
 When a step needs a policy value the document doesn't state (a floor for a kind of model it
 doesn't name, a headroom it leaves open), the run asks the architect for the value and records
@@ -59,6 +62,7 @@ the whole run.
    - `WebFetch`
    - `Edit(<reports dir>/**)`, which is `Edit(docs/reports/**)` here; an Edit rule covers creating
      a file too
+   - the screen.sh rule (part B)
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -113,7 +117,7 @@ Two rules the check never prints:
    (`docs/policy.md`), so no candidate can be judged against the model-origin rule, the
    quantization floor, or the memory headroom; write one from the skill's `templates/policy.md`
    and run again."
-4. If the descriptor holds anything beyond its three sections (a model name, an engine version, a
+4. If the descriptor holds anything beyond its sections (a model name, an engine version, a
    memory figure), treat it as stale: the probe decides those facts, and the report notes the
    extra lines under "Proposed changes".
 5. Run the readiness check ("Readiness check") before the probe, and go on as the architect
@@ -189,7 +193,9 @@ Read with WebFetch and search with WebSearch, GitHub included: release pages, ap
 JSON, and raw files from raw.githubusercontent.com or the contents API. Search a project's
 tracker with `gh search issues` and `gh search prs`. A `gh api` call is only the fallback once
 unauthenticated API reads (60 an hour) run out, and it asks permission each time, since the
-readiness check prints no rule for it ([sources.md](sources.md), "Reading a source").
+readiness check prints no rule for it ([sources.md](sources.md), "Reading a source"). When the
+research is split across subagents, split it as "Research" says, with the tools it names; no
+part reads a source with curl or jq through Bash.
 
 - **Read for the probed versions.** For each component the probe names (OS image, kernel,
   firmware, BIOS, driver or Mesa, each engine and its build), find what is newer, what changed
@@ -200,6 +206,9 @@ readiness check prints no rule for it ([sources.md](sources.md), "Reading a sour
 - **Tier every source** as primary, attributed benchmark, or lead, by the bar in
   [sources.md](sources.md), "Tiers". A lead names something to check and never carries a verify
   verdict alone.
+- **Read the host's own measurements.** Each finding the descriptor lists under "Measurements"
+  is an attributed benchmark on this host. Cite it by its reference name and path, and compare
+  only cells measured in one session.
 - **Never cite a blocklisted source** ([blocklist.md](blocklist.md)). When one carries a figure
   worth having, follow it to its original and cite that, or leave the figure out. A source met
   in this run that fails a blocklist criterion is proposed for the blocklist, with its reason,
@@ -226,6 +235,14 @@ the GPU-reachable memory ceiling (the TTM limit on AMD; on GB10, the system memo
 already at its newest, with nothing known to break, gets one line saying so, with the source that
 shows it.
 
+First ask which components reach the engine. A containerized engine carries its own Mesa and
+ROCm (or CUDA) in its image, so a host Mesa or ROCm update doesn't change what it serves; only the
+kernel, the firmware, the BIOS, and the memory ceiling reach it from the host. For such an engine,
+the component's version is the image's: read it from the image's Dockerfile or labels at the
+probed tag, and cite that. Never run a container to read it. A host component that doesn't reach
+the engine is still reported, with its verdict judged on what it does reach (the desktop, other
+services), and the report says it doesn't change serving.
+
 Each adjustment gives:
 
 - **From and to**: the probed version and the candidate.
@@ -233,9 +250,9 @@ Each adjustment gives:
 - **Claimed gain**: what the sources claim, in their own terms, or "none claimed".
 - **Risk**: what is known to break, whether it needs root, and its rollback (a package
   downgrade, a BIOS reflash, removing a modprobe file).
-- **Verdict**: verify, hold, or skip, by the rules in "Verdicts" below, with the reason.
+- **Verdict**: verify, take, hold, or skip, by the rules in "Verdicts" below, with the reason.
 
-Order the adjustments verify first, then hold, then skip. A fact the probe can't read without
+Order the adjustments verify, take, hold, skip. A fact the probe can't read without
 root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root" says.
 
 #### Boot-order check
@@ -282,12 +299,15 @@ descriptor declares.
    configuration works against a declared purpose (a per-slot context too short for agent
    sessions, slots that can't share a cache).
 2. **The seed list, filtered to the backend.** Weigh the incumbent against llama.cpp, vLLM,
-   SGLang, and TensorRT-LLM, keeping only what the probed backend supports: TensorRT-LLM only on
-   NVIDIA, and on AMD only what the engine's own docs or published images list for the probed gfx
-   target. Judge a packager (Ollama, LM Studio) by the engine and build it embeds, not as an engine
-   of its own. For each engine kept, say whether its newest release supports the backend, how the
-   host would install it, and what any attributed benchmark on the same hardware class measured
-   against the incumbent.
+   SGLang, TensorRT-LLM, and ggml-hrx, keeping only what the probed backend supports:
+   TensorRT-LLM only on NVIDIA, and on AMD only what the engine's own docs or published images
+   list for the probed gfx target. ggml-hrx is AMD's HRX backend for llama.cpp, built for
+   gfx1100 and gfx1151; its published figures measure it against HIP, but it is judged against
+   the backend the host serves on, which on Strix Halo is Vulkan, so a gain over HIP is not a
+   gain here. Judge a packager (Ollama, LM Studio) by the engine and build it embeds, not as an
+   engine of its own. For each engine kept, say whether its newest release supports the backend,
+   how the host would install it, and what any attributed benchmark on the same hardware class
+   measured against the incumbent.
 3. **The scan.** Look each run for emerging capabilities and engines: a backend an engine newly
    supports (vLLM on Vulkan, or on ROCm for the probed gfx target), a change that improves
    concurrent-session throughput, a new engine built for the hardware. A newly found engine is
@@ -299,7 +319,7 @@ descriptor declares.
 5. **The conclusion.** Name the most effective engine platform and configuration to date for the
    host: either an adjustment to the incumbent (a version, a backend, a flag) or a migration to
    another engine, with its verdict by the same rules. Then list the other candidates, ordered
-   verify, hold, skip.
+   verify, take, hold, skip.
 
 An engine change is judged within how the host installs engines, which the probe shows (a
 container from the engine's published image, a systemd unit, a package). A candidate that needs
@@ -308,15 +328,24 @@ until the architect changes the method, and the report says what it would take.
 
 #### Verdicts
 
-Every adjustment in steps 5 and 6 takes one verdict:
+Every item in steps 5, 6, and 7 takes one of four verdicts:
 
 - **verify**: a source that names its hardware, engine version, and method (an attributed
   benchmark) measured a gain on the same host class and backend, and no such source reports a
   regression. A verify verdict is a reason to measure on this host, not a decision to adopt.
+- **take**: a version update of something the host already runs (a package, firmware, the
+  engine's build, a new revision of a model's file) that claims nothing and has no reported
+  regression. It needs no measurement first: it is applied with the next host update, which keeps
+  the host current. A change of engine, backend, or model is never take.
 - **hold**: the only claim is release notes, or comes from another hardware class, or the
-  upgrade needs a root step with no rollback.
+  upgrade needs a root step with no rollback. An agent candidate with no comparable evals is hold,
+  "needs measurement" ([models.md](models.md), "Gate 4").
 - **skip**: sources show no gain or show a regression, or the upgrade breaks a rule: the policy,
   or an engine change outside how the host installs engines.
+
+Measured slower, but ahead on evals, is hold: an attributed benchmark puts the candidate behind
+the incumbent while its card's evals for the purpose put it ahead. Neither verify nor skip fits a
+trade between speed and quality, so the run holds it and names both figures for the architect.
 
 Two attributed sources that disagree on the gain are a pause (see "When to pause"); until the
 architect answers, the adjustment is hold.
@@ -337,9 +366,11 @@ their checks are in [models.md](models.md); this step says what the section hold
    candidate for each, and the report says which incumbents it would replace.
 3. **The gates, in order**: the policy (the origin rule, then the quantization floor, as
    `docs/policy.md` states them and reads them), a fit in the probed memory, and the host's engine
-   serving the architecture on its backend. A model that fails a gate stops there and is listed
-   with the gate it failed and why. The floor takes one of the policy's three paths, settled by
-   the file's provenance and never by its id or quant label: a trained-in format passes by name
+   serving the architecture on its backend, and, for the agent purpose, the policy's agent
+   quality bar. A model that fails a gate stops there and is listed with the gate it failed and
+   why. The floor takes one of the policy's three paths, settled by the build, not the label (the
+   publisher's native or QAT release, the publisher's post-training checkpoint, or a third
+   party's conversion), and never by the repository id: a trained-in format passes by name
    with the publisher's quality statement quoted, a publisher's post-training checkpoint passes
    only when every eval its card reports is within the policy's margin of BF16 (the row names any
    outside it), and everything else meets the floor.
@@ -354,55 +385,62 @@ their checks are in [models.md](models.md); this step says what the section hold
    other work) until the answer is definitive; a model the research brings to the pass bar passes,
    and its row records the evidence that settled it. Only a model the research can't settle (an
    unidentified publisher, an unestablished lineage, or sources that contradict each other) goes,
-   without a pause, in the "origin unclear" list beside it, and never reaches a verdict either. Each entry names what the run checked, each source cited
-   inline. A pass means "no disclosed or detected involvement", and the section says so.
-5. **Sort and judge.** Models that pass every gate sort by published speed on the same hardware
-   class, then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6),
-   with its citations: a model's gain is measured speed on the same host class and backend, or a
-   card eval for the purpose, against the incumbent's.
+   without a pause, in the "origin unclear" list beside it, and never reaches a verdict either.
+   Each entry names what the run checked, each source cited inline. A pass means "no disclosed
+   or detected involvement", and the section says so.
+5. **Sort and judge.** An agent candidate must clear the policy's agent quality bar before speed
+   sorts it ([models.md](models.md), "Gate 4"); one with no comparable evals is hold, "needs
+   measurement", whatever its speed. Models that pass every gate sort by published speed on the
+   same hardware class, then by the card's evals for the purpose. Each takes a verdict by
+   "Verdicts" (step 6), with its citations: a model's gain is measured speed on the same host
+   class and backend, or a card eval for the purpose, against the incumbent's.
 
-Order each purpose's rows verify, hold, skip; within a verdict, by speed, then by evals; a model
-that failed a gate is skip and comes after the passing skips. Each row names the exact repository
-and file the host would load and, when the model has a projector (`mmproj`), the projector's
-repository, file, and precision, which for a vision or audio model are part of its precision
-(models.md, "A model's row"). When a gate needs a policy value the document doesn't state, pause
-(see "When to pause").
+Order each purpose's rows verify, take, hold, skip; within a verdict, by speed, then by evals; a
+model that failed a gate is skip and comes after the passing skips. Each row names the exact
+repository and file the host would load, its build, and, when the model has a projector
+(`mmproj`), the projector's repository, file, and precision, which for a vision or audio model
+are part of its precision (models.md, "A model's row"). When a gate needs a policy value the
+document doesn't state, pause (see "When to pause").
 
 ### 8. Model set
 
 The most effective combination of one model per declared purpose, which the host can serve at
 once.
 
-1. **The candidates per purpose**: the top three from step 7 that pass every gate, plus the
+1. **Place each incumbent in step 7's order.** It ranks below the purpose's verify candidates,
+   which an attributed benchmark measured ahead of it, and above its take, hold, and skip
+   candidates, which nothing measured ahead of it. The report states each incumbent's place.
+2. **The candidates per purpose**: the top three from step 7 that pass every gate, plus the
    incumbent, so at most four per purpose. The report states this bound and how many sets it
    weighed. A model that serves several purposes can fill each of them in one set, and its memory
    counts once.
-2. **Keep the sets that fit together**: the estimated memory of every model in the set, loaded at
+3. **Keep the sets that fit together**: the estimated memory of every model in the set, loaded at
    its configured context and slots, leaves the policy's headroom of the GPU-reachable ceiling
-   free.
-3. **Keep the sets the chosen engine can serve side by side**: the engine is the conclusion of
+   free. A model serving two purposes is estimated at the more demanding purpose's
+   configuration: the larger context and the more slots of the two.
+4. **Keep the sets the chosen engine can serve side by side**: the engine is the conclusion of
    step 6. Either one process holds several models (a llama.cpp router), or each model runs in its
    own process with its own memory reservation (vLLM's `--gpu-memory-utilization`, a share of the
    whole device), and the reservations, not the weights, must fit within the headroom.
-4. **Recommend** the most effective set kept: compared first by the agent purpose's model (its
-   place in step 7's order), then by the other purposes' places summed, then by memory left free.
-   Give its estimated memory, marked **estimate** with its method (see [models.md](models.md),
-   "Memory estimate"), why it wins, and the runner-up with why it lost. Each entry in the set names
-   the exact repository and file, and its projector's repository, file, and precision when it has
-   one. When no set but the incumbents fits, say so.
+5. **Recommend** the most effective set kept: compared first by the agent purpose's model (its
+   place in step 7's order, with the incumbent placed as item 1 says), then by the other
+   purposes' places summed, then by memory left free. Give its estimated memory, marked
+   **estimate** with its method (see [models.md](models.md), "Memory estimate"), why it wins, and
+   the runner-up with why it lost. Each entry in the set names the exact repository and file, and
+   its projector's repository, file, and precision when it has one. When no set but the incumbents fits, say so.
 
 ### 9. Verify next
 
-One closing line naming a single item from across the sections: the verify item with the largest
+One closing line naming a single verify item from across the sections: the one with the largest
 claimed gain on the agent purpose, and among equal claimed gains, the lowest risk first (no root
 and rolled back by removing a flag, before a root step with a rollback, before a reboot), with a
-one-line reason. When no item is verify, say so, and name the best hold item by the same order,
-with what would raise it to verify.
+one-line reason. It names a verify item only, never a take, hold, or skip item. When no item is
+verify, the line says so and names nothing.
 
 ### 10. Proposed changes
 
 Every change the run would make to a document it reads, each with its reason, for the architect
-to accept or reject one by one. The run applies none of them (see "What a run writes"). Four
+to accept or reject one by one. The run applies none of them (see "What a run writes"). Five
 lists, each "None" when empty:
 
 - **Descriptor watch items** (`docs/hosts/<host>.md`): a watch item to add, such as a scan finding
@@ -413,6 +451,10 @@ lists, each "None" when empty:
 - **Blocklist** ([blocklist.md](blocklist.md)): a source met in the run that fails a criterion,
   with what was found (step 4).
 - **Engine seed list** (step 6): a newly found engine to weigh every run.
+- **Policy and the model gates** (`docs/policy.md`, [models.md](models.md)): a value the policy
+  lacked and the architect's answer at a pause, a rule a candidate sat on the edge of, and a
+  remedy a gate points to that needs a host step (the project's own conversion of a model, say),
+  for a task to plan.
 
 ### 11. Write the report
 
@@ -434,7 +476,10 @@ found missing (or "none") and the architect's answer, every probe skip, every fa
 root (with the architect's read-out or "declined"), and every pause with its answer.
 
 ## Hardware configuration
-Step 5's adjustments, verify, then hold, then skip.
+Step 5's adjustments, verify, take, hold, skip.
+
+## System updates and debt
+(Placeholder: part B of the tuning slice defines this section.)
 
 ## Engines
 Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
@@ -454,13 +499,43 @@ the runner-up.
 Step 9's one line.
 
 ## Proposed changes
-Step 10's four lists.
+Step 10's five lists.
 
 ## Sources
 Every source cited, with its tier, URL, and read date.
 ```
 
-Within every section, items are ordered verify, then hold, then skip.
+Within every section, items are ordered verify, take, hold, skip.
+
+## Research
+
+Step 4's research is large enough that a run may split it across subagents. When it does, it
+splits it into these five parts, so that runs are repeatable:
+
+1. **Hardware and system**: the OS image, kernel, firmware, BIOS, driver or Mesa, and memory
+   ceiling (step 5).
+2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items
+   (step 6).
+3. **Agent models**: the agent purpose's candidates, their speed on the class, and their evals
+   against the policy's agent quality bar (step 7).
+4. **Other models**: every other declared purpose's candidates (step 7).
+5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin").
+
+**What each part gets.**
+
+- Its inputs: the probe's inventory, the host descriptor, and the policy.
+- The source tiers and the sources for its kind, from [sources.md](sources.md), and the
+  blocklist ([blocklist.md](blocklist.md)).
+- The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`, and, for the
+  origin part only, `scripts/screen.sh`.
+
+**What each part returns.** Cited claims, each with its source's URL, its read date, and its
+tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts.
+
+**No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for
+them, so they would run outside the rules the architect granted. Data too large for WebFetch, or
+behind a header WebFetch can't send, goes through a narrow script bundled with the skill, which
+reads one source and is granted by its own exact rule.
 
 ## When to pause
 
@@ -470,7 +545,7 @@ The run stops and asks the architect, rather than guessing or failing, in four c
    declared purpose nothing serves (step 3).
 2. **Sources conflict on a claim**: two sources disagree on a version, a gain, or a support claim.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
-   rule's edge: a format the floor doesn't name, or a file whose floor path its provenance doesn't
+   rule's edge: a format the floor doesn't name, or a file whose floor path its build doesn't
    settle. Origin is never a pause: a model with involvement found is excluded on origin, and one
    short of the pass bar is researched further and, only if the research can't settle it,
    including when its sources conflict, held out as "origin unclear" (step 7).
@@ -502,15 +577,21 @@ How should the run go on?
 ## Facts that need root
 
 The probe reads only what an unprivileged user can. When a step needs a fact only root can read,
-the run never runs sudo itself. It prints the exact command, says what fact it needs and why, asks
-the architect to run it on the host and paste the output, and continues from the pasted output,
-citing it in the report as the architect's read-out. For example:
+the run never runs sudo itself. It prints the exact command, in the form that runs it on the host
+from this machine (`ssh -t <host> sudo <command>`, where `-t` gives sudo a terminal for its
+password), says what fact it needs and why, asks the architect to run it and paste the output,
+and continues from the pasted output, citing it in the report as the architect's read-out.
+
+For the GPU's loaded firmware, the command is
+`ssh -t <host> sudo cat /sys/kernel/debug/dri/<N>/amdgpu_firmware_info`, where `<N>` is the card
+number in the probe's `/sys/class/drm/card<N>` line under `== memory ==`. For example, when the
+probe prints `/sys/class/drm/card1: GTT total ...`:
 
 ```text
-The report needs the GPU's loaded firmware versions, which only root can read. Run this on
-framework and paste the output:
+The report needs the GPU's loaded firmware versions, which only root can read. Run this from
+this machine and paste the output (N = 1, from the probe's /sys/class/drm/card1):
 
-  sudo cat /sys/kernel/debug/dri/1/amdgpu_firmware_info
+  ssh -t framework sudo cat /sys/kernel/debug/dri/1/amdgpu_firmware_info
 ```
 
 If the architect declines, the run goes on without the fact and the report says which fact is
