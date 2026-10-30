@@ -12,17 +12,24 @@ Checked first, because a model the policy excludes isn't weighed further.
 ### Origin
 
 1. Read the model's Hugging Face API record, `https://huggingface.co/api/models/<org>/<name>`,
-   for its author and `cardData.base_model`.
+   with WebFetch, for its author and `cardData.base_model`.
 2. Follow `base_model` until a record names none. The origin is that root model's publisher.
    A quantization, a conversion (`ggml-org`, `unsloth`, an NVIDIA NVFP4 checkpoint), a drafter,
    and a fine-tune all take the root's origin, whoever published them.
 3. Where the record names no base, read the card for the backbone it was "initialized from" or
-   "built on", and the config's `architectures` and chat template.
+   "built on", and the config's `architectures` and chat template. Where the card names none
+   either, read the publisher's own repository (its README and model code) or its paper, linked
+   from the card or the publisher's page.
 4. An origin the policy excludes puts the model in the section's "excluded on origin" list, with
    the record that shows it. It never reaches a verdict or the model set.
-5. **Origin unclear** (no base in the record or the card, and a config or template that points to
-   another family) is a pause. The default the run takes is to hold the model out of the ranking
-   under "origin unclear" until the architect answers.
+5. **Origin unclear**: a model whose base none of the card, the API record, or the publisher's
+   repository or paper establishes is held out of the ranking, without a pause, as the policy
+   reads its origin rule. It goes in the "origin unclear" list beside "excluded on origin", with
+   what the run checked (each source, cited inline, and what it did or didn't name), and never
+   reaches a verdict or the model set.
+6. **Conflicting origin evidence** is a pause: one source names a base and another a different
+   one (the record against the card, or the card against the publisher's repository). The default
+   the run takes is to hold the model out as "origin unclear" until the architect answers.
 
 ### Quantization floor
 
@@ -31,13 +38,17 @@ Checked first, because a model the policy excludes isn't weighed further.
 2. A format the publisher evaluated passes if the policy accepts it. "Evaluated" means the
    checkpoint's own card publishes evals for that format beside full precision. A quantized
    checkpoint whose card only points to the base model's card has not been evaluated.
-3. Otherwise apply the policy's floor, including any higher floor it sets for a kind of model or
+3. Where the policy accepts an evaluated format only within a margin of full precision ("card
+   evals within about 1% of BF16"), the policy reads it as every eval the card reports for the
+   checkpoint: each eval's relative gap, |quantized - BF16| / BF16, is within about 1%. A
+   checkpoint with any eval outside the margin is not accepted as evaluated, and the row names
+   those evals, especially the ones for the purpose; it then meets the floor in item 4 like any
+   other format.
+4. Otherwise apply the policy's floor, including any higher floor it sets for a kind of model or
    a size.
-4. **A rule's edge** is a pause: a format the floor doesn't name, or card evals that are mostly
-   within the policy's margin but not all of them. Name the evals outside the margin, especially
-   those for the purpose. The default is that the model fails the floor until the architect
-   answers. The report still shows the gates it would otherwise pass, so the architect sees what
-   the answer decides.
+5. **A rule's edge** is a pause: a format the floor doesn't name. The default is that the model
+   fails the floor until the architect answers. The report still shows the gates it would
+   otherwise pass, so the architect sees what the answer decides.
 
 ## Gate 2: fit
 
@@ -49,7 +60,8 @@ with that model alone. Step 8 checks the set together.
 Always marked **estimate**, naming this method:
 
 - **Weights**: the snapshot size the probe's `== models ==` reports for a stored model, or the sum
-  of the format's file sizes from the API (`?blobs=true`, `siblings[].size`) for one not stored.
+  of the format's file sizes from the API (`?blobs=true`, `siblings[].size`, read with WebFetch)
+  for one not stored.
   Include any projector (`mmproj`) or drafter the purpose needs.
 - **KV cache**: 2 x layers x KV heads x head dimension x bytes per element x tokens, from
   `config.json`, for the configured context and slots. Count only the window for sliding-window

@@ -3,7 +3,8 @@
 Task `skill`, dated 2026-10-29. What the hosting-upgrades skill's probe
 (`.claude/skills/hosting-upgrades/scripts/probe.sh`) read on the Framework and gb10-1 while the
 skill was built. Nothing here is a performance measurement; the probe reads the host stack and
-changes nothing.
+changes nothing. The section "gb10-1 after its update, 2026-10-30" adds the next day's probes
+and the architect's fix between them; the sections before it keep their 2026-10-29 readings.
 
 ## Commands, exactly as run
 
@@ -60,3 +61,82 @@ From each host's last saved probe output.
 - **What serves**: nothing; no OpenAI-compatible endpoint answered on loopback.
 - **Store**: `/srv/models`, 14 models.
 - **Skipped**: omarchy-version, vulkaninfo, ollama.
+
+## gb10-1 after its update, 2026-10-30
+
+The architect updated gb10-1's system on 2026-10-30; the session took no part in the update. The
+entries above keep their 2026-10-29 readings.
+
+### The session's probe after the update
+
+Run by the session, read-only, from the repository root:
+
+```sh
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-after-update.txt
+```
+
+- **Kernel**: 7.0.0-1019-nvidia → 7.0.0-1024-nvidia, booted 2026-10-30 08:44; no reboot pending.
+- **Unchanged**: the driver, the OTA version, the containers, and the 14 stored models.
+- **What serves**: nothing; no OpenAI-compatible endpoint answered on loopback.
+- **Tailnet identifiers**: none in the output.
+
+### The architect's fix for a boot-order failure
+
+The llama container publishes its port on the host's tailnet address. On the boot after the
+update, docker started before Tailscale assigned that address, so the container's start failed to
+bind and left it with no published port. The architect ran these on gb10-1, exactly as run; the
+first two ran with root:
+
+```sh
+echo 'net.ipv4.ip_nonlocal_bind = 1' | sudo tee /etc/sysctl.d/90-nonlocal-bind.conf
+sudo sysctl --system
+docker start llama
+docker network connect bridge llama
+docker port llama
+```
+
+- `sysctl --system` reported `net.ipv4.ip_nonlocal_bind = 1`.
+- `docker network connect` answered "endpoint with name llama already exists in network bridge",
+  because the start had already restored the container's network.
+- `docker port llama` showed `8080/tcp -> <tailnet address>:8080`; the address is redacted here.
+
+The same fix was first worked out on gb10-2 by another spike's session. A second reboot hasn't yet
+proven it.
+
+### The session's probe after the fix
+
+Run by the session, read-only, from the repository root:
+
+```sh
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-after-fix.txt
+```
+
+- **Engines**: the llama container running and healthy, as the llama.cpp router at build
+  b11669-620d2225c, with 8 router models, all unloaded; the vllm container still exited; both
+  systemd units still disabled.
+- **Tailnet identifiers**: none in the output.
+
+## The probe's port and sysctl lines, 2026-10-30
+
+The architect approved three read-only lines for the probe: each engine container's published
+ports and its configured binds, each port by bind class (`tailnet`, `all`, `loopback`, `other`)
+and never by address, and `net.ipv4.ip_nonlocal_bind`. The session ran the updated probe on both
+hosts, read-only, from the repository root:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-ports.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-ports.txt
+```
+
+Beside the new lines, the outputs matched each host's previous probe (memory figures and uptimes
+aside).
+
+- **framework**: `net.ipv4.ip_nonlocal_bind: 0`. The running llama container publishes
+  `8080/tcp tailnet` and is configured with `8080/tcp tailnet`; the exited vllm container
+  publishes none and is configured with `8000/tcp tailnet`. So framework carries the bind that
+  failed on gb10-1, without the remedy: a boot where docker starts before Tailscale would leave
+  llama with no published port.
+- **gb10-1**: `net.ipv4.ip_nonlocal_bind: 1`, the architect's remedy above. The running llama
+  container publishes `8080/tcp tailnet` and is configured with `8080/tcp tailnet`; the exited
+  vllm container publishes none and is configured with `8000/tcp tailnet`.
+- **Tailnet identifiers**: none in either output.

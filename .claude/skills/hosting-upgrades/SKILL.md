@@ -1,11 +1,7 @@
 ---
 name: hosting-upgrades
 description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish. Probes the host live over SSH, read-only and without root, reconciles the probe with the project's host descriptor and policy, and writes a dated, cited report of upgrades. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, or plan a host's next upgrade.
-argument-hint: <host>
-allowed-tools:
-  - Bash(ssh * bash -s < ${CLAUDE_SKILL_DIR}/scripts/probe.sh)
-  - Read
-  - Edit(docs/reports/**)
+argument-hint: <host> | setup
 ---
 
 # hosting-upgrades
@@ -17,6 +13,13 @@ come from the project's own documents, and every other fact comes from the probe
 
 The run is interactive. It pauses and asks the architect rather than guessing or failing (see
 "When to pause"), and it never runs a command that needs root (see "Facts that need root").
+
+`/hosting-upgrades setup` starts no run: it runs the readiness check alone and prints the full
+rule set the workspace needs, for a new workspace or a new host (see "Readiness check").
+
+The skill's frontmatter grants no tools. A skill's grant clears when the user sends their next
+message, so an interactive run would lose it at its first pause; the durable grants are the
+settings rules the readiness check prints.
 
 ## Inputs
 
@@ -39,12 +42,70 @@ When a step needs a policy value the document doesn't state (a floor for a kind 
 doesn't name, a headroom it leaves open), the run asks the architect for the value and records
 the answer in the report as the architect's, never inventing one.
 
+## Readiness check
+
+A run's tools need permission rules in the project's settings, or each use asks. The check works
+out the rules this workspace needs, finds the ones missing, and prints them for the architect to
+add. It never writes a settings file. A run makes it the last part of step 1; `setup` makes it
+the whole run.
+
+1. **Work out the rules.** The probe path is the project-relative one step 2 runs
+   (`.claude/skills/hosting-upgrades/scripts/probe.sh` here), and the reports directory is
+   `docs/reports`. The rules are:
+   - one exact rule per host with a descriptor in `docs/hosts/`, named by the descriptor's SSH
+     short name: `Bash(ssh <host> bash -s < <probe path>)`
+   - `Bash(gh search issues *)` and `Bash(gh search prs *)`
+   - `WebSearch`
+   - `WebFetch`
+   - `Edit(<reports dir>/**)`, which is `Edit(docs/reports/**)` here; an Edit rule covers creating
+     a file too
+
+   Reading the project's own files needs no rule.
+2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
+   project root; either may be missing, which is no error. A rule is present when either file's
+   `permissions.allow` holds it exactly as written above.
+3. **Print what is missing.** For each rule missing from both, print the exact JSON to add under
+   `permissions.allow`, and name the file it belongs in: `.claude/settings.json` when the skill
+   lives inside the project, so the rules are committed beside it, and
+   `.claude/settings.local.json` when the skill is installed outside it, since its absolute probe
+   path is the architect's own. `setup` prints the full rule set first, each rule marked present
+   or missing, then the JSON for the missing ones. For example:
+
+   ```text
+   Readiness check: 7 rules missing from .claude/settings.json and .claude/settings.local.json.
+   Add them to .claude/settings.json, under permissions.allow:
+
+     "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
+     "Bash(ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
+     "Bash(gh search issues *)",
+     "Bash(gh search prs *)",
+     "WebSearch",
+     "WebFetch",
+     "Edit(docs/reports/**)"
+   ```
+4. **Ask.** When a rule is missing, ask whether to continue with the prompts the missing rules
+   bring, or wait while the architect adds them; the default is to wait. When none is missing,
+   say so and go on. `setup` asks nothing: it stops once it has printed.
+
+Two rules the check never prints:
+
+- **No rule for `gh api`.** Settings rules apply to every agent in the workspace, not only to this
+  skill, and `gh api` writes as readily as it reads (`-X POST`, `-f`), with the architect's
+  GitHub token. So a `gh api` call, the fallback once unauthenticated reads run out, asks each
+  time.
+- **No wildcard ssh host.** A rule such as `Bash(ssh * bash -s < <probe path>)` also matches ssh
+  options riding along in the wildcard (`-o ProxyCommand=<any command>` runs that command on this
+  machine), so each host gets its own exact rule, and a new host's descriptor brings a new rule
+  through `setup`. The rule names the probe path literally, because settings rules don't expand
+  `${CLAUDE_SKILL_DIR}`.
+
 ## The run
 
 ### 1. Load the inputs
 
 1. Take the host from the argument, `$0`. With no argument, list the descriptors in `docs/hosts/`
-   by their short names, ask which host to run on, and run on one host only.
+   by their short names, ask which host to run on, and run on one host only. With `setup`, run
+   the readiness check alone, as "Readiness check" says, and stop there.
 2. Read `docs/hosts/<host>.md`. If it is absent, stop and say so: "No descriptor for `<host>` in
    `docs/hosts/`, so the run has no declared purposes to judge against; write one from the
    skill's `templates/host.md` and run again." Name the descriptors that do exist.
@@ -55,14 +116,24 @@ the answer in the report as the architect's, never inventing one.
 4. If the descriptor holds anything beyond its three sections (a model name, an engine version, a
    memory figure), treat it as stale: the probe decides those facts, and the report notes the
    extra lines under "Proposed changes".
+5. Run the readiness check ("Readiness check") before the probe, and go on as the architect
+   answers it. The report's Inventory lists the rules the check found missing and the answer.
 
 ### 2. Probe
 
-Run the bundled probe on the host over SSH, from the project root, exactly as:
+Run the bundled probe on the host over SSH, from the project root, by its project-relative path,
+exactly as:
 
 ```sh
-ssh <short name> bash -s < ${CLAUDE_SKILL_DIR}/scripts/probe.sh
+ssh <host> bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
 ```
+
+`<host>` is the descriptor's SSH short name. The command is the literal one the readiness check's
+ssh rule names, with no prefix (`timeout`) and no redirect, so the rule matches it and the run
+asks no permission. Where the skill lives elsewhere, the probe path is `${CLAUDE_SKILL_DIR}`
+relative to `${CLAUDE_PROJECT_DIR}`, followed by `/scripts/probe.sh`; when the skill is installed
+outside the project, it is the probe's absolute path. Write the path out in the command: settings
+rules don't expand `${CLAUDE_SKILL_DIR}`, so a command that names the variable matches no rule.
 
 [scripts/probe.sh](scripts/probe.sh) is read-only and needs no root. It prints labeled sections
 (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `== memory ==`,
@@ -73,6 +144,11 @@ cache, offload, memory), which is the incumbent's configuration step 6 weighs. A
 doesn't show was not passed on the command line, and is at the engine's default unless it was set
 another way the probe doesn't read (an environment variable such as `LLAMA_ARG_CTX_SIZE`, a
 preset or config file); a flag outside the filter's list doesn't show either.
+Each engine container also carries a `published ports` line (what it publishes now, or `none`,
+and `none (no network)` when it is on no network) and a `configured binds` line (the bindings it
+was created with), each port named by its bind class: `tailnet`, `all`, `loopback`, or `other`.
+`== container-runtime ==` prints `net.ipv4.ip_nonlocal_bind`. Step 5's boot-order check reads all
+three.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
 fact too, and the report keeps it. The probe prints no network address: it reads listening ports
 from `ss -Hltn` and `docker port` and drops the address from each, and a final guard redacts any
@@ -107,6 +183,12 @@ Gather the public record for what the probe found, from the sources in
 benchmarks) and by vendor or project, with its URL and how to read it. Read the machine-readable
 endpoint where one exists (the GitHub releases API, the Hugging Face API, Arch's package JSON),
 and read it fresh: what a source said on an earlier run is not evidence today.
+
+Read with WebFetch and search with WebSearch, GitHub included: release pages, api.github.com
+JSON, and raw files from raw.githubusercontent.com or the contents API. Search a project's
+tracker with `gh search issues` and `gh search prs`. A `gh api` call is only the fallback once
+unauthenticated API reads (60 an hour) run out, and it asks permission each time, since the
+readiness check prints no rule for it ([sources.md](sources.md), "Reading a source").
 
 - **Read for the probed versions.** For each component the probe names (OS image, kernel,
   firmware, BIOS, driver or Mesa, each engine and its build), find what is newer, what changed
@@ -154,6 +236,25 @@ Each adjustment gives:
 
 Order the adjustments verify first, then hold, then skip. A fact the probe can't read without
 root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root" says.
+
+#### Boot-order check
+
+An engine container that binds its port on the tailnet address can't publish it until Tailscale
+has assigned that address, and docker may start first at boot. Read each engine container's
+`published ports` and `configured binds` lines and `net.ipv4.ip_nonlocal_bind` from the probe,
+and report each of these in the section, cited to the probe:
+
+- **A tailnet bind with `ip_nonlocal_bind` 0**: flag that a boot where docker starts before
+  Tailscale leaves the container with no published port. The remedy is
+  `net.ipv4.ip_nonlocal_bind = 1` in a file under `/etc/sysctl.d`, a root step the architect runs
+  (the run prints it as "Facts that need root" does, and never runs it). Its side effect: any
+  process on the host may then bind an address the host doesn't hold yet. Its rollback is
+  removing the file and running `sysctl --system`.
+- **A running container whose `published ports` is `none`**: flag that it serves nothing off the
+  host, however healthy docker reports it, which is the boot-order failure itself. The recovery is
+  `docker network connect bridge <name>`, which needs no root; the architect runs it. A stopped
+  container publishes nothing either, and is not flagged.
+- **`ip_nonlocal_bind` 1**: report the remedy as present, with its side effect.
 
 ### 6. Engines
 
@@ -222,12 +323,17 @@ their checks are in [models.md](models.md); this step says what the section hold
    card serves several purposes (a multimodal model that takes text, images, and audio) is a
    candidate for each, and the report says which incumbents it would replace.
 3. **The gates, in order**: the policy (the origin rule, then the quantization floor, as
-   `docs/policy.md` states them), a fit in the probed memory, and the host's engine serving the
-   architecture on its backend. A model that fails a gate stops there and is listed with the gate
-   it failed and why.
-4. **Excluded on origin.** A model of an origin the policy excludes, or a fine-tune of such a
-   base, goes in the section's "excluded on origin" list and never reaches a verdict. Each entry
-   cites, inline, the URL and read date of the source that shows its origin.
+   `docs/policy.md` states them and reads them), a fit in the probed memory, and the host's engine
+   serving the architecture on its backend. A model that fails a gate stops there and is listed
+   with the gate it failed and why. A publisher-evaluated format passes the floor's "card evals
+   within about 1% of BF16" only when every eval the card reports for the checkpoint is within
+   about 1% of BF16, relative; the row names any eval outside it.
+4. **Excluded on origin, and origin unclear.** A model of an origin the policy excludes, or a
+   fine-tune of such a base, goes in the section's "excluded on origin" list and never reaches a
+   verdict. Each entry cites, inline, the URL and read date of the source that shows its origin.
+   A model whose base can't be established from its card, its API record, or its publisher's
+   repository or paper goes, without a pause, in the "origin unclear" list beside it, and never
+   reaches a verdict either. Each entry names what the run checked, each source cited inline.
 5. **Sort and judge.** Models that pass every gate sort by published speed on the same hardware
    class, then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6),
    with its citations: a model's gain is measured speed on the same host class and backend, or a
@@ -235,7 +341,7 @@ their checks are in [models.md](models.md); this step says what the section hold
 
 Order each purpose's rows verify, hold, skip; within a verdict, by speed, then by evals; a model
 that failed a gate is skip and comes after the passing skips. When a gate needs a policy value
-the document doesn't state, or a model's origin is unclear, pause (see "When to pause").
+the document doesn't state, or a model's origin evidence conflicts, pause (see "When to pause").
 
 ### 8. Model set
 
@@ -297,8 +403,9 @@ The report's sections, in order:
 
 ## Inventory
 The probe's findings, by section, and the descriptor and policy the run read. Says plainly when
-nothing serves, and what the run ranks against instead. Lists every probe skip, every fact that
-needed root (with the architect's read-out or "declined"), and every pause with its answer.
+nothing serves, and what the run ranks against instead. Lists the rules the readiness check
+found missing (or "none") and the architect's answer, every probe skip, every fact that needed
+root (with the architect's read-out or "declined"), and every pause with its answer.
 
 ## Hardware configuration
 Step 5's adjustments, verify, then hold, then skip.
@@ -308,7 +415,8 @@ Step 6: the incumbent, the seed list, the scan, each watch item by name, and the
 
 ## Models
 Step 7: per declared purpose, the incumbent and its candidates, each with its gates, speed,
-evals, and verdict; then the models excluded on origin.
+evals, and verdict; then the models excluded on origin, and beside them the models of unclear
+origin with what the run checked.
 
 ## Model set
 Step 8: the bound on candidates per purpose, the sets weighed and kept, the recommended set with
@@ -334,7 +442,9 @@ The run stops and asks the architect, rather than guessing or failing, in four c
    declared purpose nothing serves (step 3).
 2. **Sources conflict on a claim**: two sources disagree on a version, a gain, or a support claim.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
-   rule's edge (an origin that's unclear, a format the floor doesn't name).
+   rule's edge: origin evidence that conflicts (the API record names one base and the card or the
+   publisher's repository another), or a format the floor doesn't name. An origin no source
+   documents is not a pause: the model is held out as "origin unclear" (step 7).
 4. **A source's tier is unclear**: the run can't tell whether a source is primary, an attributed
    benchmark, or a lead.
 

@@ -11,7 +11,9 @@
 # run goes on; the last section lists every skip.
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
-# it reads listening ports from ss -Hltn and docker port and drops the address from each. Engine
+# it reads listening ports from ss -Hltn and docker port and drops the address from each, and
+# reports a container's published and configured ports by bind class (tailnet, all, loopback,
+# other), never by address. Engine
 # endpoints are reached on 127.0.0.1 only, from the host or from inside the engine's container. A final guard redacts any IPv4 address, tailnet
 # IPv6 address, or MagicDNS name that slips through, so the output can be committed as is.
 #
@@ -219,8 +221,37 @@ probe() {
     skip "nvidia-ctk: absent"
   fi
 
+  # Whether a process may bind an address the host doesn't hold yet: 1 lets a container that
+  # binds the tailnet address start before Tailscale has assigned it.
+  if [[ -r /proc/sys/net/ipv4/ip_nonlocal_bind ]]; then
+    printf 'net.ipv4.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv4/ip_nonlocal_bind)"
+  else
+    skip "net.ipv4.ip_nonlocal_bind: /proc/sys/net/ipv4/ip_nonlocal_bind unreadable"
+  fi
+
   section engines
   local name names=()
+  # The kind of address a published port binds, never the address: tailnet (100.64.0.0/10,
+  # fd7a:115c:a1e0::/48), all (0.0.0.0, ::, or no address given), loopback (127.0.0.0/8, ::1), or
+  # other. The address is dropped here, before anything prints; the redact guard is the backstop.
+  bind_class() {
+    local ip=${1#[}
+    ip=${ip%]}
+    ip=${ip,,}
+    local IFS=.
+    # shellcheck disable=SC2086 # split the dotted quad on the IFS above
+    set -- $ip
+    if [[ -z $ip || $ip == 0.0.0.0 || $ip == :: ]]; then
+      echo all
+    elif [[ $ip == 127.* || $ip == ::1 ]]; then
+      echo loopback
+    elif [[ $ip == fd7a:115c:a1e0:* ]] ||
+      { [[ $# -eq 4 && $1 == 100 && $2 =~ ^[0-9]+$ ]] && ((10#$2 >= 64 && 10#$2 <= 127)); }; then
+      echo tailnet
+    else
+      echo other
+    fi
+  }
   if ((docker_ok)); then
     echo "containers (name, image, state, status):"
     docker ps -a --format '  {{.Names}}  {{.Image}}  {{.State}}  {{.Status}}'
@@ -237,6 +268,38 @@ probe() {
       printf '  flags%s\n' "$(docker inspect "$name" \
         --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}' |
         serving_flags)"
+      # Its ports: what it publishes now (docker port), and the bindings it is configured with
+      # (HostConfig.PortBindings), each by bind class. A running container that publishes nothing,
+      # or has no network at all, is the boot-order failure: healthy, but unreachable.
+      local mapping host_ip published=() networks
+      networks=$(docker inspect --format '{{json .NetworkSettings.Networks}}' "$name")
+      if [[ $networks != '{}' ]]; then
+        while read -r mapping; do
+          [[ -n $mapping ]] || continue
+          host_ip=${mapping#* -> }
+          published+=("${mapping%% *} $(bind_class "${host_ip%:*}")")
+        done < <(docker port "$name" 2>/dev/null)
+      fi
+      if ((${#published[@]})); then
+        printf '  published ports %s\n' "$(printf '%s\n' "${published[@]}" | sort -u | paste -sd, - |
+          sed 's/,/, /g')"
+      elif [[ $networks == '{}' ]]; then
+        echo "  published ports none (no network)"
+      else
+        echo "  published ports none"
+      fi
+      local bindings=()
+      while read -r mapping host_ip; do
+        [[ -n $mapping ]] || continue
+        bindings+=("$mapping $(bind_class "$host_ip")")
+      done < <(docker inspect "$name" --format \
+        '{{range $p, $b := .HostConfig.PortBindings}}{{range $b}}{{$p}} {{.HostIp}}{{"\n"}}{{end}}{{end}}')
+      if ((${#bindings[@]})); then
+        printf '  configured binds %s\n' "$(printf '%s\n' "${bindings[@]}" | sort -u | paste -sd, - |
+          sed 's/,/, /g')"
+      else
+        echo "  configured binds none"
+      fi
     done
   else
     skip "containers: docker unavailable"
