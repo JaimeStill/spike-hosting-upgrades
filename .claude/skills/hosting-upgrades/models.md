@@ -101,7 +101,8 @@ the output path, and conventions):
 - **Components as shipped**: judge the model with the components its publisher ships. An excluded
   component in the inference path excludes the model even when a flag would leave it out. A
   component outside the output path (a speculative-decoding drafter) is recorded, and the row
-  says the preset must not load an excluded one.
+  says the preset must not load an excluded one. A preset that loads one is a host configuration
+  fault (SKILL.md, step 5b), not an exclusion: the model stays eligible.
 - **Data**: only the data the policy's data rule names excludes. A dataset that holds such a
   subset, used without saying which subsets, makes the model origin unclear. A dataset the rule
   records goes in the row under "dataset sources".
@@ -123,14 +124,47 @@ the output path, and conventions):
   beside "excluded on origin", with everything the run checked (each source, cited inline, and
   what it did or didn't establish). It never reaches a verdict or the model set, and it is not a
   pause.
+- **Not settled, failing a later gate**: a model whose chain is short of the pass bar, with no
+  involvement found at an excluding level, that a read the run has already made shows failing a
+  later gate (artifact integrity, the floor, fit, the engine, or the agent bar). Research to the
+  end would change nothing the report decides, so it may stop here. The row says origin is "not
+  settled", what the chain established so far, cited, and that the research stopped because the
+  model fails that gate, named with its source. The model is listed under the gate it fails, not
+  under "origin unclear", and never reaches a verdict or the model set. A model the run would
+  rank if origin passed is never stopped this way.
 
 ### Artifact integrity
 
-The policy names the formats the host may load. Read the format from the file the host would load
-and the repository's files (`siblings`): a `.gguf` or `.safetensors` file passes; a pickle
-checkpoint (`.bin`, `.pt`, `.pth`, `.ckpt`), or a model whose card or config needs
-`trust_remote_code` or other shipped code, fails as the policy says. Where Hugging Face shows its
-own security scan for the file, cite it in the row.
+The policy names the formats the host may load. Read the format of the file the host would load,
+and of every weight file the repository holds for it, from what the file is, never from its name:
+an extension says what a file claims to be, and `.bin` names a pickle checkpoint, a GGML file, or
+raw bytes alike.
+
+1. **The record's file metadata.** Read the Hugging Face record: the `siblings` list, and the
+   format the record itself parsed (`https://huggingface.co/api/models/<id>?expand[]=gguf` for a
+   GGUF, `?expand[]=safetensors` for safetensors, which the record fills only when the files parse
+   as that format). Where the record or the file's page exposes Hugging Face's own scan results
+   (its pickle scan, listing the imports a pickle would run), cite them in the row.
+2. **The file's first bytes**, when the record doesn't settle a file's format: a ranged read of
+   the file's start through WebFetch (`https://huggingface.co/<id>/resolve/main/<file>`), asking
+   for its first bytes verbatim, in hex. WebFetch sets its own request headers, so when it can't
+   return the start of the file (a file past its size limit, say), the read is recorded as not
+   made. Read the magic:
+   - `GGUF`: a GGUF file
+   - an 8-byte little-endian header length followed by `{"`: safetensors
+   - `0x80` followed by a protocol byte (`0x02` to `0x05`): a pickle
+   - `PK`: a zip archive, which is how torch saves a checkpoint, with a pickle inside it
+
+   When neither read settles the format, the file fails as a pickle would, and the row says what
+   was read.
+
+GGUF and safetensors pass. A pickle, a zip-based torch checkpoint, or a model whose card or config
+needs `trust_remote_code` or other shipped code fails unless the code is on the policy's
+"Accepted code" list: the same repository, at the exact revision the host would load, and the
+file the architect reviewed. A model whose code isn't listed is skip, failed at artifact
+integrity, and the run proposes the acceptance under "Proposed changes", "Policy and the model
+gates" (SKILL.md, step 10), naming the repository, the revision, and the file to review. The run
+never adds to the list.
 
 ### Quantization floor
 
@@ -248,11 +282,25 @@ the first three) sort by:
 1. **Published speed on the same hardware class**: decode and prefill from an attributed
    benchmark (sources.md, "Tiers"), at a concurrency that fits the purpose. A model with no
    published speed on the class sorts after every model that has one.
-2. **The card's evals for the purpose**, compared only on the same benchmark and version:
+
+   **A stand-in figure.** When no attributed benchmark measures the file the host would load, a
+   figure for another quantization of the same model may stand in, for sorting only, when it is
+   at the same bit width and on the same hardware class and backend: a GB10 Q4_K_M figure for
+   Google's QAT Q4_0 file of the same model, both 4-bit, say. The row marks it as a **stand-in
+   estimate** and names the measured quantization and the file it stands in for. It places the
+   model in the sort and never makes it verify: a model sorted on a stand-in is hold, needing
+   its own measurement, unless another gate makes it skip.
+2. **The card's evals for the purpose**:
    - agent: tool calling and agentic benchmarks (tau-bench, BFCL, SWE-bench)
    - vision: image and document benchmarks (MMMU, OCRBench, ChartQA)
    - audio: speech recognition word error rate and audio understanding
    - embedding: MTEB retrieval and the code and multimodal retrieval suites
+
+   **Evals from different cards** compare only when both cards name the same benchmark, the same
+   suite version, and the same task set: a card's "MTEB (eng, v2)" and another's "MTEB-v2 (41)"
+   don't compare unless both name their tasks and the tasks are the same. Otherwise the row lists
+   both figures side by side, each as its card names it, cited; the sort uses speed alone for
+   that pair; and the row states the gap (what each card leaves unnamed, or where they differ).
 
 A model that covers several purposes is sorted in each.
 
@@ -265,8 +313,9 @@ The verdict rules are the same as SKILL.md's "Verdicts". For a model:
 - **take**: a new revision of the incumbent's own file (the same repository, the same build)
   that meets SKILL.md's "Verdicts" for take, its known rollback included; applied with the next
   host update.
-- **hold**: its speed on the class is unpublished, comes from another class, or is a lead; or it
-  is an agent candidate that needs measurement (Gate 4); or it is measured slower than the
-  incumbent but ahead on the card's evals for the purpose. Measured slower but ahead on evals is
-  always hold, never verify or skip: the trade is the architect's to weigh.
+- **hold**: its speed on the class is unpublished, comes from another class, is a lead, or is a
+  stand-in estimate from another quantization (Sort); or it is an agent candidate that needs
+  measurement (Gate 4); or it is measured slower than the incumbent but ahead on the card's evals
+  for the purpose. Measured slower but ahead on evals is always hold, never verify or skip: the
+  trade is the architect's to weigh.
 - **skip**: it is measured behind the incumbent with no eval gain, or it failed a gate.

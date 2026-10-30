@@ -444,3 +444,70 @@ source-list and descriptor items.
   session, and then the removals, each with its rollback.
 - **A spike-model-engines task** for the preset: one agent section, the extraneous sections
   removed, and no drafter loaded.
+
+## The probe's drafter check, and per-session context by hand, 2026-10-30
+
+Slice 7 of task `skill` gave the probe a `drafter` line: under each engine container, each
+preset section, and each model a router lists, the drafter models its arguments load for
+speculative decoding, by file or repository name only, or `none`, then any other speculative key
+by name. The keys are llama.cpp's at b11669 (`--spec-draft-model`, `-md`, `--model-draft`;
+`--spec-draft-hf`, `-hfd`, `-hfrd`, `--hf-repo-draft`) and vLLM's `--speculative-model` and
+`--speculative-config`.
+
+### Commands, exactly as run
+
+The session ran the probe on both hosts, read-only and without sudo, from the repository root,
+reaching each over the tailnet by its short name:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-s7.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-s7.txt
+```
+
+For the context check it read llama.cpp's source at the probed tag from this machine, with no
+host involved. `<scratchpad>` stands for the session's scratch directory:
+
+```sh
+cd <scratchpad>/src && for f in common/arg.cpp common/common.h tools/server/server-context.cpp tools/server/server.cpp; do curl -sfL -o "$(echo $f | tr / _)" "https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/$f" && echo "got $f"; done; ls -la
+cd <scratchpad>/src && curl -sfL -o src_llama-context.cpp https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/src/llama-context.cpp && grep -n "n_ctx_seq *=" src_llama-context.cpp; sed -n 1400,1408p common_arg.cpp
+```
+
+The other reads of those files were `grep` and `sed -n` over them.
+
+### What the probe found
+
+- **framework** (llama.cpp b11960 in `server-vulkan-b11960`, kernel 7.2.8-9-omarchy, Mesa
+  26.2.5): `drafter none` on both containers, on all 10 preset sections, `[*]` included, and on
+  all 9 models the router lists. No other speculative key.
+- **gb10-1** (llama.cpp b11669 in `server-cuda13-b11669`, DGX OS OTA 7.6.0, kernel
+  7.0.0-1024-nvidia, driver 580.178.04): `drafter none` on both containers, on all 9 preset
+  sections, `[*]` included, and on all 8 models the router lists. No other speculative key.
+- **Everything else**: unchanged from each host's previous run (`-home.txt`) apart from the
+  memory counters, the containers' uptime, and the order of gb10-1's two `llama` mounts.
+- **Tailnet identifiers**: none in either output, and no redaction marker. The one `/home/` in
+  each is the vllm container's mount destination, `/home/vllm`, a path inside the container.
+
+### gb10-1's per-session context, by hand
+
+Neither agent section of gb10-1's preset names `--kv-unified` or `--no-kv-unified`, and neither
+do the router's listed flags, so the engine's default at b11669 decides. From the source at the
+tag:
+
+- `common/common.h:580`: `bool kv_unified = false;`
+- `common/arg.cpp:1406`: the server sets `params.n_parallel = -1; // auto by default`
+- `tools/server/server.cpp:168-172`: only when `n_parallel < 0` (auto) does the server use 4 slots
+  and set `kv_unified = true`
+- `src/llama-context.cpp:380-382`: `n_ctx_seq` is `n_ctx` when unified, and `n_ctx / n_seq_max`
+  otherwise
+
+Both sections set `--parallel`, so it isn't auto, and the cache is split. Per session
+(**estimate**, `ctx-size / parallel`):
+
+| Section | `-c` | `--parallel` | Per session | Against 32,768 |
+|---|---|---|---|---|
+| `ggml-org/gpt-oss-120b-GGUF:MXFP4` | 32768 | 4 | 8,192 | under: hold |
+| `gpt-oss-120b-MXFP4-16-slots` | 131072 | 16 | 8,192 | under: hold |
+
+The fix for either is a context, slot count, or unified cache that gives each session at least
+32,768 tokens: `-c 131072 --parallel 4` split, or a unified pool, which the gb10-1 report of
+2026-10-30 already holds as its proposed agent section.

@@ -37,8 +37,9 @@ writes neither.
 
   Every other fact about the host comes from probing it. [templates/host.md](templates/host.md)
   gives the shape, for an environment writing its own.
-- **The policy**, `docs/policy.md`. It states the model-origin rule, artifact integrity, the
-  quantization floor, the agent quality bar, and the memory headroom a model set must leave.
+- **The policy**, `docs/policy.md`. It states the model-origin rule, artifact integrity with the
+  code the architect has accepted, the quantization floor, the agent quality bar, the minimum
+  context per agent session, and the memory headroom a model set must leave.
   [templates/policy.md](templates/policy.md) gives the shape.
 
 When a step needs a policy value the document doesn't state (a floor for a kind of model it
@@ -156,7 +157,11 @@ same filter: the block names the mount's path inside the container and each file
 key outside the filter prints its value. A flag neither line shows was not passed, and is at the
 engine's default unless it was set another way the probe doesn't read (an environment variable
 such as `LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show
-either. Each container also carries its `restart policy`.
+either. Each container, each preset section, and each model a router lists also carries a
+`drafter` line: the drafter models its arguments load for speculative decoding, each by its file
+or repository name only, or `none`, then in parentheses any other speculative key by name; a
+`[*]` section's drafter loads with every model. Each container also carries its
+`restart policy`.
 `== updates ==`, `== firmware-updates ==`, `== units ==`, and `== docker-disk ==` are what the
 host has fallen behind on, and `== models ==` gives each stored model's size and last-modified
 date; step 5b reads them.
@@ -200,6 +205,24 @@ Gather the public record for what the probe found, from the sources in
 benchmarks) and by vendor or project, with its URL and how to read it. Read the machine-readable
 endpoint where one exists (the GitHub releases API, the Hugging Face API, Arch's package JSON),
 and read it fresh: what a source said on an earlier run is not evidence today.
+
+**When the inventory hasn't moved.** Compare the probe with the Inventory of the host's last
+report (the newest file in `docs/reports/<host>/`). When the two match on the engine builds (each
+container's image and the build an endpoint reports), the stored and served models and their
+files, and the host stack (the OS image, the kernel, the firmware and BIOS, the driver or Mesa),
+the run researches only what moved, and cites the last report, by its path and date, for the
+rest. Always researched, whatever the inventory shows, because the outside world moves:
+
+- pending package and firmware updates, and each container image's newest tag (step 5b)
+- each component's and engine's newer releases, and what is newly known to break (steps 5 and 6)
+- the newest models of the publishers and the scan for new candidates (step 7), with their origin
+  chains (models.md, "Origin")
+- the descriptor's watch items, each answered by name (step 6)
+
+A row the run carries from the last report says so, with that report's citation, and keeps its
+verdict unless something researched in this run changes it. When any of the three differs, the
+run researches in full, and the Inventory names what differs. The Inventory says which of the two
+the run did.
 
 Read with WebFetch and search with WebSearch, GitHub included: release pages, api.github.com
 JSON, and raw files from raw.githubusercontent.com or the contents API. Search a project's
@@ -343,6 +366,20 @@ boot-order failure, a stopped engine), then by disk freed.
    keys differ from the flags the router lists for the same model (the router was started before
    the preset changed, or a key doesn't apply). Give both values, cited. Each is hold. The
    descriptor's stale lines are step 1's, under "Proposed changes", and not repeated here.
+9. **A drafter of adversary origin that a preset loads** (the `drafter` lines under
+   `== engines ==` and `== endpoints ==`). Judge each drafter named there by the origin rule
+   (models.md, "Origin"), as a component outside the output path. One of adversary origin is a
+   host configuration fault, not an exclusion: the main model verifies every drafted token, so
+   the drafter can't change what is served, and the target model stays eligible in step 7. The
+   item is hold, with the section that loads it, cited to the probe, and the fix is removing the
+   drafter's keys from that section (a `[*]` section loads it for every model); the rollback is
+   restoring them. The preset belongs to whoever owns it, so the fix is a change for that owner.
+   A drafter whose origin passes is recorded in its model's row in step 7, and `none` everywhere
+   is one line saying so.
+10. **Agent sessions under the minimum context.** Each agent preset's per-session context, from
+    step 6's computation, that falls under the policy's minimum per agent session
+    (`docs/policy.md`, "Agent session context") is hold, listed here by reference to step 6, with
+    the fix stated there.
 
 #### Boot-order check
 
@@ -389,6 +426,23 @@ descriptor declares.
    version, and cite it, naming it a default read rather than a probed value. Note where the
    configuration works against a declared purpose (a per-slot context too short for agent
    sessions, slots that can't share a cache).
+
+   **Per-session context.** For each preset section or container that serves the agent purpose,
+   compute the context one agent session can reach, marked **estimate** with its method:
+   - **Split KV cache**: `ctx-size / parallel`, the context divided among the slots.
+   - **Unified KV cache**: the whole pool, `ctx-size`, shared by every session, so one session
+     can reach it all while the others take what is left; a per-slot cap the engine applies (a
+     `--kv-unified-per-slot`, the model's trained context) bounds it, and the report names the
+     cap.
+
+   Whether the cache is unified comes from the section's keys and the flags (`--kv-unified`,
+   `-kvu`, `--no-kv-unified`). Where neither says, read the engine's default at the probed build
+   from its source, and cite the file and the line: on llama.cpp the default can depend on other
+   flags, such as `--parallel` being set or left at auto. Compare each figure with the policy's
+   minimum per agent session (`docs/policy.md`, "Agent session context"). A section under it is
+   hold, with the figure, the minimum, and the fix stated: a context, a slot count, or a unified
+   cache that brings each session to the minimum, and toward the model's native context where
+   memory allows (step 8 checks the memory). Step 5b lists it by reference.
 2. **The seed list, filtered to the backend.** Weigh the incumbent against llama.cpp, vLLM,
    SGLang, TensorRT-LLM, and ggml-hrx, keeping only what the probed backend supports:
    TensorRT-LLM only on NVIDIA, and on AMD only what the engine's own docs or published images
@@ -489,7 +543,11 @@ their checks are in [models.md](models.md); this step says what the section hold
    contradict each other) goes, without a pause, in the "origin unclear" list beside it, and
    never reaches a verdict either. Each entry names what the run checked, each source cited
    inline. A pass means "no disclosed or detected involvement at an excluding level", and the
-   section says so.
+   section says so. A model that already fails a later gate (the floor, fit, the engine, the agent
+   bar), shown by a read the run has made, may stop at "not settled" for origin instead of being
+   researched to the end: its row says origin is not settled, that the research stopped because
+   the model fails that gate, and names the gate and its source (models.md, "Origin"). It is
+   listed under the gate it fails, not under "origin unclear".
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
@@ -520,7 +578,11 @@ once.
 3. **Keep the sets that fit together**: the estimated memory of every model in the set, loaded at
    its configured context and slots, leaves the policy's headroom of the GPU-reachable ceiling
    free. A model serving two purposes is estimated at the more demanding purpose's
-   configuration: the larger context and the more slots of the two.
+   configuration: the larger context and the more slots of the two. The agent model is estimated
+   at a configuration that gives each session at least the policy's minimum context (step 6,
+   "Per-session context"): a set whose agent preset leaves a session under it is flagged, hold,
+   with the fix stated, and the set is also weighed at the fixed configuration, so the report
+   shows what the minimum costs in memory.
 4. **Keep the sets the chosen engine can serve side by side**: the engine is the conclusion of
    step 6. Either one process holds several models (a llama.cpp router), or each model runs in its
    own process with its own memory reservation (vLLM's `--gpu-memory-utilization`, a share of the
@@ -562,11 +624,13 @@ lists, each "None" when empty:
 
 ### 11. Write the report
 
-The report is the run's only write: one file per host per date, at
+The report is the run's only write: one file per host per run, at
 `docs/reports/<host>/<YYYY-MM-DD>.md`, dated the day the run read its sources. A report is never
-edited after its date; a later run writes a new report, and reads the last one only to say what
-changed. If a report for the host already carries today's date, ask the architect whether this
-run replaces it (the same day's run, redone) or waits for tomorrow.
+edited once written; a later run writes a new report, and reads the last one only to say what
+changed (and, when the inventory hasn't moved, to cite for what it didn't research, step 4). When
+the host already has a report of that date, the run writes `<YYYY-MM-DD>-2.md`, then `-3`, and so
+on, the next number free, and never edits or replaces the earlier one. The last report is the
+newest date, and within a date the highest number.
 
 The report's sections, in order:
 
@@ -577,7 +641,9 @@ The report's sections, in order:
 The probe's findings, by section, and the descriptor and policy the run read. Says plainly when
 nothing serves, and what the run ranks against instead. Lists the rules the readiness check
 found missing (or "none") and the architect's answer, every probe skip, every fact that needed
-root (with the architect's read-out or "declined"), and every pause with its answer.
+root (with the architect's read-out or "declined"), and every pause with its answer. Says whether
+the inventory matched the last report's, and so whether the run researched in full or only what
+moved, citing that report (step 4).
 
 ## Hardware configuration
 Step 5's adjustments, verify, take, hold, skip.
@@ -585,8 +651,9 @@ Step 5's adjustments, verify, take, hold, skip.
 ## System updates and debt
 Step 5b's items: pending package updates (with the lists' age), firmware updates, the kernel and a
 pending reboot, failed units and services meant to run, the boot-order check, container images
-behind their tag, unused images and models taking disk, and configuration that differs from the
-descriptor, each with its verdict and sources, verify, take, hold, skip.
+behind their tag, unused images and models taking disk, configuration that differs from the
+descriptor, a drafter of adversary origin a preset loads, and agent sessions under the minimum
+context, each with its verdict and sources, verify, take, hold, skip.
 
 ## Engines
 Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
@@ -629,6 +696,15 @@ splits it into these five parts, so that runs are repeatable:
 4. **Other models**: every other declared purpose's candidates (step 7).
 5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin").
 
+**A second, narrower round.** The model parts find candidates as they go, so some reach the run
+after the origin part has started, or after it has returned. When parts 3 and 4 have returned, the
+run lists every model they name that the origin part's return doesn't cover, and sends only those
+to the origin part again, with the same inputs and tools. So every model step 7 ranks has an
+origin chain, and none is left "origin unclear" only because nobody researched it. The second
+round researches origin alone; a gap it finds in another part's work (a model nobody researched
+for speed, a config a memory estimate needs) is closed by a read of the run's own, cited as any
+other.
+
 **What each part gets.**
 
 - Its inputs: the probe's inventory, the host descriptor, and the policy.
@@ -656,6 +732,9 @@ The run stops and asks the architect, rather than guessing or failing, in four c
 1. **The probe contradicts the descriptor**: a served model whose purpose isn't declared, or a
    declared purpose nothing serves (step 3).
 2. **Sources conflict on a claim**: two sources disagree on a version, a gain, or a support claim.
+   A version conflict among vendor notes that no verdict depends on is not a pause: the probe's
+   installed versions decide, and the report records the conflict ([sources.md](sources.md),
+   "Tiers"). One that changes a verdict still is.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
    rule's edge: a format the floor doesn't name, or a file whose floor path its build doesn't
    settle. Origin is never a pause: a model with involvement found at a level the policy excludes

@@ -39,8 +39,10 @@ these:
 <!-- Optional. The levels at which involvement is recorded and doesn't exclude, such as a model
      that only transformed data (punctuation restoration, translation, filtering, quantization
      calibration), a component outside the output path (a speculative-decoding drafter), and a
-     convention (a chat template, a tool-call format, an input-placeholder layout). Delete it if
-     every involvement excludes. -->
+     convention (a chat template, a tool-call format, an input-placeholder layout). Say how the
+     run treats a preset that loads a recorded component of adversary origin: the skill flags it
+     as a host configuration fault, hold, with removing it as the fix, and the model stays
+     eligible. Delete it if every involvement excludes. -->
 
 **Recorded levels.** <What is recorded in a model's row without excluding it.>
 
@@ -81,9 +83,21 @@ unclear". The report lists it beside "excluded on origin", with what the run che
 ## Artifact integrity
 
 <!-- Which file formats the host may load, and how the run treats a model that runs code when
-     loaded (a pickle checkpoint, trust_remote_code). -->
+     loaded (a pickle checkpoint, trust_remote_code). The skill reads a file's format from what it
+     is (the Hugging Face record's file metadata, or the file's first bytes), never from its
+     extension. -->
 
-<The formats that pass, and what fails until the architect accepts it.>
+<The formats that pass, and what fails unless its code is accepted below.>
+
+<!-- The code the architect has reviewed and accepts, which only the architect edits: one entry
+     per repository, exact revision, and file reviewed. A model whose code isn't listed fails
+     artifact integrity, and the run proposes the acceptance. Keep the list, with "None.", when
+     it is empty. -->
+
+**Accepted code.** <Who edits the list.> Each is one line: `<repository>` at `<revision>`,
+`<file>`, accepted `<date>`.
+
+- None.
 
 ## Quantization floor
 
@@ -130,6 +144,17 @@ states.>
 **The tool-reliability check.** <The harness, the trials, and the pass bar.>
 
 **Reading the bar.** <The verdict for each outcome.>
+
+## Agent session context
+
+<!-- Optional, for a host with an agent purpose. The least context one agent session must reach,
+     and what the run aims at beyond it (the model's native context, as memory allows). The skill
+     computes each agent preset's per-session context (ctx-size / parallel with a split KV cache,
+     the shared pool with a unified one) and holds a preset under the minimum. Delete the section
+     if no host serves an agent. -->
+
+Each agent session must reach at least <tokens> tokens of context, aiming at <target> where
+memory allows.
 
 ## Memory headroom
 

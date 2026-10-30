@@ -47,7 +47,7 @@ A source that names some of the three but not all (the hardware and the method, 
 engine build) is a tier question: pause and ask (SKILL.md, "When to pause"), with lead as the
 default.
 
-Two rules settle common cases without a pause:
+Three rules settle common cases without a pause:
 
 - **A Vulkan benchmark names its driver.** On a Vulkan backend the driver is part of the engine,
   so an attributed Vulkan benchmark must also name its Mesa or Vulkan driver version. One that
@@ -56,6 +56,13 @@ Two rules settle common cases without a pause:
   as attributed benchmarks when the host's descriptor lists them under "Measurements"
   ([SKILL.md](SKILL.md), "Inputs"). Only cells measured in one session compare with each other:
   a figure from one session and a figure from another are two readings, not a gain.
+- **Version conflicts among vendor notes.** When vendor pages disagree on a version (which kernel
+  or driver an OS release ships, which build is current) and no verdict depends on which is
+  right, the probe's reading of what the host has installed settles it, as the architect ruled
+  in gb10-1's run of 2026-10-30. The report records both pages, cited, and the probe's reading,
+  and goes on without a pause. A conflict whose answer would change a verdict (whether an update
+  is pending, whether a fix is in the installed version) is still a pause (SKILL.md, "When to
+  pause").
 
 The same site can hold sources of different tiers: a vendor forum's release announcement is
 primary, and a user's reply under it is a lead.

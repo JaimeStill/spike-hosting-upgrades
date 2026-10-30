@@ -6,10 +6,11 @@
 #
 # It prints plain labeled sections (== name ==): the OS, the kernel, firmware and BIOS, the GPU
 # and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
-# engine containers (with their presets' serving keys) and systemd units, each running engine's
-# build and served models, the models in the host's local stores, and what the host has fallen
-# behind on: pending package and firmware updates, failed units, and docker's disk. A probe whose
-# command is absent prints "skipped:" and the run goes on; the last section lists every skip.
+# engine containers (with their presets' serving keys and the drafters each section loads) and
+# systemd units, each running engine's build and served models, the models in the host's local
+# stores, and what the host has fallen behind on: pending package and firmware updates, failed
+# units, and docker's disk. A probe whose command is absent prints "skipped:" and the run goes on;
+# the last section lists every skip.
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
 # it reads listening ports from ss -Hltn and docker port and drops the address from each, and
@@ -85,6 +86,58 @@ probe() {
       }'
   }
 
+  # Reads the same launch arguments as serving_flags and prints on one line the drafter models
+  # they load for speculative decoding, or "none", so a run can check that no preset loads an
+  # excluded drafter. A drafter prints by its name only, never by a path: a file key's value
+  # (llama.cpp's --spec-draft-model, -md, --model-draft, as named at b11669) by its file name, a
+  # repository key's value (--spec-draft-hf, -hfd, -hfrd, --hf-repo-draft) as the repository name
+  # it gives, and vLLM's --speculative-model, or the "model" in its --speculative-config JSON, as
+  # either, by its form. Any other speculative key (spec-*, speculative-*, *draft*) prints by its
+  # name alone, since it shapes speculation without naming a model.
+  drafters() {
+    awk '
+      # A path (absolute, home, relative, or a URL) or a model file prints by its last part only.
+      function name(v, as_file) {
+        gsub(/^[[:space:]"\047]+|[[:space:]"\047]+$/, "", v)
+        if (as_file || v ~ /^[\/~.]/ || v ~ /:\/\// || v ~ /\.(gguf|safetensors|bin|pt|pth|ckpt)$/)
+          sub(/.*\//, "", v)
+        return v
+      }
+      BEGIN {
+        n = split("--spec-draft-model -md --model-draft", w, " ")
+        for (i = 1; i <= n; i++) file[w[i]] = 1
+        n = split("--spec-draft-hf -hfd -hfrd --hf-repo-draft --speculative-model", w, " ")
+        for (i = 1; i <= n; i++) repo[w[i]] = 1
+      }
+      { t[NR] = $0 }
+      END {
+        out = ""; keys = ""
+        for (i = 1; i <= NR; i++) {
+          f = t[i]; v = ""; has = 0
+          if (f !~ /^-/) continue
+          if (f ~ /^-[^=]*=/) { v = substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1); has = 1 }
+          else if (i < NR && t[i + 1] !~ /^-/) { v = t[i + 1]; has = 1 }
+          # A preset key reaches here as --<key>, so a short key (md) arrives as --md.
+          k = substr(f, 2)
+          if (f ~ /^--/ && !(f in file) && !(f in repo) && (k in file || k in repo)) f = k
+          if (f in file) { if (has) out = out ", " name(v, 1) }
+          else if (f in repo) { if (has) out = out ", " name(v, 0) }
+          else if (f == "--speculative-config") {
+            if (match(v, /"model"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+              m = substr(v, RSTART, RLENGTH); sub(/^"model"[[:space:]]*:[[:space:]]*"/, "", m)
+              sub(/"$/, "", m); out = out ", " name(m, 0)
+            } else keys = keys ", speculative-config"
+          }
+          else if (f ~ /^--?(spec-|speculative-)/ || f ~ /draft/) {
+            sub(/^-+/, "", f); if (index(keys ", ", ", " f ", ") == 0) keys = keys ", " f
+          }
+        }
+        line = (out == "" ? "none" : substr(out, 3))
+        if (keys != "") line = line " (speculative keys: " substr(keys, 3) ")"
+        print " " line
+      }'
+  }
+
   # Reads one preset file (a llama.cpp router's --models-preset INI: [section] headers, each a
   # model the router lists or [*] for every model, over key = value lines whose keys are the
   # long flag names without their dashes) and prints its shape, then each section's keys through
@@ -98,6 +151,8 @@ probe() {
       if [[ -n $section ]] || ((${#args[@]})); then
         printf '      [%s] flags%s\n' "${section:-top level}" \
           "$(printf '%s\n' "${args[@]}" | serving_flags)"
+        printf '      [%s] drafter%s\n' "${section:-top level}" \
+          "$(printf '%s\n' "${args[@]}" | drafters)"
       fi
       args=()
     }
@@ -378,10 +433,13 @@ probe() {
       docker inspect "$name" \
         --format '{{range .Mounts}}  mount {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' |
         sed '/^$/d'
-      # The container's command line, filtered to its serving flags (an engine's configuration).
-      printf '  flags%s\n' "$(docker inspect "$name" \
-        --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}' |
-        serving_flags)"
+      # The container's command line, filtered to its serving flags (an engine's configuration),
+      # and the drafters it loads.
+      local cmdline
+      cmdline=$(docker inspect "$name" \
+        --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}')
+      printf '  flags%s\n' "$(serving_flags <<<"$cmdline")"
+      printf '  drafter%s\n' "$(drafters <<<"$cmdline")"
       presets "$name"
       # Its restart policy: a container set to restart (always, unless-stopped) is meant to run.
       docker inspect --format '  restart policy {{.HostConfig.RestartPolicy.Name}}' "$name"
@@ -478,8 +536,10 @@ probe() {
           <<<"$models"
         if jq -e --arg id "$id" '.data[] | select(.id == $id) | .status.args | length > 0' \
           <<<"$models" >/dev/null 2>&1; then
-          printf '    flags%s\n' "$(jq -r --arg id "$id" \
-            '.data[] | select(.id == $id) | .status.args[]' <<<"$models" | serving_flags)"
+          local margs
+          margs=$(jq -r --arg id "$id" '.data[] | select(.id == $id) | .status.args[]' <<<"$models")
+          printf '    flags%s\n' "$(serving_flags <<<"$margs")"
+          printf '    drafter%s\n' "$(drafters <<<"$margs")"
         fi
       done < <(jq -r '.data[].id' <<<"$models")
     else

@@ -55,7 +55,10 @@ exclude:
    such as a speculative-decoding drafter, whose every drafted token the main model verifies. A
    drafter the host loads is still judged as a component, and the row says it is outside the
    output path. A drafter bundled beside the model is recorded with its origin, and a preset never
-   loads an excluded one.
+   loads an excluded one. A preset that does load a drafter of adversary origin is a host
+   configuration fault, not an exclusion: the target model stays eligible, because verification
+   keeps the drafter from changing the output. The run flags the fault as hold, and the fix is
+   removing the drafter from the preset (the architect's decision, 2026-10-30).
 6. **Conventions.** A chat template, a tool-call format, or an input-placeholder layout copied
    from an adversary-origin family. These are conventions, not weights or training signal: a model
    that formats its tool calls like GLM-4.5, or places its image tokens like Qwen3-VL, is judged
@@ -123,10 +126,20 @@ host step for a task to plan; a run names it and never takes it.
 ## Artifact integrity
 
 The file the host loads must not be able to run code when loaded. GGUF and safetensors pass. A
-pickle-based checkpoint, or a model that needs `trust_remote_code` or other code shipped with it,
-fails until the architect accepts that code by name. The run reads the format from the file name
-and the repository's files, and, where Hugging Face shows its own security scan for the file, cites
-it.
+pickle-based checkpoint (a raw pickle, or a zip-based torch checkpoint with a pickle inside), or a
+model that needs `trust_remote_code` or other code shipped with it, fails unless the code is on
+the "Accepted code" list below. The run reads the format from what the file is, never from its
+extension: from the Hugging Face record's file metadata, or else from the file's first bytes. A
+`.bin` file may be a pickle or not, and only its contents say which. Where Hugging Face shows its
+own security scan for the file, the run cites it.
+
+**Accepted code.** The code the architect has reviewed and accepts, which only the architect
+edits. Each entry names the repository, the exact revision (a commit, not a branch or tag), and
+the file reviewed. A model whose code isn't listed, at that revision, is skip, and the run
+proposes its acceptance under "Proposed changes", "Policy and the model gates". A new revision is
+a new entry. Each is one line: `<repository>` at `<revision>`, `<file>`, accepted `<date>`.
+
+- None.
 
 ## Quantization floor
 
@@ -205,6 +218,24 @@ published equivalent: no card or benchmark reports it, so only a local run measu
   check runs, because the check is always unmeasured until then. A candidate whose local check
   has run and passed clears the bar; one whose check fails, or that an open parser report
   covers, fails it: skip.
+
+## Agent session context
+
+Each agent session must reach at least **32,768 tokens** of context, and the aim is the model's
+native (trained) context, as far as the memory headroom below allows (the architect's decision,
+2026-10-30). An agent session that runs out of context loses its own history mid-task, so a preset
+that serves the agent purpose is judged by what one session can reach, not by its total context.
+
+**Reading: per-session context.** A preset's per-session context is:
+
+- `ctx-size / parallel` when the KV cache isn't unified: each slot holds its share alone
+- the whole pool, `ctx-size`, shared by every session, when it is unified, bounded by any
+  per-slot cap the engine applies (a `--kv-unified-per-slot`, the model's trained context)
+
+Whether the cache is unified comes from the preset's keys and the flags. Where neither says, the
+engine's default at the probed build decides, read from its source and cited. A preset whose
+per-session context is under the minimum is hold, and the report states the fix: a context, a
+slot count, or a unified cache that brings each session to the minimum.
 
 ## Memory headroom
 
