@@ -435,8 +435,9 @@ Every item in steps 5, 5b, 6, and 7 takes one of four verdicts:
     spike-model-engines' `engines` suite with anchors. A newer engine build is verify or hold,
     by the rules here. Nor is a change of engine, backend, or model ever take.
 - **hold**: the only claim is release notes, or comes from another hardware class, or the
-  upgrade needs a root step with no rollback. An agent candidate with no comparable evals, or no
-  tool-reliability measurement, is hold, "needs measurement" ([models.md](models.md), "Gate 4").
+  upgrade needs a root step with no rollback. An agent candidate the policy's agent quality bar
+  can't yet place is hold, by the bar's own reading (`docs/policy.md`, "Reading the bar", as
+  [models.md](models.md), "Gate 4", applies it).
 - **skip**: sources show no gain or show a regression, or the upgrade breaks a rule: the policy,
   or an engine change outside how the host installs engines.
 
@@ -485,13 +486,13 @@ their checks are in [models.md](models.md); this step says what the section hold
    without a pause, in the "origin unclear" list beside it, and never reaches a verdict either.
    Each entry names what the run checked, each source cited inline. A pass means "no disclosed
    or detected involvement", and the section says so.
-5. **Sort and judge.** An agent candidate must clear the policy's agent quality bar before speed
-   sorts it ([models.md](models.md), "Gate 4"); one with no comparable evals, or no
-   tool-reliability measurement, is hold, "needs measurement", whatever its speed. Models that
-   pass every gate sort by published speed on the same hardware class, then by the card's evals
-   for the purpose. Each takes a verdict by "Verdicts" (step 6), with its citations: a model's
-   gain is measured speed on the same host class and backend, or a card eval for the purpose,
-   against the incumbent's.
+5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
+   bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
+   check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
+   applies it). Models that pass every gate sort by published speed on the same hardware class,
+   then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6), with
+   its citations: a model's gain is measured speed on the same host class and backend, or a card
+   eval for the purpose, against the incumbent's.
 
 Order each purpose's rows verify, take, hold, skip; within a verdict, by speed, then by evals; a
 model that failed a gate is skip and comes after the passing skips. Each row names the exact
@@ -619,8 +620,8 @@ splits it into these five parts, so that runs are repeatable:
    newest tags (step 5b).
 2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items
    (step 6).
-3. **Agent models**: the agent purpose's candidates, their speed on the class, and their evals
-   against the policy's agent quality bar (step 7).
+3. **Agent models**: the agent purpose's candidates, their speed on the class, and their cards'
+   BFCL figures against the policy's agent quality bar, each with its gap (step 7).
 4. **Other models**: every other declared purpose's candidates (step 7).
 5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin").
 

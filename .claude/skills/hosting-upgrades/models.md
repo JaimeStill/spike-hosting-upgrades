@@ -200,23 +200,29 @@ architecture on the probed backend:
 ## Gate 4: the agent quality bar
 
 For the agent purpose only. The policy's agent quality bar names evals with floors and a
-tool-reliability check; a candidate must clear it before speed sorts it, so a fast model that
-can't call tools never outranks a slower one that can.
+tool-reliability check; a candidate's card figures must clear the floors before speed sorts it,
+so a fast model that can't call tools never outranks a slower one that can.
 
-- **Clears the bar**: a comparable figure (the same benchmark, version, and category the policy
-  names) at or above every floor, and the tool-reliability check met. It goes on to the sort.
-- **Fails the bar**: a comparable figure under a floor, or the check failed. It is skip, listed
-  with the eval and the figure.
-- **Needs measurement**: no comparable figure for a named eval, or no tool-reliability
-  measurement. It is hold, "needs measurement", whatever its speed, and the row names the
-  measurement that would place it.
+The policy's "Reading the bar" is the rule: which card figures count against the floors, and
+which verdict each outcome takes. The gate applies it as written and adds only what each row
+holds:
+
+- **The figure and its gap.** Each row that uses a card's BFCL figure cites the card, gives the
+  figure, the BFCL version and category, and the card's precision, and states the gap to the
+  floor's basis the policy names (another version or the full set against the fixed samples,
+  native precision against the served build).
+- **The measurement that would place it.** A hold names it: the missing BFCL category for a
+  candidate with no card figure, or the tool-reliability check for one that clears the floors.
+  Because the check has no published equivalent, no candidate leaves this gate as verify until
+  the local check has run.
 
 When the policy states no agent quality bar, the gate is a pause (SKILL.md, "When to pause").
 
 ## Sort
 
-Models that pass every gate (for the agent purpose, the four gates; for any other, the first
-three) sort by:
+Models that pass every gate (for the agent purpose, the four gates, where a candidate whose card
+figures clear the floors sorts though it is held for the tool-reliability check; for any other,
+the first three) sort by:
 
 1. **Published speed on the same hardware class**: decode and prefill from an attributed
    benchmark (sources.md, "Tiers"), at a concurrency that fits the purpose. A model with no

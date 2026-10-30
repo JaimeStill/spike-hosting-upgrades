@@ -92,8 +92,10 @@ unclear". The report lists it beside "excluded on origin", with what the run che
 
 <!-- Optional, for a host with an agent purpose. The evals an agent candidate must clear before
      speed sorts it, each with its floor and where the floor comes from, and the tool-reliability
-     check it must pass. Say what makes a published figure comparable (the same benchmark,
-     version, and category). A candidate with no comparable figure is held, "needs measurement".
+     check it must pass. Say which published figures count against a floor and the gap each row
+     states between such a figure and the floor's basis; then, under "Reading the bar", the
+     verdict for each outcome: a figure under a floor, no figure, and figures that clear the
+     floors while a check with no published equivalent is unmeasured.
      Delete the section if no host serves an agent. -->
 
 **Named evals and their floors.**
@@ -102,9 +104,12 @@ unclear". The report lists it beside "excluded on origin", with what the run che
 |---|---|---|
 | <eval> | <measure> | <floor> |
 
-<Where the floors come from, and what makes a published figure comparable.>
+<Where the floors come from, which published figures count against them, and the gap a row
+states.>
 
 **The tool-reliability check.** <The harness, the trials, and the pass bar.>
+
+**Reading the bar.** <The verdict for each outcome.>
 
 ## Memory headroom
 

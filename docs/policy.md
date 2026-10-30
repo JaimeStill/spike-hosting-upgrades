@@ -137,10 +137,18 @@ and bar"): set A's gpt-oss-120b, measured twice on llama.cpp b11715, less its tw
 | BFCL single-turn | accuracy | at least 0.630 | 0.65, 0.69 |
 | BFCL multi-turn | accuracy | at least 0.325 | 0.40, 0.35 |
 
-spike-model-hosting measured these on fixed samples: BFCL single-turn 100 and multi-turn 20,
-from Gorilla at `dac44e7`, drawn with seed 20261016, at the card's sampling. A published figure
-counts against a floor only when it names the same benchmark, version, and category; a card's
-BFCL overall score, or another version's, is not comparable.
+**The floors' basis.** spike-model-hosting measured these on fixed samples: BFCL single-turn
+100 and multi-turn 20, from Gorilla at `dac44e7`, drawn with seed 20261016, at the card's
+sampling, on the served build.
+
+**What counts against a floor** (the architect's decision, 2026-10-30). A card's published BFCL
+figure for the matching category counts: BFCL v3 or v4, single-turn against the single-turn
+floor and multi-turn against the multi-turn floor, at the card's own precision. A card's BFCL
+overall score, or another category, does not count. A card figure is not a measurement on the
+floors' basis, so each row that uses one states the gap: the floor is gpt-oss-120b's score on
+spike-model-hosting's 100- and 20-item samples (Gorilla `dac44e7`, seed 20261016), while the
+card may use another BFCL version or the full set, and measures the model at its native
+precision rather than the build the host would serve.
 
 **The tool-reliability check.** The model, on the host's engine, fits the consumer harness:
 `conform` pass^5 through Pi, every capability that applies passing 5 of 5 trials, with 0 invalid
@@ -148,14 +156,20 @@ requests (an invalid request is one the server can't parse, such as a 500 "does 
 expected peg-native format"). It is spike-model-hosting's harness-fit bar
 (spike-model-hosting `docs/findings/tool-reliability.md`, "Harness fit on b11715: set A's
 baseline"), which set A's agent model met in both baseline runs. An open report on the engine's
-tracker that its parser rejects the model's tool calls fails the check.
+tracker that its parser rejects the model's tool calls fails the check. The check has no
+published equivalent: no card or benchmark reports it, so only a local run measures it.
 
-**Reading the bar.**
+**Reading the bar.** This is the rule; the skill applies it and points here.
 
-- A candidate that clears every floor and the check is sorted by speed with the others that do.
-- A candidate with a comparable figure under a floor, or that fails the check, fails the bar.
-- A candidate with no comparable figure for a named eval, or no tool-reliability measurement, is
-  hold, "needs measurement": the run can't place it, and says which measurement would.
+- A candidate whose card figure is under a floor fails the bar: skip, with the eval, the figure,
+  and the gap.
+- A candidate with no card BFCL figure for a named eval is hold, "needs measurement", and the
+  row names the eval.
+- A candidate whose card figures clear every floor is sorted by speed with the others that do.
+  It is still hold, "needs the tool-reliability measurement", never verify, until the local
+  check runs, because the check is always unmeasured until then. A candidate whose local check
+  has run and passed clears the bar; one whose check fails, or that an open parser report
+  covers, fails it: skip.
 
 ## Memory headroom
 
