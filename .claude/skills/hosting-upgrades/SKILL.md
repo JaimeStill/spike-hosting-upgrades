@@ -151,11 +151,12 @@ launch arguments filtered to the ones that shape serving (context, parallel slot
 cache and its checkpoints, offload, memory, sampling), which is the incumbent's configuration
 step 6 weighs. A container that mounts a preset (a llama.cpp router's `models.ini`, mounted at
 `/etc/llama-preset`) carries a `preset` block: each file's shape (sections, keys, lines the probe
-couldn't read), then each section's keys through the same filter, so the block names no path,
-address, or alias. A flag neither line shows was not passed, and is at the engine's default
-unless it was set another way the probe doesn't read (an environment variable such as
-`LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show either. Each
-container also carries its `restart policy`.
+couldn't read), then each section, by the model name the router lists, with its keys through the
+same filter: the block names the mount's path inside the container and each file's name, and no
+key outside the filter prints its value. A flag neither line shows was not passed, and is at the
+engine's default unless it was set another way the probe doesn't read (an environment variable
+such as `LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show
+either. Each container also carries its `restart policy`.
 `== updates ==`, `== firmware-updates ==`, `== units ==`, and `== docker-disk ==` are what the
 host has fallen behind on, and `== models ==` gives each stored model's size and last-modified
 date; step 5b reads them.
@@ -427,8 +428,8 @@ Every item in steps 5, 5b, 6, and 7 takes one of four verdicts:
   regression. It needs no measurement first: it is applied with the next host update, which keeps
   the host current. A change of engine, backend, or model is never take.
 - **hold**: the only claim is release notes, or comes from another hardware class, or the
-  upgrade needs a root step with no rollback. An agent candidate with no comparable evals is hold,
-  "needs measurement" ([models.md](models.md), "Gate 4").
+  upgrade needs a root step with no rollback. An agent candidate with no comparable evals, or no
+  tool-reliability measurement, is hold, "needs measurement" ([models.md](models.md), "Gate 4").
 - **skip**: sources show no gain or show a regression, or the upgrade breaks a rule: the policy,
   or an engine change outside how the host installs engines.
 
@@ -478,11 +479,12 @@ their checks are in [models.md](models.md); this step says what the section hold
    Each entry names what the run checked, each source cited inline. A pass means "no disclosed
    or detected involvement", and the section says so.
 5. **Sort and judge.** An agent candidate must clear the policy's agent quality bar before speed
-   sorts it ([models.md](models.md), "Gate 4"); one with no comparable evals is hold, "needs
-   measurement", whatever its speed. Models that pass every gate sort by published speed on the
-   same hardware class, then by the card's evals for the purpose. Each takes a verdict by
-   "Verdicts" (step 6), with its citations: a model's gain is measured speed on the same host
-   class and backend, or a card eval for the purpose, against the incumbent's.
+   sorts it ([models.md](models.md), "Gate 4"); one with no comparable evals, or no
+   tool-reliability measurement, is hold, "needs measurement", whatever its speed. Models that
+   pass every gate sort by published speed on the same hardware class, then by the card's evals
+   for the purpose. Each takes a verdict by "Verdicts" (step 6), with its citations: a model's
+   gain is measured speed on the same host class and backend, or a card eval for the purpose,
+   against the incumbent's.
 
 Order each purpose's rows verify, take, hold, skip; within a verdict, by speed, then by evals; a
 model that failed a gate is skip and comes after the passing skips. Each row names the exact
@@ -516,7 +518,8 @@ once.
    purposes' places summed, then by memory left free. Give its estimated memory, marked
    **estimate** with its method (see [models.md](models.md), "Memory estimate"), why it wins, and
    the runner-up with why it lost. Each entry in the set names the exact repository and file, and
-   its projector's repository, file, and precision when it has one. When no set but the incumbents fits, say so.
+   its projector's repository, file, and precision when it has one. When no set but the
+   incumbents fits, say so.
 
 ### 9. Verify next
 
@@ -631,8 +634,8 @@ tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts
 **No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for
 them, so they would run outside the rules the architect granted. Data too large for WebFetch, or
 behind a header WebFetch can't send, goes through a narrow script bundled with the skill, which
-reads one source and is granted by its own exact rule: `scripts/screen.sh` is the one such script
-today, and with the probe it holds the skill's only curl.
+reads one source and is granted by its own rule, naming its path: `scripts/screen.sh` is the one
+such script today, and with the probe it holds the skill's only curl.
 
 ## When to pause
 
