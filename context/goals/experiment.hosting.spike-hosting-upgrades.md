@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** building
+- **State:** brief ready
 - **Task:** skill
 - **Branch:** skill
 
@@ -202,7 +202,7 @@ Slices
 
 ## Progress
 
-slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-up 506918c · editor — · walkthrough (architect, slice 5) —
+slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-up 506918c · editor ✓ · walkthrough (architect, slice 5) —
 
 ## Decisions
 
@@ -309,6 +309,27 @@ slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-
   architect approved with the revised brief.
 - skill: gb10-1 took a system update on 2026-10-30 (kernel 7.0.0-1019 to 1024), by the
   architect; the walkthrough's fresh probe judges the new kernel.
+- skill: the readiness check is a section run at the end of step 1, not a numbered step, so
+  references to steps 2-11 stay valid; its default answer is "wait".
+- skill: a rule counts as present only when it matches a string in either project settings file
+  exactly, so a broader rule shows as missing.
+- skill: the probe runs with no `timeout` and no output redirect, so it matches its exact rule;
+  the walkthrough first tests whether Claude Code's matcher accepts the rule's `<` redirect.
+- skill: the floor's "evals mostly within the margin" pause is gone, since the policy's reading
+  of "within about 1%" decides it; a format the floor doesn't name still pauses.
+- skill: the probe reports `ip_nonlocal_bind` for IPv4 and IPv6, and classes each engine
+  container's published ports and configured binds as tailnet4, tailnet6, all, loopback, or
+  other, never printing the address; the architect decided this after gb10-1's boot-order failure
+  of 2026-10-30.
+- skill: the hardware step's boot-order check flags a tailnet bind whose family's
+  `ip_nonlocal_bind` is 0, and a running container that publishes nothing though it has
+  configured binds.
+- skill: the boot-order recovery is `docker network connect bridge` for a container on no
+  network, and `docker restart` for one on a network that failed to bind; the rollback removes the
+  sysctl file, then runs `sysctl -w <key>=0` or reboots.
+- skill: the probe's `curl` calls stay: they read engines on 127.0.0.1, from the host or inside
+  an engine's container, not sources.
+- skill: the probe classes an IPv4-mapped IPv6 address by its IPv4 part.
 
 ## Pending edits
 

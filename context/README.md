@@ -24,7 +24,8 @@ model host, or its models) from what others publish rather than benchmarks of ou
    project's host descriptors (`docs/hosts/`) and policy (`docs/policy.md`), probes the host's
    inventory of hardware, engines, and models read-only and without root, and gathers engine
    releases, public benchmarks, model cards, and host-stack notes, each cited with its URL and the
-   date it was read.
+   date it was read. Before the probe, it prints the permission rules the workspace needs and
+   never writes settings.
 2. A dated report of ranked upgrades per host (framework, gb10-1), at
    `docs/reports/<host>/<YYYY-MM-DD>.md`, in three kinds: hardware configuration, model host, and
    models. Each upgrade carries its sources, the gain they claim, its risk, and a verdict:
@@ -66,7 +67,9 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 
 - **The skill:** `.claude/skills/hosting-upgrades/`, the project-local Claude Code skill that
   probes a host and gathers, cites, and ranks what others publish. Its read-only probe is
-  `scripts/probe.sh`.
+  `scripts/probe.sh`. Its readiness check, run at the start of each run and alone as
+  `/hosting-upgrades setup`, prints the permission rules the workspace needs and never writes
+  settings.
 - **The host descriptors and policy:** `docs/hosts/<host>.md` and `docs/policy.md`, the skill's
   inputs.
 - **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`.
