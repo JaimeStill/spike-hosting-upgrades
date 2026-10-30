@@ -465,14 +465,16 @@ timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.s
 ```
 
 For the context check it read llama.cpp's source at the probed tag from this machine, with no
-host involved. `<scratchpad>` stands for the session's scratch directory:
+host involved, into the session's scratch directory:
 
 ```sh
-cd <scratchpad>/src && for f in common/arg.cpp common/common.h tools/server/server-context.cpp tools/server/server.cpp; do curl -sfL -o "$(echo $f | tr / _)" "https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/$f" && echo "got $f"; done; ls -la
-cd <scratchpad>/src && curl -sfL -o src_llama-context.cpp https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/src/llama-context.cpp && grep -n "n_ctx_seq *=" src_llama-context.cpp; sed -n 1400,1408p common_arg.cpp
-```
+mkdir -p /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && cd /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && for f in common/arg.cpp common/common.h tools/server/server-context.cpp tools/server/server.cpp; do curl -sfL -o "$(echo $f | tr / _)" "https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/$f" && echo "got $f"; done; ls -la
+cd /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && grep -n "kv_unified\|kv-unified" common_arg.cpp common_common.h tools_server_*.cpp | head -40; echo ===; grep -n '"-md"\|draft\|"--spec' common_arg.cpp | grep -o '{[^}]*}' | sort -u | head -60
+cd /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && sed -n 160,190p tools_server_server.cpp; grep -n "n_parallel *=" common_common.h; sed -n 1720,1736p common_arg.cpp; grep -n 'url.*draft\|draft.*url\|"--spec-type"' common_arg.cpp | head; grep -n -A12 '"--spec-type"' common_arg.cpp | head -20; grep -n -B2 -A10 '"-np", "--parallel"' common_arg.cpp | head -20; sed -n 1340,1395p tools_server_server-context.cpp
+cd /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && grep -n "n_parallel *= *-1\|n_parallel = -1" *.cpp *.h; sed -n 2538,2547p common_arg.cpp; grep -n "model-url\|-mu\b\|url" common_arg.cpp | grep -i draft | head
+cd /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/45c522cd-42db-47fa-b317-07bbbf74e8d3/scratchpad/src && curl -sfL -o src_llama-context.cpp https://raw.githubusercontent.com/ggml-org/llama.cpp/b11669/src/llama-context.cpp && grep -n "n_ctx_seq *=" src_llama-context.cpp; sed -n 1400,1408p common_arg.cpp
 
-The other reads of those files were `grep` and `sed -n` over them.
+```
 
 ### What the probe found
 
