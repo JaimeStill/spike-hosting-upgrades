@@ -160,7 +160,8 @@ such as `LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list d
 either. Each container, each preset section, and each model a router lists also carries a
 `drafter` line: the drafter models its arguments load for speculative decoding, each by its file
 or repository name only, or `none`, then in parentheses any other speculative key by name; a
-`[*]` section's drafter loads with every model. Each container also carries its
+`[*]` section's drafter loads with every model. A drafter key whose value the probe couldn't
+read shows as `<key> (value unread)`, never as `none`. Each container also carries its
 `restart policy`.
 `== updates ==`, `== firmware-updates ==`, `== units ==`, and `== docker-disk ==` are what the
 host has fallen behind on, and `== models ==` gives each stored model's size and last-modified
@@ -207,11 +208,13 @@ endpoint where one exists (the GitHub releases API, the Hugging Face API, Arch's
 and read it fresh: what a source said on an earlier run is not evidence today.
 
 **When the inventory hasn't moved.** Compare the probe with the Inventory of the host's last
-report (the newest file in `docs/reports/<host>/`). When the two match on the engine builds (each
-container's image and the build an endpoint reports), the stored and served models and their
-files, and the host stack (the OS image, the kernel, the firmware and BIOS, the driver or Mesa),
-the run researches only what moved, and cites the last report, by its path and date, for the
-rest. Always researched, whatever the inventory shows, because the outside world moves:
+report in `docs/reports/<host>/` (the newest date, and within a date the highest `-N`, step 11;
+a file name sort puts `<date>-2.md` before `<date>.md`). When the two match on the engine
+builds (each container's image and the build an endpoint reports), the stored and served models
+and their files, and the host stack (the OS image, the kernel, the firmware and BIOS, the
+driver or Mesa), the run researches only what moved, and cites the last report, by its path and
+date, for the rest. Always researched, whatever the inventory shows, because the outside world
+moves:
 
 - pending package and firmware updates, and each container image's newest tag (step 5b)
 - each component's and engine's newer releases, and what is newly known to break (steps 5 and 6)
