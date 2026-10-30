@@ -87,9 +87,10 @@ probe() {
   # Reads one preset file (a llama.cpp router's --models-preset INI: [section] headers, each a
   # model the router lists or [*] for every model, over key = value lines whose keys are the
   # long flag names without their dashes) and prints its shape, then each section's keys through
-  # serving_flags, so no path, address, or alias prints. A key may also be a flag (--ctx-size) or
-  # its environment name (LLAMA_ARG_CTX_SIZE); both are read as the flag. A line in no form above
-  # is counted as unread, never printed.
+  # serving_flags, so no key outside the filter prints its value. A section prints by its name, the
+  # model the router lists; a name that is a path (/..., ~/..., ./...) prints by its last part only.
+  # A key may also be a flag (--ctx-size) or its environment name (LLAMA_ARG_CTX_SIZE); both are
+  # read as the flag. A line in no form above is counted as unread, never printed.
   preset_file() {
     local line section="" args=() parsed
     flush() {
@@ -103,6 +104,7 @@ probe() {
       /^[[:space:]]*([#;]|$)/ { next }
       /^[[:space:]]*\[.*\][[:space:]]*$/ {
         s = $0; sub(/^[[:space:]]*\[/, "", s); sub(/\][[:space:]]*$/, "", s)
+        if (s ~ /^[\/~.]/) sub(/.*\//, "", s)
         print "S " s; sections++; next
       }
       match($0, /^[[:space:]]*-*[A-Za-z0-9_.-]+[[:space:]]*[=:]/) {
@@ -141,7 +143,12 @@ probe() {
       found=1
       if [[ -f $src && -r $src ]]; then
         printf '  preset %s (file):\n' "$dest"
-        preset_file "$src" "$(basename "$src")"
+        # The same bound as a directory's files: a preset is small, and anything larger is not one.
+        if [[ -n $(find -L "$src" -maxdepth 0 -size -1024k 2>/dev/null) ]]; then
+          preset_file "$src" "$(basename "$src")"
+        else
+          printf '    file %s: 1 MiB or larger, not read\n' "$(basename "$src")"
+        fi
       elif [[ -d $src && -r $src && -x $src ]]; then
         printf '  preset %s (directory):\n' "$dest"
         # Links are followed: a preset directory may link its files from elsewhere.
@@ -578,10 +585,13 @@ probe() {
     rc=$?
     case $rc in
       0)
-        mapfile -t lines <<<"$out"
+        # Only a line in checkupdates' own form (name old -> new) is an update, so a warning on
+        # stderr never takes the "update:" prefix and its exemption from the IPv4 guard.
+        mapfile -t lines < <(grep -E '^[^ ]+ [^ ]+ -> [^ ]+$' <<<"$out")
         printf 'pending: %d packages (checkupdates, a fresh sync of the databases)\n' \
           "${#lines[@]}"
-        printf 'update: %s\n' "${lines[@]}"
+        ((${#lines[@]})) && printf 'update: %s\n' "${lines[@]}"
+        grep -vE '^[^ ]+ [^ ]+ -> [^ ]+$|^$' <<<"$out" | sed 's/^/checkupdates: /'
         ;;
       2) echo "pending: 0 packages (checkupdates, a fresh sync of the databases)" ;;
       *) skip "pending updates: checkupdates failed (exit $rc): $(head -n 1 <<<"$out")" ;;
