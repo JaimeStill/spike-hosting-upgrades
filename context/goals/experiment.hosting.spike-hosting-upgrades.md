@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
+- **State:** building
 - **Task:** skill
 - **Branch:** skill
 
@@ -200,9 +200,97 @@ Slices
      base from Microsoft's VibeVoice repository or paper.
 ```
 
+### Revision 2 · after the framework walkthrough, approved 2026-10-30
+
+```
+Amended
+  3.  Policy: the floor's three paths (D1). Origin: any involvement of an
+      adversarial entity at any level (D2), with judges, labelers, and
+      translators among the levels. Conventions aren't involvement (D3), and
+      components are judged as shipped (D4). Data: only data an
+      adversary-origin model generated, labelled, judged, or translated
+      excludes a model, subsets included. Human-made datasets are recorded as
+      dataset sources, and subsets that can't be told apart make the model
+      origin unclear. Research comes before "origin unclear".
+  8.  Sources:
+      - the "Origin and build checks" table (eCFR 791.4 by its renderer API,
+        the screening list by screen.sh, HF records and organization overviews,
+        ggml-org's .src_sha)
+      - the run's 11 accepted sources and the tracker stand-ins
+      - an attributed Vulkan benchmark must name its Mesa or driver version
+      - the workspace's own same-host measurements count as attributed when a
+        host's descriptor lists them; only same-session cells compare
+      - curl appears only inside screen.sh and the probe
+  11. Verdicts become verify, take, hold, skip:
+      - "take" is a version update with no claim and no reported regression,
+        applied with the next host update.
+      - "Measured slower, but ahead on evals" is hold.
+      - Every section orders verify, take, hold, skip, and Verify next names a
+        verify item only.
+  13. The agent purpose is gated on the policy's agent quality bar (named
+      evals with floors, and the tool-reliability check). Speed sorts only
+      among the candidates that clear it; one with no comparable evals is
+      hold, "needs measurement". Model rows name the exact repository and
+      file, the build, and the projector with its precision. The floor path
+      comes from the build, not the label.
+  14. The model set places each incumbent in step 7's order. A model serving
+      two purposes is estimated at the more demanding purpose's
+      configuration.
+  16. Proposed changes gains a fifth list, "Policy and the model gates".
+
+Added
+  21. The skill's frame: it finds and ranks everything a workstation has
+      fallen behind on. A "System updates and debt" section covers:
+      - pending package updates (apt's cached lists with their age; Arch's
+        checkupdates)
+      - firmware updates (fwupdmgr get-updates)
+      - failed units, and units a descriptor or container implies should run
+      - container images behind their tag's latest release
+      - unused images and models taking disk
+      - configuration that differs from the descriptor
+      - the existing kernel, reboot-pending, and boot-order checks
+      Each item gets a verdict, and the probe skips any read whose command is
+      absent. Hardware asks which components reach the engine (a container
+      carries its own Mesa and ROCm, cited from the image's Dockerfile or
+      labels).
+  22. The probe prints the router preset's serving keys, filtered like the
+      flags lines, read without root from its mounted path.
+  23. A "Research" section defines the partition (hardware and system,
+      engines, agent models, other models, origin) and the tools each part
+      may use: WebSearch, WebFetch, gh search, screen.sh.
+  24. screen.sh: a bundled script that downloads trade.gov's public CSL JSON
+      once a day into .state/ and matches normalized names with jq. A miss is
+      "no match". The readiness check prints its exact rule.
+
+Out of scope (amended): applying any fix stays out of this task. The skill
+finds and ranks; verify-framework and verify-gb10 apply the take and verify
+items, with rollbacks.
+
+Slices
+  1-4. (committed)
+  5. Tuning: behaviors 3, 8, 11, 13, 14, 16, 21-24. Also:
+     - the wording "origin" for who was involved and "build" for how a file
+       was made, with "provenance" gone
+     - the granite example corrected: the served conversion stays origin
+       unclear, as the run found
+     - the root-command example in its `ssh -t <host> sudo` form
+     - D5's leads
+     - the accepted blocklist entry, seed engine, and framework watch items
+     - the agent quality bar in docs/policy.md, its floors proposed from
+       spike-model-hosting's pool.md for the architect to confirm in the
+       validation run
+     Demo: setup prints eight rules; the probe's new reads run read-only on
+     both hosts; screen.sh matches a known listed entity and misses a known
+     clean one.
+  6. Validation walkthrough (the architect): /hosting-upgrades gb10-1 with the
+     tuned skill. Commit framework's report, the gb10-1 report, and the
+     settings rules (now eight).
+```
+
+
 ## Progress
 
-slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-up 506918c · editor ✓ · walkthrough (architect, slice 5) —
+slices 4/5 committed (slice 5 is revision 2's tuning) · standards — · spec — · editor — · validation (architect, slice 6) —
 
 ## Decisions
 
@@ -358,7 +446,26 @@ slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-
   rejected a developer.trade.gov key and dropping the list. A miss is "no match", never clean. It is
   behavior 8's one curl exception, and the readiness check prints its exact rule. Built in the tuning
   pass after the walkthrough.
+- skill: revision 2 (architect, 2026-10-30), after the framework walkthrough. Data: only data an
+  adversary-origin model generated, labelled, judged, or translated excludes a model; human-made
+  datasets are recorded as dataset sources (rejected excluding any adversary-authored dataset, which
+  punishes disclosure, and a disclosure bar, which makes gpt-oss and Gemma 4 origin unclear).
+- skill: the agent purpose is gated on a quality bar that docs/policy.md states; speed sorts only
+  among candidates that clear it.
+- skill: a fourth verdict, "take", for an update with no claim and no reported regression.
+- skill: the workspace's own same-host measurements count as attributed when a host's descriptor
+  lists them; this partly reverses round 1's "no prior artifacts" for sources a project points to.
+- skill: SKILL.md defines the research partition and its tools; curl only inside screen.sh and the probe.
+- skill: the probe prints the router preset's serving keys; attributed Vulkan benchmarks name their
+  Mesa or driver version; the walkthrough's Proposed changes are accepted.
+- skill: the skill finds and ranks a workstation's accumulated tech debt (system updates, firmware,
+  failed units, stale images, unused disk, configuration drift); applying fixes goes to
+  verify-framework and verify-gb10.
+- skill: the wording is "origin" (who was involved) and "build" (how a file was made), not
+  "provenance", which the team wouldn't readily understand.
+- skill: the task runs six slices, a second exception the architect approved with revision 2.
 
 ## Pending edits
 
 - coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
+- coordinator · roadmap: verify-framework's and verify-gb10's summaries gain "applies the run's take and verify items, with rollbacks".
