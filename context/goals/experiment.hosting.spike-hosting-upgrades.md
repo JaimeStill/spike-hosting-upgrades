@@ -202,7 +202,7 @@ Slices
 
 ## Progress
 
-slices 3/4 committed (slice 4 is the redirect's) · standards — · spec — · editor — · walkthrough (architect, slice 5) —
+slices 4/4 committed · standards — · spec — · editor — · walkthrough (architect, slice 5) —
 
 ## Decisions
 
