@@ -248,12 +248,15 @@ and report each of these in the section, cited to the probe:
   Tailscale leaves the container with no published port. The remedy is
   `net.ipv4.ip_nonlocal_bind = 1` in a file under `/etc/sysctl.d`, a root step the architect runs
   (the run prints it as "Facts that need root" does, and never runs it). Its side effect: any
-  process on the host may then bind an address the host doesn't hold yet. Its rollback is
-  removing the file and running `sysctl --system`.
-- **A running container whose `published ports` is `none`**: flag that it serves nothing off the
-  host, however healthy docker reports it, which is the boot-order failure itself. The recovery is
-  `docker network connect bridge <name>`, which needs no root; the architect runs it. A stopped
-  container publishes nothing either, and is not flagged.
+  process on the host may then bind an address the host doesn't hold yet. Its rollback, also
+  root, is removing the file and running `sysctl -w net.ipv4.ip_nonlocal_bind=0`, or rebooting:
+  `sysctl --system` alone leaves the value at 1, since it applies only the keys a file sets.
+- **A running container whose `published ports` is `none` while its `configured binds` is not**:
+  flag that it serves nothing off the host, however healthy docker reports it, which is the
+  boot-order failure itself. The recovery is `docker network connect bridge <name>`, which needs
+  no root; the architect runs it. A container configured with no binds (one on the host's network,
+  say) publishes nothing by design, and a stopped container publishes nothing either; neither is
+  flagged.
 - **`ip_nonlocal_bind` 1**: report the remedy as present, with its side effect.
 
 ### 6. Engines
