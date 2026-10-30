@@ -11,44 +11,114 @@ Checked first, because a model the policy excludes isn't weighed further.
 
 ### Origin
 
-1. Read the model's Hugging Face API record, `https://huggingface.co/api/models/<org>/<name>`,
-   with WebFetch, for its author and `cardData.base_model`.
-2. Follow `base_model` until a record names none. The origin is that root model's publisher.
-   A quantization, a conversion (`ggml-org`, `unsloth`, an NVIDIA NVFP4 checkpoint), a drafter,
-   and a fine-tune all take the root's origin, whoever published them.
-3. Where the record names no base, read the card for the backbone it was "initialized from" or
-   "built on", and the config's `architectures` and chat template. Where the card names none
-   either, read the publisher's own repository (its README and model code) or its paper, linked
-   from the card or the publisher's page.
-4. An origin the policy excludes puts the model in the section's "excluded on origin" list, with
-   the record that shows it. It never reaches a verdict or the model set.
-5. **Origin unclear**: a model whose base none of the card, the API record, or the publisher's
-   repository or paper establishes is held out of the ranking, without a pause, as the policy
-   reads its origin rule. It goes in the "origin unclear" list beside "excluded on origin", with
-   what the run checked (each source, cited inline, and what it did or didn't name), and never
-   reaches a verdict or the model set.
-6. **Conflicting origin evidence** is a pause: one source names a base and another a different
-   one (the record against the card, or the card against the publisher's repository). The default
-   the run takes is to hold the model out as "origin unclear" until the architect answers.
+The policy names what counts as an adversarial entity, the levels of a model at which involvement
+excludes it, and the bar a model must clear to pass. There is no model-provenance registry, so the
+run builds the evidence chain itself, most authoritative source first, and cites each link inline.
+
+1. **Publisher identity.** Establish who published the model and who uploaded the file the host
+   would load, which can differ for a conversion or quantization:
+   - the Hugging Face organization and whether it is verified (sources.md, "Provenance")
+   - then the entity named on the publisher's own domain, linked from the organization or card
+   - then that entity's legal domicile, and who owns or controls it
+
+   Check the entity and its domicile against the foreign-adversary list, 15 CFR 791.4, read fresh
+   from eCFR, and against the Consolidated Screening List (sources.md, "Provenance").
+2. **The publisher's own documents.** Read the technical report or paper, and the card's base,
+   distillation, and training-data sections, for every level the policy names: the base chain,
+   followed through each record's `cardData.base_model` from the API record
+   (`https://huggingface.co/api/models/<org>/<name>`) until a record names none; a distillation
+   teacher; a synthetic-data generator or a model the card says it was "improved using"; and each
+   component (a vision or audio encoder, the tokenizer, a drafter, a projector). These documents
+   are authoritative for what they disclose, and only for that.
+3. **Artifact checks.** These find contradictions with what the documents say; they can't prove a
+   model clean. A check that ties the model to an adversarial entity is detected involvement.
+   - the config's `architectures` and `model_type`
+   - the tokenizer's vocabulary size and hash, against known families
+   - the chat template
+   - the LICENSE text, such as a Qwen or DeepSeek licence
+   - the GGUF metadata from `https://huggingface.co/api/models/<id>?expand[]=gguf`: its parameter
+     count (`gguf.total`) and architecture, and `general.base_model.*` where the record exposes it.
+     As read 2026-10-30 the record doesn't carry `general.base_model.*`; the base the card's model
+     tree names (`cardData.base_model`) stands in for it, cited as such.
+4. **Conversions.** A conversion or quantization passes when its converter is the publisher, or
+   when it is `ggml-org` with base metadata that names the publisher's model and shapes (the
+   parameter count and architecture) that match it. Any other converter's file takes item 5.
+5. **Further research**, when items 1 to 4 leave the model short of the pass bar with no
+   involvement found. The run researches until it reaches a definitive answer, citing each item:
+   - the uploader's or converter's identity and affiliation: their Hugging Face profile
+     (`https://huggingface.co/api/users/<name>/overview`), organization membership, linked
+     GitHub, and employer as they state it
+   - the conversion against the publisher's own weights: the GGUF's base (item 3), its parameter
+     count and architecture, and tensor shapes that match the publisher's `config.json`
+   - the publisher's own repositories, announcements, and documentation naming the conversion or
+     the uploader
+   - the uploader's other published work
+
+   For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16` passed as IBM-origin: the run's
+   further research traced the uploader and the conversion to IBM's model. When the research
+   can't settle a conversion, the remedy is a local conversion from the publisher's weights,
+   which makes the project the authority for the file. That conversion is a host step for a task
+   to plan; the run names it under "Proposed changes" and never takes it.
+
+Then judge the model:
+
+- **Excluded on origin**: any disclosed or detected involvement at any level. The model goes in
+  the section's "excluded on origin" list, with the level and the source that shows it, cited
+  inline. It never reaches a verdict or the model set.
+- **Passes**: the publisher is identified and not an adversarial entity, its own documents
+  establish the lineage, and no check finds involvement, whether at once or after item 5's
+  research. The row says the pass means "no disclosed or detected involvement", as the policy
+  does, and a pass after research records the evidence that settled it.
+- **Origin unclear**: no involvement found, and even item 5's research can't bring the model to
+  the pass bar (the publisher can't be identified, the lineage isn't established, or the sources
+  contradict each other). It goes in the "origin unclear" list beside "excluded on origin", with
+  everything the run checked (each source, cited inline, and what it did or didn't establish). It
+  never reaches a verdict or the model set, and it is not a pause.
 
 ### Quantization floor
 
-1. Read the format from the files (`siblings`: a GGUF's quant type in its name, a
+The policy names three paths to the floor. The run first establishes which path a file takes,
+from its provenance, never from the repository id or the quant label: a label such as Q4_0 or
+MXFP4 names the format, not how the weights were made.
+
+1. **Read the format** from the files (`siblings`: a GGUF's quant type in its name, a
    `quantization_config` in `config.json`) or from the probe's stored model.
-2. A format the publisher evaluated passes if the policy accepts it. "Evaluated" means the
-   checkpoint's own card publishes evals for that format beside full precision. A quantized
-   checkpoint whose card only points to the base model's card has not been evaluated.
-3. Where the policy accepts an evaluated format only within a margin of full precision ("card
-   evals within about 1% of BF16"), the policy reads it as every eval the card reports for the
-   checkpoint: each eval's relative gap, |quantized - BF16| / BF16, is within about 1%. A
-   checkpoint with any eval outside the margin is not accepted as evaluated, and the row names
-   those evals, especially the ones for the purpose; it then meets the floor in item 4 like any
-   other format.
-4. Otherwise apply the policy's floor, including any higher floor it sets for a kind of model or
-   a size.
-5. **A rule's edge** is a pause: a format the floor doesn't name. The default is that the model
-   fails the floor until the architect answers. The report still shows the gates it would
-   otherwise pass, so the architect sees what the answer decides.
+2. **Establish how it was made.**
+   - The publisher's own repository and card must say the format is QAT or native for it to be
+     trained-in.
+   - The GGUF's base must point where it should: a QAT build points to the QAT release, and a
+     converter's post-training file points to the full-precision model. Read
+     `general.base_model.*` from `?expand[]=gguf` where the record exposes it, and otherwise the
+     card's `cardData.base_model` (Origin, item 3).
+   - A file labelled like a trained-in format whose provenance shows a post-training conversion
+     takes path 2 or 3, not path 1.
+
+   For example: `ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0` is a post-training Q4_0, path 3, and
+   fails; `google/gemma-4-26B-A4B-it-qat-q4_0-gguf` is QAT, path 1, and passes.
+3. **Path 1, trained-in formats**, pass by name at any size when the policy names them and the
+   publisher releases them as its own format of the model. The row quotes the publisher's quality
+   statement for the format, cited inline. No evals test applies.
+4. **Path 2, post-training checkpoints from the publisher**, pass only when the publisher
+   evaluated them: the checkpoint's own card publishes evals for that format beside full
+   precision, and every one of them is within the policy's margin, relative
+   (|quantized - BF16| / BF16). A checkpoint whose card only points to the base model's card has
+   not been evaluated. A checkpoint with no evals of its own, or with any eval outside the margin,
+   takes path 3, and the row names the evals outside it, especially the ones for the purpose.
+5. **Path 3, everything else**, meets the policy's floor, including any higher floor it sets for
+   a kind of model or a size. Count size as the policy says (the parameters the card names as
+   effective).
+6. **A rule's edge** is a pause: a format the floor doesn't name, or a file whose path its
+   provenance doesn't settle. The default is that the model fails the floor until the architect
+   answers. The report still shows the gates it would otherwise pass, so the architect sees what
+   the answer decides.
+
+### A model's row
+
+Each model's row names the exact repository and file the host would load (for a GGUF,
+`<org>/<repo>` and the `.gguf` file name), the floor path it took, and, when the model has a
+projector (`mmproj`), the projector's repository, file, and precision. For a vision or audio
+model the projector is part of the model's precision: record it beside the weights' format. It is
+not a gate of its own.
 
 ## Gate 2: fit
 

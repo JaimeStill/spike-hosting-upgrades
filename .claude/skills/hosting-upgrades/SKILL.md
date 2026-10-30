@@ -338,23 +338,35 @@ their checks are in [models.md](models.md); this step says what the section hold
 3. **The gates, in order**: the policy (the origin rule, then the quantization floor, as
    `docs/policy.md` states them and reads them), a fit in the probed memory, and the host's engine
    serving the architecture on its backend. A model that fails a gate stops there and is listed
-   with the gate it failed and why. A publisher-evaluated format passes the floor's "card evals
-   within about 1% of BF16" only when every eval the card reports for the checkpoint is within
-   about 1% of BF16, relative; the row names any eval outside it.
-4. **Excluded on origin, and origin unclear.** A model of an origin the policy excludes, or a
-   fine-tune of such a base, goes in the section's "excluded on origin" list and never reaches a
-   verdict. Each entry cites, inline, the URL and read date of the source that shows its origin.
-   A model whose base can't be established from its card, its API record, or its publisher's
-   repository or paper goes, without a pause, in the "origin unclear" list beside it, and never
-   reaches a verdict either. Each entry names what the run checked, each source cited inline.
+   with the gate it failed and why. The floor takes one of the policy's three paths, settled by
+   the file's provenance and never by its id or quant label: a trained-in format passes by name
+   with the publisher's quality statement quoted, a publisher's post-training checkpoint passes
+   only when every eval its card reports is within the policy's margin of BF16 (the row names any
+   outside it), and everything else meets the floor.
+4. **Excluded on origin, and origin unclear.** The run builds each model's evidence chain
+   (publisher identity, the publisher's own documents, then artifact checks, as models.md,
+   "Origin", gives it). A model with any disclosed or detected involvement of an adversarial
+   entity, at any level the policy names, goes in the section's "excluded on origin" list and
+   never reaches a verdict. Each entry names the level and cites, inline, the URL and read date of
+   the source that shows it. A model the chain leaves short of the policy's pass bar, with no
+   involvement found, is researched further (the uploader's identity and affiliation, the
+   conversion against the publisher's weights, the publisher's own mentions of it, the uploader's
+   other work) until the answer is definitive; a model the research brings to the pass bar passes,
+   and its row records the evidence that settled it. Only a model the research can't settle (an
+   unidentified publisher, an unestablished lineage, or sources that contradict each other) goes,
+   without a pause, in the "origin unclear" list beside it, and never reaches a verdict either. Each entry names what the run checked, each source cited
+   inline. A pass means "no disclosed or detected involvement", and the section says so.
 5. **Sort and judge.** Models that pass every gate sort by published speed on the same hardware
    class, then by the card's evals for the purpose. Each takes a verdict by "Verdicts" (step 6),
    with its citations: a model's gain is measured speed on the same host class and backend, or a
    card eval for the purpose, against the incumbent's.
 
 Order each purpose's rows verify, hold, skip; within a verdict, by speed, then by evals; a model
-that failed a gate is skip and comes after the passing skips. When a gate needs a policy value
-the document doesn't state, or a model's origin evidence conflicts, pause (see "When to pause").
+that failed a gate is skip and comes after the passing skips. Each row names the exact repository
+and file the host would load and, when the model has a projector (`mmproj`), the projector's
+repository, file, and precision, which for a vision or audio model are part of its precision
+(models.md, "A model's row"). When a gate needs a policy value the document doesn't state, pause
+(see "When to pause").
 
 ### 8. Model set
 
@@ -375,8 +387,9 @@ once.
 4. **Recommend** the most effective set kept: compared first by the agent purpose's model (its
    place in step 7's order), then by the other purposes' places summed, then by memory left free.
    Give its estimated memory, marked **estimate** with its method (see [models.md](models.md),
-   "Memory estimate"), why it wins, and the runner-up with why it lost. When no set but the
-   incumbents fits, say so.
+   "Memory estimate"), why it wins, and the runner-up with why it lost. Each entry in the set names
+   the exact repository and file, and its projector's repository, file, and precision when it has
+   one. When no set but the incumbents fits, say so.
 
 ### 9. Verify next
 
@@ -427,13 +440,15 @@ Step 5's adjustments, verify, then hold, then skip.
 Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
 
 ## Models
-Step 7: per declared purpose, the incumbent and its candidates, each with its gates, speed,
-evals, and verdict; then the models excluded on origin, and beside them the models of unclear
-origin with what the run checked.
+Step 7: per declared purpose, the incumbent and its candidates, each with its exact repository
+and file (and its projector's repository, file, and precision), gates, speed, evals, and verdict;
+then the models excluded on origin, and beside them the models of unclear origin with what the
+run checked.
 
 ## Model set
 Step 8: the bound on candidates per purpose, the sets weighed and kept, the recommended set with
-its estimated memory and why it wins, and the runner-up.
+each entry's exact repository and file (and projector) and its estimated memory, why it wins, and
+the runner-up.
 
 ## Verify next
 Step 9's one line.
@@ -455,9 +470,10 @@ The run stops and asks the architect, rather than guessing or failing, in four c
    declared purpose nothing serves (step 3).
 2. **Sources conflict on a claim**: two sources disagree on a version, a gain, or a support claim.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
-   rule's edge: origin evidence that conflicts (the API record names one base and the card or the
-   publisher's repository another), or a format the floor doesn't name. An origin no source
-   documents is not a pause: the model is held out as "origin unclear" (step 7).
+   rule's edge: a format the floor doesn't name, or a file whose floor path its provenance doesn't
+   settle. Origin is never a pause: a model with involvement found is excluded on origin, and one
+   short of the pass bar is researched further and, only if the research can't settle it,
+   including when its sources conflict, held out as "origin unclear" (step 7).
 4. **A source's tier is unclear**: the run can't tell whether a source is primary, an attributed
    benchmark, or a lead.
 

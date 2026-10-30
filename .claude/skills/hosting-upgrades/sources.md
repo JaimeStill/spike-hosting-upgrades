@@ -102,8 +102,21 @@ primary, and a user's reply under it is a lead.
 | Source | URL | How to read it |
 |---|---|---|
 | Hugging Face model API | `https://huggingface.co/api/models/<org>/<name>` | JSON, with WebFetch: `pipeline_tag` (what it serves), `cardData.license`, `cardData.base_model` (a fine-tune's base, for the origin rule), `lastModified`, and `siblings` (its files and formats). |
-| Hugging Face model card | `https://huggingface.co/<org>/<name>` | The card's own evals settle the quantization floor's "publisher evaluated it". |
-| Major publishers | <https://huggingface.co/google>, <https://huggingface.co/openai>, <https://huggingface.co/meta-llama>, <https://huggingface.co/mistralai>, <https://huggingface.co/ibm-granite>, <https://huggingface.co/microsoft>, <https://huggingface.co/nvidia>, <https://huggingface.co/ggml-org> | List a publisher's models with `https://huggingface.co/api/models?author=<org>&sort=lastModified&limit=20`. `ggml-org` publishes conversions, not models: its origin is the base model's. |
+| Hugging Face model card | `https://huggingface.co/<org>/<name>` | The card's own evals settle the floor's path 2 (a publisher's post-training checkpoint), and its quality statement is the one path 1 quotes for a trained-in format. Its base, distillation, and training-data sections are the publisher's own documents for the origin rule. |
+| Major publishers | <https://huggingface.co/google>, <https://huggingface.co/openai>, <https://huggingface.co/meta-llama>, <https://huggingface.co/mistralai>, <https://huggingface.co/ibm-granite>, <https://huggingface.co/microsoft>, <https://huggingface.co/nvidia>, <https://huggingface.co/ggml-org> | List a publisher's models with `https://huggingface.co/api/models?author=<org>&sort=lastModified&limit=20`. `ggml-org` publishes conversions, not models: as the uploader it is one level of the origin rule, and its files pass only as models.md, "Origin", says of conversions. |
+
+## Provenance
+
+The sources the origin rule's evidence chain reads (models.md, "Origin"), each with WebFetch.
+Read the adversary list and the screening list fresh each run, and cite the read date.
+
+| Source | URL | How to read it |
+|---|---|---|
+| Foreign-adversary list, 15 CFR 791.4 (eCFR) | <https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-E/part-791/subpart-A/section-791.4> | The page answers WebFetch with a redirect to `unblock.federalregister.gov` (as read 2026-10-30), so read the renderer API instead: `https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-15?part=791&section=791.4`. Quote paragraph (a)'s list verbatim and the latest amendment citation it shows. |
+| Consolidated Screening List (trade.gov) | <https://www.trade.gov/consolidated-screening-list>; files at `https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json` (also `.csv`, `.tsv`) | The downloadable files need no key (as read 2026-10-30), but they are too large for WebFetch, which stops at 10 MiB: the JSON was 33.9 MB and the CSV 16.8 MB. The search API (`https://data.trade.gov/consolidated_screening_list/v1/search?name=<name>`, documented at <https://developer.trade.gov/>) answers 401 without a subscription key, which takes a developer.trade.gov account. Until the project holds a key or another reading is agreed, the run can't read this list: it says so on every origin pass ("screening list not read"), and names the gap under "Proposed changes". |
+| Hugging Face model record, GGUF metadata | `https://huggingface.co/api/models/<org>/<name>?expand[]=gguf` | JSON: `gguf.total` (the parameter count), `gguf.architecture`, `gguf.context_length`, `gguf.chat_template`, and the BOS and EOS tokens. As read 2026-10-30 it doesn't carry `general.base_model.*`; add `&expand[]=cardData` for `cardData.base_model`, the base the card's model tree names. |
+| Hugging Face organization | `https://huggingface.co/api/organizations/<org>/overview` | JSON: `isVerified` (true for a verified organization, such as `google`; false for `ggml-org`), `fullname`, and `details`. A verified organization is the first link of publisher identity; the entity on the publisher's own domain comes next. |
+| Hugging Face user | `https://huggingface.co/api/users/<name>/overview` | JSON: `fullname` and the profile's stated details, for an uploader's identity in further research (models.md, "Origin", item 5). List their organizations and their other work at `https://huggingface.co/<name>` and `https://huggingface.co/api/models?author=<name>`. |
 
 ## Benchmarks
 

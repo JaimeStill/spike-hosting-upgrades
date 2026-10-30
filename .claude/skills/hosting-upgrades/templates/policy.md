@@ -6,32 +6,64 @@
 
 ## Model origin
 
-<!-- Which model origins are excluded or restricted, and whether a fine-tune takes its base's
-     origin. -->
+<!-- The origin rule in its owner's words, who set it and when, and how it relates to any wider
+     constraint it tightens or loosens. -->
 
-Models of <origin> origin are excluded outright. A fine-tune takes its base model's origin.
+<The rule, quoted.> This is <owner>'s rule of <date>.
 
-<!-- How the run reads a model whose base no source establishes. The skill holds it out without
-     a pause unless this says otherwise; conflicting origin evidence is always a pause. -->
+<!-- Who counts as an adversarial entity: named lists the run reads fresh each time (give each
+     list's source, so sources.md can say how to read it), and the kinds of entity tied to them. -->
 
-**Reading: origin unclear.** A model whose base can't be established from <its card, its API
-record, or its publisher's repository or paper> is held out as "origin unclear", without a pause.
-The report lists it beside "excluded on origin", with what the run checked.
+**Adversarial entity.** Any of:
+
+- <a country on a named list, read fresh each run>
+- <an entity domiciled in, or owned or controlled from, such a country>
+- <an entity on a named screening list>
+
+<!-- The levels of a model at which involvement excludes it, such as the publisher, the uploader,
+     the base chain, a distillation teacher, a synthetic-data generator, and a component. -->
+
+**Levels.** The model is excluded on any disclosed or detected involvement at any of these:
+
+- <level>
+
+<!-- What a model must show to pass, and what a pass does and doesn't claim. -->
+
+**The pass bar.** A model passes only when <the publisher, lineage, and check conditions>.
+
+<!-- How the run treats a model the evidence chain leaves short of the pass bar: whether it
+     researches further first, and what that research looks at. -->
+
+**Further research.** When the evidence chain leaves a model short of the pass bar with no
+involvement found, the run researches <what> before deciding.
+
+<!-- How the run reads a model the research can't settle. The skill holds it out as "origin
+     unclear", without a pause, unless this says otherwise. -->
+
+**Origin unclear.** A model the research can't bring to the pass bar is held out as "origin
+unclear". The report lists it beside "excluded on origin", with what the run checked.
 
 ## Quantization floor
 
-<!-- The lowest quantization each kind of model may run at, and which publisher-evaluated formats
-     are accepted below it. -->
+<!-- The floor as its source states it, quoted, then how the run reads it as paths. The skill
+     knows three: formats trained in by the publisher, which pass by name; the publisher's
+     post-training checkpoints, which pass within an evals margin; and everything else, which
+     meets a floor. Leave a path out if the policy has no such path. -->
 
-A format is accepted when its publisher evaluated it (<formats>). Otherwise nothing goes below
-<floor>, and <model kinds> run at <higher floor> or better.
+<The floor, quoted from its source.>
 
-<!-- How the run reads the margin an evaluated format must keep to full precision, if the floor
-     sets one. -->
+**Reading: paths.** A format meets the floor by one of these paths:
 
-**Reading: within <margin> of <full precision>.** The floor's "card evals within <margin> of
-<full precision>" means every eval the card reports for the checkpoint is within <margin> of its
-<full precision> score, relative.
+1. **Trained-in formats** pass by name, at any size, when the publisher releases them as its own
+   format of the model: <named formats>.
+2. **Post-training checkpoints from the publisher** (<formats>) pass only when every eval the
+   checkpoint's card reports is within <margin> of its <full precision> score, relative.
+3. **Everything else** goes no lower than <floor>, and <model kinds and sizes> run at
+   <higher floor> or better.
+
+<!-- How the run counts a model's size against a size threshold, if the floor sets one. -->
+
+**Reading: a model's size.** Size is counted by <which parameters count>.
 
 ## Memory headroom
 
