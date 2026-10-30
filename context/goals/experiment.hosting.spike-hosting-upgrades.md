@@ -353,7 +353,7 @@ Slices
 
 ## Progress
 
-slices 6/7 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) — · standards — · spec — · editor — · fresh runs (architect, slice 8) —
+slices 7/8 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) ✓ 2c392b5 · standards ✓ (3 fixes) · spec ✓ (no gaps in R1-R12) · editor ✓ · fresh runs (architect, slice 8) —
 
 ## Decisions
 
@@ -570,6 +570,21 @@ slices 6/7 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, revi
   list the architect edits; a loaded adversary-origin drafter is a configuration fault, not an
   exclusion; the minimum agent session context is 32,768 tokens; a later same-day report is
   <date>-2.md. Eight slices, a third exception the architect approved.
+- skill: a later run on a host that already has that date's report writes `<date>-2.md`, then -3,
+  and so on, and never edits or replaces the earlier report. This supersedes "a run asks before
+  replacing a report that already carries today's date."
+- skill: a host's last report is the one with the newest date and, within that date, the highest
+  -N (SKILL.md step 11). R8's unchanged-host run cites that report.
+- skill: slice 7's standards review fixes: drafters() never prints a silent "none", so a key with
+  no value prints "(value unread)", a trailing slash is dropped, and a shell-form command is read
+  word by word; the finding records the source reads exactly as they were run.
+- skill: artifact integrity reads the per-file record first: the Hub's tree listing, with each
+  file's security scan and pickle imports (decided by the session within R11). It counts as "the
+  HF record's file metadata", because the repository-level gguf record doesn't settle each file in
+  a repository that holds several quantizations.
+- skill: on vLLM, a session's context is `--max-model-len`, which caps each request; it isn't
+  divided across `--max-num-seqs`.
+- skill: serving_flags() reads a shell-form command word by word, as drafters() does.
 
 ## Pending edits
 

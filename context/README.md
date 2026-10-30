@@ -29,8 +29,8 @@ model host, or its models) from what others publish rather than benchmarks of ou
    date it was read. Before the probe, it prints the permission rules the workspace needs and
    never writes settings.
 2. A dated report of ranked upgrades per host (framework, gb10-1), at
-   `docs/reports/<host>/<YYYY-MM-DD>.md`, in four kinds: hardware configuration, system updates
-   and debt, model host, and models. Each upgrade carries its sources, the gain they claim, its
+   `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md` for a later run the same day, in
+   four kinds: hardware configuration, system updates and debt, model host, and models. Each upgrade carries its sources, the gain they claim, its
    risk, and a verdict: verify, take, hold, or skip.
 3. Each host's top-ranked upgrade, verified by anchors A and B before and after in one session on
    that host, then adopted or rolled back. An anchor that moves beyond run noise is a finding.
@@ -75,7 +75,8 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
   settings.
 - **The host descriptors and policy:** `docs/hosts/<host>.md` and `docs/policy.md`, the skill's
   inputs.
-- **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`.
+- **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`, or
+  `<YYYY-MM-DD>-N.md` for a later run the same day.
 - **The anchor scenarios:** anchors A and B, for the incumbent and for a candidate.
 - **The verification findings:** before and after, adopted or rolled back.
 - **The screened pool:** the pool's candidates, kept or dropped per host class.
