@@ -70,7 +70,7 @@ these:
      IDs). -->
 
 **Further research.** When the evidence chain leaves a model short of the pass bar with no
-involvement found, the run researches <what> before deciding.
+involvement found at an excluding level, the run researches <what> before deciding.
 
 <!-- How the run reads a model the research can't settle. The skill holds it out as "origin
      unclear", without a pause, unless this says otherwise. -->

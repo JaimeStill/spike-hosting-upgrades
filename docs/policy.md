@@ -13,7 +13,7 @@ In the architect's words, of 2026-10-30:
 
 This is the architect's rule of 2026-10-30, and it is stricter than the workspace's constraint
 (`ai-strategy.md`, "Constraint: model origin"), which avoids such models where an alternative
-serves. The spike excludes them, and excludes any model they had a hand in.
+serves. The spike excludes them, and excludes a model they had a hand in at the levels below.
 
 **Adversarial entity.** Any of:
 
@@ -80,12 +80,14 @@ excludes the model whatever its levels show.
 
 **The pass bar.** A model passes only when its publisher is an identified entity that is not an
 adversarial entity, the publisher's own documents establish its lineage, and no check finds
-involvement at any level. A pass means "no disclosed or detected involvement", and no more: no
-public source certifies a model's training data, and undisclosed synthetic data is common.
+involvement at an excluding level. A pass means "no disclosed or detected involvement at an
+excluding level", and no more: no public source certifies a model's training data, and
+undisclosed synthetic data is common.
 
 **Further research.** The architect decided on 2026-10-30 that an unestablished origin is not an
 immediate hold-out. When the evidence chain leaves a model short of the pass bar with no
-involvement found, the run researches further to reach a definitive answer, citing each item:
+involvement found at an excluding level, the run researches further to reach a definitive
+answer, citing each item:
 
 - the uploader's or converter's identity and affiliation: their Hugging Face profile,
   organization membership, linked GitHub, and employer as they state it

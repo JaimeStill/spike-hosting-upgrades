@@ -37,8 +37,8 @@ writes neither.
 
   Every other fact about the host comes from probing it. [templates/host.md](templates/host.md)
   gives the shape, for an environment writing its own.
-- **The policy**, `docs/policy.md`. It states the model-origin rule, the quantization floor, the
-  agent quality bar, and the memory headroom a model set must leave.
+- **The policy**, `docs/policy.md`. It states the model-origin rule, artifact integrity, the
+  quantization floor, the agent quality bar, and the memory headroom a model set must leave.
   [templates/policy.md](templates/policy.md) gives the shape.
 
 When a step needs a policy value the document doesn't state (a floor for a kind of model it
@@ -463,16 +463,16 @@ their checks are in [models.md](models.md); this step says what the section hold
    card serves several purposes (a multimodal model that takes text, images, and audio) is a
    candidate for each, and the report says which incumbents it would replace.
 3. **The gates, in order**: the policy (the origin rule, then artifact integrity, then the
-   quantization floor, as
-   `docs/policy.md` states them and reads them), a fit in the probed memory, and the host's engine
-   serving the architecture on its backend, and, for the agent purpose, the policy's agent
-   quality bar. A model that fails a gate stops there and is listed with the gate it failed and
-   why. The floor takes one of the policy's three paths, settled by the build, not the label (the
-   publisher's native or QAT release, the publisher's post-training checkpoint, or a third
-   party's conversion), and never by the repository id: a trained-in format passes by name
-   with the publisher's quality statement quoted, a publisher's post-training checkpoint passes
-   only when every eval its card reports is within the policy's margin of BF16 (the row names any
-   outside it), and everything else meets the floor.
+   quantization floor, as `docs/policy.md` states them and reads them), a fit in the probed
+   memory, and the host's engine serving the architecture on its backend, and, for the agent
+   purpose, the policy's agent quality bar. A model that fails a gate stops there and is listed
+   with the gate it failed and why. The floor takes one of the policy's three paths, settled by
+   the build, not the label (the publisher's native or QAT release, the publisher's
+   post-training checkpoint, or a third party's conversion), and never by the repository id: a
+   trained-in format passes by name with the publisher's quality statement quoted, a
+   publisher's post-training checkpoint passes only when every eval its card reports is within
+   the policy's margin of BF16 (the row names any outside it), and everything else meets the
+   floor.
 4. **Excluded on origin, and origin unclear.** The run builds each model's evidence chain
    (publisher identity, the publisher's own documents, then artifact checks, as models.md,
    "Origin", gives it). A model with any disclosed or detected involvement of an adversarial
@@ -481,14 +481,15 @@ their checks are in [models.md](models.md); this step says what the section hold
    Each entry names the level and cites, inline, the URL and read date of the source that shows
    it. Involvement at a level the policy only records goes in the model's row, cited, and the
    model goes on to the next gate. A model the chain leaves short of the policy's pass bar, with no
-   involvement found, is researched further (the uploader's identity and affiliation, the
-   conversion against the publisher's weights, the publisher's own mentions of it, the uploader's
-   other work) until the answer is definitive; a model the research brings to the pass bar passes,
-   and its row records the evidence that settled it. Only a model the research can't settle (an
-   unidentified publisher, an unestablished lineage, or sources that contradict each other) goes,
-   without a pause, in the "origin unclear" list beside it, and never reaches a verdict either.
-   Each entry names what the run checked, each source cited inline. A pass means "no disclosed
-   or detected involvement", and the section says so.
+   involvement found at an excluding level, is researched further (the uploader's identity and
+   affiliation, the conversion against the publisher's weights, the publisher's own mentions of
+   it, the uploader's other work) until the answer is definitive; a model the research brings to
+   the pass bar passes, and its row records the evidence that settled it. Only a model the
+   research can't settle (an unidentified publisher, an unestablished lineage, or sources that
+   contradict each other) goes, without a pause, in the "origin unclear" list beside it, and
+   never reaches a verdict either. Each entry names what the run checked, each source cited
+   inline. A pass means "no disclosed or detected involvement at an excluding level", and the
+   section says so.
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
@@ -657,9 +658,11 @@ The run stops and asks the architect, rather than guessing or failing, in four c
 2. **Sources conflict on a claim**: two sources disagree on a version, a gain, or a support claim.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
    rule's edge: a format the floor doesn't name, or a file whose floor path its build doesn't
-   settle. Origin is never a pause: a model with involvement found is excluded on origin, and one
-   short of the pass bar is researched further and, only if the research can't settle it,
-   including when its sources conflict, held out as "origin unclear" (step 7).
+   settle. Origin is never a pause: a model with involvement found at a level the policy excludes
+   on, or that fails its compliance gate, is excluded on origin; involvement at a level the policy
+   only records goes in the model's row; and a model short of the pass bar is researched further
+   and, only if the research can't settle it, including when its sources conflict, held out as
+   "origin unclear" (step 7).
 4. **A source's tier is unclear**: the run can't tell whether a source is primary, an attributed
    benchmark, or a lead.
 
