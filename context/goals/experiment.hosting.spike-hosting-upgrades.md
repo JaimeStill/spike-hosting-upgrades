@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
+- **State:** building
 - **Task:** skill
 - **Branch:** skill
 
@@ -290,7 +290,7 @@ Slices
 
 ## Progress
 
-slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) · editor ✓ · validation (architect, slice 6) —
+slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) · editor ✓ · validation (architect, slice 6) ✓ framework 12067db, gb10-1 d849879 (review 8129462) · fresh runs on both hosts —
 
 ## Decisions
 
@@ -499,6 +499,20 @@ slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) �
   behavioral probe for adversary-aligned output is proposed, not adopted.
 - skill: the gb10-1 validation run's findings and refinements are consolidated in a session
   report at the end of the session (architect, 2026-10-30).
+
+- skill: the skill backlog, for verify-framework's plan to take as its first slice beside the apply
+  step (architect, 2026-10-30, round 6): (1) a second, narrower research round that feeds late
+  candidates to the origin part; (2) "not settled" for a model already failing a later gate;
+  (3) whether a same-model, same-bit-width speed figure stands in for another quantization;
+  (4) comparing evals across cards; (5) listing spike-model-engines' GB10 measurements in gb10-1's
+  descriptor; (6) a version conflict among vendor notes is settled by the probe, not a pause;
+  (7) a check that no preset loads an excluded drafter; (8) researching only what moved on an
+  unchanged host; (9) how the architect accepts code by name for the artifact-integrity gate;
+  (10) whether a loaded, not bundled, adversary-origin drafter excludes; (11) pickle detected by
+  format, not the .bin extension; (12) a minimum per-session context for the agent purpose, set at
+  or after verify-gb10's --kv-unified measurement.
+- skill: before SHIP, fresh runs of the current skill on framework and gb10-1, each in a new
+  session (architect, 2026-10-30).
 
 ## Pending edits
 
