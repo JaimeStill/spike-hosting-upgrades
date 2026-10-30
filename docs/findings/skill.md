@@ -168,3 +168,74 @@ aside).
   `tailnet6` bind.
 - **Tailnet identifiers**: none in either output, and no redaction marker either: the address
   was dropped before printing, not caught by the guard.
+
+## The probe's system-debt reads and the router preset, 2026-10-30
+
+The tuning slice's part B added read-only, no-root reads to the probe:
+
+- `== updates ==`: pending packages, from apt's cached lists with their age, or Arch's
+  `checkupdates`
+- `== firmware-updates ==`: `fwupdmgr get-updates`, by device name and version only
+- `== units ==`: failed system and user units
+- `== docker-disk ==`: `docker system df`, dangling images, and images no container uses
+- each stored model's last-modified date beside its size, under `== models ==`
+- each engine container's restart policy
+- the serving keys of a preset the container mounts, through the `flags` filter
+
+The session ran the probe on both hosts, read-only and without sudo, from the repository root:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-debt.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-debt.txt
+```
+
+The session ran this pair five times while it fixed the preset reader, each run overwriting the
+same two files; the readings below are from the last run. Four of the five runs were the pair,
+and one (the third) was framework's command alone.
+
+1. The first run listed no file in `/etc/llama-preset`.
+2. The second followed links and still found none.
+3. The third named the directory's one entry, `models.ini`, a regular file. The reader's size
+   bound (`find -size -1M`) had matched only empty files, since find rounds a size up to whole
+   MiB.
+4. With the bound fixed, the fourth read the file: INI, with `[section]` headers over
+   `key = value` lines, every line in a form the reader knows.
+5. The fifth read the context key, `c`, the short form of `--ctx-size`, which the fourth had
+   dropped.
+
+### framework
+
+- **Preset**: `models.ini`, 10 sections and 69 keys, none unread. `[*]` sets
+  `--n-gpu-layers all`. Each model section sets `-c` (32768, or 131072 for
+  `gpt-oss-120b-MXFP4-16-slots`, `gpt-oss-120b-MXFP4-set-a`, and the granite embedding),
+  `--parallel` (4, or 16 for the 16-slots model and the embedding), and the sampling keys.
+  `gpt-oss-120b-MXFP4-set-a` adds `--kv-unified true --checkpoint-min-step 4096`, and the
+  embedding adds `--batch-size 8192 --ubatch-size 8192`. Every section's context, slots, and
+  sampling keys match the flags the router lists for the same model, so the probe shows no drift
+  between preset and router.
+- **Updates**: `checkupdates` found 0 pending packages, from a fresh sync.
+- **Firmware**: no updates, against fwupd metadata last refreshed 2026-09-17.
+- **Units**: system and user managers `running`, no failed units.
+- **Docker disk**: 2 images (47.86 GB), both used; no dangling images; build cache 47.01 GB, 354.7
+  MB of it reclaimable.
+- **Restart policy**: both containers `unless-stopped`; the vllm container is exited.
+- **Models**: the 14 stored models, last modified 2026-10-27 or 2026-10-28.
+
+### gb10-1
+
+- **Preset**: `models.ini`, 9 sections and 60 keys, none unread. It is framework's preset without
+  the `gpt-oss-120b-MXFP4-set-a` section, and it matches the router's listed flags as framework's
+  does.
+- **Updates**: apt's lists last refreshed 2026-10-30 11:44:34, and 0 pending packages in them.
+- **Firmware**: no updates, against fwupd metadata last refreshed 2026-10-30.
+- **Units**: system and user managers `running`, no failed units. The engine units
+  `llama-router` and `vllm-server` are still disabled and inactive.
+- **Docker disk**: 4 images (45.27 GB), 3.014 GB reclaimable; no dangling images. Two images no
+  container uses: `ghcr.io/ggml-org/llama.cpp:full-cuda13-b11669` (10 GB) and
+  `hello-world:latest` (22.6 kB).
+- **Restart policy**: both containers `unless-stopped`; the vllm container is exited.
+- **Models**: the 14 stored models, last modified between 2026-10-23 and 2026-10-26.
+
+### Both hosts
+
+- **Tailnet identifiers**: none in either output, and no redaction marker either.

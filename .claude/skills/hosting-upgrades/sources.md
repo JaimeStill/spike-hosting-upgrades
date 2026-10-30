@@ -22,7 +22,8 @@ without the page's layout, and a query can be repeated exactly.
   ([SKILL.md](SKILL.md), "Readiness check").
 - **No source is read with curl or jq through Bash.** A source too large for WebFetch, or one that
   needs a header WebFetch can't send, is read by a narrow script bundled with the skill, or not
-  at all until one exists ([SKILL.md](SKILL.md), "Research").
+  at all until one exists ([SKILL.md](SKILL.md), "Research"). The Consolidated Screening List is
+  read so, by `scripts/screen.sh` ("Origin and build checks").
 
 ## Tiers
 
@@ -134,18 +135,17 @@ primary, and a user's reply under it is a lead.
 
 The sources the origin rule's evidence chain reads (models.md, "Origin"), and the ones that
 establish a file's build (models.md, "Quantization floor"), each with WebFetch unless its row
-says otherwise. Read the adversary list and the screening list fresh each run, and cite the read
-date.
+says otherwise. Read the adversary list and the screening list fresh each run (the screening
+list as of that day's download), and cite the read date.
 
 | Source | URL | How to read it |
 |---|---|---|
 | Foreign-adversary list, 15 CFR 791.4 (eCFR) | <https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-E/part-791/subpart-A/section-791.4> | The page answers WebFetch with a redirect to `unblock.federalregister.gov` (as read 2026-10-30), so read the renderer API instead: `https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-15?part=791&section=791.4`. Quote paragraph (a)'s list verbatim and the latest amendment citation it shows. |
-| Consolidated Screening List (trade.gov) | <https://www.trade.gov/consolidated-screening-list>; files at `https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json` (also `.csv`, `.tsv`) | The downloadable files need no key (as read 2026-10-30), but they are too large for WebFetch, which stops at 10 MiB: the JSON was 33.9 MB and the CSV 16.8 MB. The search API (`https://data.trade.gov/consolidated_screening_list/v1/search?name=<name>`, documented at <https://developer.trade.gov/>) answers 401 without a subscription key, which takes a developer.trade.gov account. Until the project holds a key or another reading is agreed, the run can't read this list: it says so on every origin pass ("screening list not read"), and names the gap under "Proposed changes". |
+| Consolidated Screening List (trade.gov), by `scripts/screen.sh` | <https://www.trade.gov/consolidated-screening-list>; the script reads `https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json` | The file is too large for WebFetch (33.9 MB as read 2026-10-30, past its 10 MiB), and the search API needs a developer.trade.gov key, so the bundled [scripts/screen.sh](scripts/screen.sh) reads it: run `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` from the project root, with the publisher, the uploader, and every entity the documents name. It downloads the public JSON once a day into `.state/csl/<YYYY-MM-DD>.json` and matches normalized names (lowercased, punctuation and corporate suffixes dropped) exactly, or one inside the other when the inner form has two words or more. Cite the file's date and the URL its first line prints, and for a match the entry's name, source list, programs, country, start date, and source list URL. The limit: a miss is "no match", never clean. The list holds only what US agencies list, and a normalized match misses transliterations, other spellings, and subsidiaries listed under their own names, so a miss leaves the rest of the evidence chain to settle origin. |
 | Hugging Face model record, GGUF metadata | `https://huggingface.co/api/models/<org>/<name>?expand[]=gguf` | JSON: `gguf.total` (the parameter count), `gguf.architecture`, `gguf.context_length`, `gguf.chat_template`, and the BOS and EOS tokens. As read 2026-10-30 it doesn't carry `general.base_model.*`; add `&expand[]=cardData` for `cardData.base_model`, the base the card's model tree names. |
 | Hugging Face organization | `https://huggingface.co/api/organizations/<org>/overview` | JSON: `isVerified` (true for a verified organization, such as `google`; false for `ggml-org`), `fullname`, and `details`. A verified organization is the first link of publisher identity; the entity on the publisher's own domain comes next. |
 | Hugging Face user | `https://huggingface.co/api/users/<name>/overview` | JSON: `fullname` and the profile's stated details, for an uploader's identity in further research (models.md, "Origin", item 5). List their organizations and their other work at `https://huggingface.co/<name>` and `https://huggingface.co/api/models?author=<name>`. |
 | ggml-org source pin, `.src_sha` | `https://huggingface.co/ggml-org/<name>/raw/main/<file>.src_sha`; find the file in the record's `siblings` | Text, with WebFetch: the publisher's repository and commit the conversion was made from. ggml-org's GGUF headers often lack `general.base_model.*`, so this file is the pin for a ggml-org conversion (models.md, "Origin", item 4). |
-| Screening-list match | `scripts/screen.sh (part B)` | Placeholder: part B of the tuning slice adds the bundled script and its row. |
 
 ## Benchmarks
 

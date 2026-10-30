@@ -26,7 +26,19 @@ file the host would load was made.
 
    Check the entity and its domicile against the foreign-adversary list, 15 CFR 791.4, read fresh
    from eCFR, and against the Consolidated Screening List (sources.md, "Origin and build
-   checks").
+   checks"). Screen the list by running the bundled script from the project root, in one call
+   for the publisher, the uploader, and every entity the publisher's documents name (item 2: a
+   base model's publisher, a teacher's, a data generator's, a component's), each name quoted:
+
+   ```sh
+   .claude/skills/hosting-upgrades/scripts/screen.sh "<publisher>" "<uploader>" "<entity>" ...
+   ```
+
+   A match whose entry is the same entity (its name, country, and address agree with what the
+   documents say) is detected involvement, cited by the entry's name, source list, and start
+   date, and the file's date and URL; a match on a different entity that shares the name is
+   noted and set aside, with why. A miss is "no match on normalized name", never clean: the row
+   says which names were screened, and the rest of the chain still settles origin.
 2. **The publisher's own documents.** Read the technical report or paper, and the card's base,
    distillation, and training-data sections, for every level the policy names: the base chain,
    followed through each record's `cardData.base_model` from the API record

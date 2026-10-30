@@ -1,6 +1,6 @@
 ---
 name: hosting-upgrades
-description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish. Probes the host live over SSH, read-only and without root, reconciles the probe with the project's host descriptor and policy, and writes a dated, cited report of upgrades. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, or plan a host's next upgrade.
+description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish, and finds and ranks everything the workstation has fallen behind on (pending package and firmware updates, failed or stopped units, container images behind their tag, unused images and models taking disk, and configuration that differs from its descriptor). Probes the host live over SSH, read-only and without root, reconciles the probe with the project's host descriptor and policy, and writes a dated, cited report that gives each item a verdict (verify, take, hold, or skip); it applies nothing. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, find what a host has fallen behind on or what debt it carries, or plan a host's next upgrade.
 argument-hint: <host> | setup
 ---
 
@@ -62,7 +62,9 @@ the whole run.
    - `WebFetch`
    - `Edit(<reports dir>/**)`, which is `Edit(docs/reports/**)` here; an Edit rule covers creating
      a file too
-   - the screen.sh rule (part B)
+   - `Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)`, for the screening-list script
+     the origin research runs (models.md, "Origin"); like the probe rule, it names the script's
+     project-relative path, the one the run invokes it by
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -76,7 +78,7 @@ the whole run.
    or missing, then the JSON for the missing ones. For example:
 
    ```text
-   Readiness check: 7 rules missing from .claude/settings.json and .claude/settings.local.json.
+   Readiness check: 8 rules missing from .claude/settings.json and .claude/settings.local.json.
    Add them to .claude/settings.json, under permissions.allow:
 
      "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
@@ -85,7 +87,8 @@ the whole run.
      "Bash(gh search prs *)",
      "WebSearch",
      "WebFetch",
-     "Edit(docs/reports/**)"
+     "Edit(docs/reports/**)",
+     "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)"
    ```
 4. **Ask.** When a rule is missing, ask whether to continue with the prompts the missing rules
    bring, or wait while the architect adds them; the default is to wait. When none is missing,
@@ -141,19 +144,27 @@ rules don't expand `${CLAUDE_SKILL_DIR}`, so a command that names the variable m
 
 [scripts/probe.sh](scripts/probe.sh) is read-only and needs no root. It prints labeled sections
 (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `== memory ==`,
-`== container-runtime ==`, `== engines ==`, `== endpoints ==`, `== models ==`, `== skipped ==`).
+`== container-runtime ==`, `== engines ==`, `== endpoints ==`, `== models ==`, `== updates ==`,
+`== firmware-updates ==`, `== units ==`, `== docker-disk ==`, `== skipped ==`).
 Each engine container, and each model a llama.cpp router lists, carries a `flags` line: its
 launch arguments filtered to the ones that shape serving (context, parallel slots, batching, KV
-cache, offload, memory), which is the incumbent's configuration step 6 weighs. A flag the line
-doesn't show was not passed on the command line, and is at the engine's default unless it was set
-another way the probe doesn't read (an environment variable such as `LLAMA_ARG_CTX_SIZE`, a
-preset or config file); a flag outside the filter's list doesn't show either.
+cache and its checkpoints, offload, memory, sampling), which is the incumbent's configuration
+step 6 weighs. A container that mounts a preset (a llama.cpp router's `models.ini`, mounted at
+`/etc/llama-preset`) carries a `preset` block: each file's shape (sections, keys, lines the probe
+couldn't read), then each section's keys through the same filter, so the block names no path,
+address, or alias. A flag neither line shows was not passed, and is at the engine's default
+unless it was set another way the probe doesn't read (an environment variable such as
+`LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show either. Each
+container also carries its `restart policy`.
+`== updates ==`, `== firmware-updates ==`, `== units ==`, and `== docker-disk ==` are what the
+host has fallen behind on, and `== models ==` gives each stored model's size and last-modified
+date; step 5b reads them.
 Each engine container also carries a `published ports` line (what it publishes now, or `none`,
 and `none (no network)` when it is on no network) and a `configured binds` line (the bindings it
 was created with), each port named by its bind class: `tailnet4` (the tailnet IPv4 address),
 `tailnet6` (the tailnet IPv6 address), `all`, `loopback`, or `other`. `== container-runtime ==`
 prints `net.ipv4.ip_nonlocal_bind` and `net.ipv6.ip_nonlocal_bind` (`absent` on a kernel without
-IPv6). Step 5's boot-order check reads them all.
+IPv6). Step 5b's boot-order check reads them all.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
 fact too, and the report keeps it. The probe prints no network address: it reads listening ports
 from `ss -Hltn` and `docker port` and drops the address from each, and a final guard redacts any
@@ -255,7 +266,85 @@ Each adjustment gives:
 Order the adjustments verify, take, hold, skip. A fact the probe can't read without
 root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root" says.
 
+This step judges each component's version. Whether the host has caught up with what it already
+installed (a newer kernel installed but not running, a reboot pending) and the boot-order check
+are step 5b's, and the kernel's row here points to them.
+
+### 5b. System updates and debt
+
+Everything the host has fallen behind on, found and ranked: what is pending, what has failed, what
+takes disk and serves nothing, and what drifted from the descriptor. The step is numbered 5b so
+that the steps after it keep their numbers. The run applies none of it: applying a take or
+verify item, with its rollback, is a later task's, and the report says what each would take.
+
+Each item names what the probe found, cited to its section, and takes a verdict by "Verdicts"
+(step 6) with its sources:
+
+- **take** is an update of something the host already runs (a package, firmware, an image to its
+  tag's newer release, a model file's new revision) that claims nothing and has no reported
+  regression.
+- **verify** needs an attributed gain, as everywhere; in this step it arises only where an update
+  reaches the engine, and that item is judged in step 6 and referenced here.
+- **hold** is everything that needs the architect's decision before a later task acts on it: an
+  update whose only claim is release notes, or that needs a root step with no rollback; a failed
+  or stopped service; a removal; a drift between two values.
+- **skip** is an update with a reported regression, or an item the architect's answer retires (a
+  service step 3 settled should stay down).
+
+Order the items verify, take, hold, skip; within a verdict, the item that risks serving first (a
+boot-order failure, a stopped engine), then by disk freed.
+
+1. **Pending package updates** (`== updates ==`). List every pending update with its from and to
+   versions. On apt, give the lists' age from the `apt lists` line: the count is as of that date,
+   and refreshing the lists is root's (`ssh -t <host> sudo apt-get update`, asked for as "Facts
+   that need root" says, after which the run probes again). On Arch, the count is a fresh sync.
+   Read the distribution's notices for each (Arch news for a manual intervention, the release's
+   changelog or security notice), and give the verdict by them. A package step 5 weighs (the
+   kernel, firmware, Mesa, the driver) keeps its verdict there and is listed here by reference.
+   Packages that share a verdict and a reason may share a row that names each.
+2. **Firmware updates** (`== firmware-updates ==`). Each device with an update, by name, from and
+   to, with the vendor's release notes for that version (LVFS or the vendor's page). "No updates"
+   is an item too, with the fwupd metadata's date, which bounds what it can know. Applying
+   firmware is a root step; one with no downgrade path is hold.
+3. **The kernel and a pending reboot** (`== kernel ==`). An installed kernel newer than the
+   running one, or a pending reboot (`reboot: pending`), is an item: the reboot that takes it is
+   take when step 5's kernel row finds no regression at the installed version, and hold
+   otherwise.
+4. **Failed units, and services meant to run** (`== units ==`, `== engines ==`). Every failed
+   unit, system and user, with its state. Then every service a descriptor or container implies
+   should run that doesn't: an engine unit that is disabled or inactive while the purpose it
+   serves is declared, and a container whose restart policy (`always`, `unless-stopped`) says it
+   should run while it is exited. Name the cause the probe shows, and the recovery the architect
+   would run; a cause only the journal shows is asked for as "Facts that need root" says when the
+   journal needs root. Each is hold, or skip when step 3's answer says it stays down.
+5. **The boot-order check** (below): each finding is hold, first among the holds, since it can
+   leave the engine unreachable after a reboot; its remedy is a root step with a rollback.
+6. **Container images behind their tag's latest release** (`== engines ==`). For each container's
+   image, read the newest release of its repository's tag series from the registry with WebFetch:
+   Docker Hub's tags API (`https://hub.docker.com/v2/repositories/<namespace>/<name>/tags`), or a
+   GitHub package page for ghcr.io ([sources.md](sources.md), "Engines"). Give the probed tag, its
+   `image created` date, and the newest tag with its date. An engine's image is the engine's
+   version, which step 6 judges: list it here with step 6's verdict, by reference. Whether a
+   moving tag (`latest`) or the same tag was rebuilt since the pull answers only to a
+   manifest digest, which takes a token-bearing read WebFetch can't send; write "not checked" for
+   it, and never pull to find out.
+7. **Unused images and models taking disk** (`== docker-disk ==`, `== models ==`). The dangling
+   images (count and size), each image no container uses (name, tag, size), and the reclaimable
+   build cache from `docker system df`. Then each stored model that nothing serves or lists:
+   judge it against the router's model list (`== endpoints ==`), the preset's sections, and
+   every container's mounts, and give its size and last-modified date. The date is when the file
+   was written, not when it was last loaded, so an old date alone doesn't make a model unused. A
+   model step 7 ranks as a candidate is not debt. Each removal is hold, with the space it frees.
+8. **Configuration that differs from the descriptor.** Compare what the probe shows with what the
+   descriptor declares: a purpose nothing is configured to serve (no preset section, no
+   container), a watch item that names a setting the probe shows differently, and a preset whose
+   keys differ from the flags the router lists for the same model (the router was started before
+   the preset changed, or a key doesn't apply). Give both values, cited. Each is hold. The
+   descriptor's stale lines are step 1's, under "Proposed changes", and not repeated here.
+
 #### Boot-order check
+
+Item 5 of this step.
 
 An engine container that binds its port on the tailnet address can't publish it until Tailscale
 has assigned that address, and docker may start first at boot. Read each engine container's
@@ -328,7 +417,7 @@ until the architect changes the method, and the report says what it would take.
 
 #### Verdicts
 
-Every item in steps 5, 6, and 7 takes one of four verdicts:
+Every item in steps 5, 5b, 6, and 7 takes one of four verdicts:
 
 - **verify**: a source that names its hardware, engine version, and method (an attributed
   benchmark) measured a gain on the same host class and backend, and no such source reports a
@@ -356,10 +445,10 @@ The models that could serve each declared purpose, judged against the incumbent.
 their checks are in [models.md](models.md); this step says what the section holds.
 
 1. **The incumbents.** For each purpose, the model step 3 mapped to it, with its format and its
-   configuration from the `flags` lines. When nothing serves and the probe doesn't show which
-   stored model an engine would load (a router's presets live in a file the probe doesn't read),
-   the incumbent for a purpose is the stored model mapped to it that ranks first by this step's
-   own gates and sort among the stored models, and the report says so.
+   configuration from the `flags` lines and the preset's keys. When nothing serves and the probe
+   doesn't show which stored model an engine would load (no router lists it, and no preset
+   section names it), the incumbent for a purpose is the stored model mapped to it that ranks
+   first by this step's own gates and sort among the stored models, and the report says so.
 2. **The candidates.** Every stored model that isn't an incumbent, the newest models of the
    publishers in [sources.md](sources.md), "Models", and what a web search finds. A model whose
    card serves several purposes (a multimodal model that takes text, images, and audio) is a
@@ -479,7 +568,10 @@ root (with the architect's read-out or "declined"), and every pause with its ans
 Step 5's adjustments, verify, take, hold, skip.
 
 ## System updates and debt
-(Placeholder: part B of the tuning slice defines this section.)
+Step 5b's items: pending package updates (with the lists' age), firmware updates, the kernel and a
+pending reboot, failed units and services meant to run, the boot-order check, container images
+behind their tag, unused images and models taking disk, and configuration that differs from the
+descriptor, each with its verdict and sources, verify, take, hold, skip.
 
 ## Engines
 Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
@@ -513,7 +605,8 @@ Step 4's research is large enough that a run may split it across subagents. When
 splits it into these five parts, so that runs are repeatable:
 
 1. **Hardware and system**: the OS image, kernel, firmware, BIOS, driver or Mesa, and memory
-   ceiling (step 5).
+   ceiling (step 5), and the system's pending updates, firmware updates, and container images'
+   newest tags (step 5b).
 2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items
    (step 6).
 3. **Agent models**: the agent purpose's candidates, their speed on the class, and their evals
@@ -527,7 +620,10 @@ splits it into these five parts, so that runs are repeatable:
 - The source tiers and the sources for its kind, from [sources.md](sources.md), and the
   blocklist ([blocklist.md](blocklist.md)).
 - The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`, and, for the
-  origin part only, `scripts/screen.sh`.
+  origin part only, the screening-list script, run from the project root by exactly the path its
+  readiness rule names, with each name quoted:
+  `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin", item 1).
+  Its "no match" is never "clean" ([sources.md](sources.md), "Origin and build checks").
 
 **What each part returns.** Cited claims, each with its source's URL, its read date, and its
 tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts.
@@ -535,7 +631,8 @@ tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts
 **No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for
 them, so they would run outside the rules the architect granted. Data too large for WebFetch, or
 behind a header WebFetch can't send, goes through a narrow script bundled with the skill, which
-reads one source and is granted by its own exact rule.
+reads one source and is granted by its own exact rule: `scripts/screen.sh` is the one such script
+today, and with the probe it holds the skill's only curl.
 
 ## When to pause
 

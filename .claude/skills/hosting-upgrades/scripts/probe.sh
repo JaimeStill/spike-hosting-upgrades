@@ -6,9 +6,10 @@
 #
 # It prints plain labeled sections (== name ==): the OS, the kernel, firmware and BIOS, the GPU
 # and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
-# engine containers and systemd units, each running engine's build and served models, and the
-# models in the host's local stores. A probe whose command is absent prints "skipped:" and the
-# run goes on; the last section lists every skip.
+# engine containers (with their presets' serving keys) and systemd units, each running engine's
+# build and served models, the models in the host's local stores, and what the host has fallen
+# behind on: pending package and firmware updates, failed units, and docker's disk. A probe whose
+# command is absent prints "skipped:" and the run goes on; the last section lists every skip.
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
 # it reads listening ports from ss -Hltn and docker port and drops the address from each, and
@@ -41,9 +42,10 @@ probe() {
   gib() { awk -v b="$1" 'BEGIN { printf "%.1f GiB", b / 1073741824 }'; }
 
   # Reads an engine's launch arguments, one per line, and prints on one line only the flags that
-  # shape serving (context, parallel slots, batching, offload, attention, KV cache, memory), each
-  # with its value. Only these flags print, so no model path, address, or key on the command line
-  # reaches the output. Both --flag value and --flag=value forms are read.
+  # shape serving (context, parallel slots, batching, offload, attention, KV cache and its
+  # checkpoints, memory, sampling), each with its value. Only these flags print, so no model path,
+  # address, alias, or key on the command line reaches the output. Both --flag value and
+  # --flag=value forms are read.
   serving_flags() {
     awk '
       BEGIN {
@@ -56,7 +58,14 @@ probe() {
           "--enable-chunked-prefill --no-enable-chunked-prefill --enable-prefix-caching " \
           "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
           "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
-          "--attention-backend --enforce-eager", w, " ")
+          "--attention-backend --enforce-eager " \
+          "--cache-ram -cram --ctx-checkpoints --swa-checkpoints --checkpoint-min-step " \
+          "--cache-prompt --no-cache-prompt --context-shift --no-context-shift --keep " \
+          "--models-max --sleep-idle-seconds --mmproj-offload --no-mmproj-offload " \
+          "--draft-max --draft-min --draft-p-min --n-predict -n --jinja --no-jinja " \
+          "--reasoning-format --reasoning-budget --temp --top-k --top-p --min-p --typical " \
+          "--top-nsigma --repeat-penalty --repeat-last-n --presence-penalty " \
+          "--frequency-penalty --dry-multiplier --xtc-probability --xtc-threshold --seed", w, " ")
         for (i = 1; i <= n; i++) want[w[i]] = 1
       }
       { t[NR] = $0 }
@@ -66,10 +75,98 @@ probe() {
           f = t[i]; v = ""
           if (f ~ /^-[^=]*=/) { v = " " substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1) }
           else if (i < NR && t[i + 1] !~ /^-/) v = " " t[i + 1]
+          # A preset key reaches here as --<key>, so a short key (c, np) arrives as --c: read it
+          # as its short flag.
+          if (!(f in want) && f ~ /^--/ && substr(f, 2) in want) f = substr(f, 2)
           if (f in want) out = out " " f v
         }
         print (out == "" ? " none of the serving flags" : out)
       }'
+  }
+
+  # Reads one preset file (a llama.cpp router's --models-preset INI: [section] headers, each a
+  # model the router lists or [*] for every model, over key = value lines whose keys are the
+  # long flag names without their dashes) and prints its shape, then each section's keys through
+  # serving_flags, so no path, address, or alias prints. A key may also be a flag (--ctx-size) or
+  # its environment name (LLAMA_ARG_CTX_SIZE); both are read as the flag. A line in no form above
+  # is counted as unread, never printed.
+  preset_file() {
+    local line section="" args=() parsed
+    flush() {
+      if [[ -n $section ]] || ((${#args[@]})); then
+        printf '      [%s] flags%s\n' "${section:-top level}" \
+          "$(printf '%s\n' "${args[@]}" | serving_flags)"
+      fi
+      args=()
+    }
+    parsed=$(awk '
+      /^[[:space:]]*([#;]|$)/ { next }
+      /^[[:space:]]*\[.*\][[:space:]]*$/ {
+        s = $0; sub(/^[[:space:]]*\[/, "", s); sub(/\][[:space:]]*$/, "", s)
+        print "S " s; sections++; next
+      }
+      match($0, /^[[:space:]]*-*[A-Za-z0-9_.-]+[[:space:]]*[=:]/) {
+        k = substr($0, 1, RLENGTH - 1); v = substr($0, RLENGTH + 1)
+        gsub(/^[[:space:]-]+|[[:space:]]+$/, "", k); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        gsub(/^["\047]|["\047]$/, "", v)
+        if (k ~ /^LLAMA_ARG_/) { k = tolower(substr(k, 11)); gsub(/_/, "-", k) }
+        print "A --" k "=" v; keys++; next
+      }
+      /^[[:space:]]*-/ {
+        k = $1; v = $0; sub(/^[[:space:]]*[^[:space:]]+[[:space:]]*/, "", v)
+        print "A " k (v == "" ? "" : "=" v); keys++; next
+      }
+      { other++ }
+      END { printf "F %d sections, %d keys, %d lines unread\n", sections, keys, other }
+    ' "$1" 2>/dev/null)
+    printf '    file %s: %s\n' "$2" "$(sed -n 's/^F //p' <<<"$parsed")"
+    while IFS= read -r line; do
+      case $line in
+        'S '*)
+          flush
+          section=${line#S }
+          ;;
+        'A '*) args+=("${line#A }") ;;
+      esac
+    done <<<"$parsed"
+    flush
+  }
+
+  # Prints each preset an engine container mounts (a mount whose source or destination names a
+  # preset), read from the host-side source without root: a file, or each file in a directory.
+  presets() {
+    local cname=$1 src dest file found=0
+    while IFS=$'\t' read -r src dest; do
+      [[ ${src,,} == *preset* || ${dest,,} == *preset* ]] || continue
+      found=1
+      if [[ -f $src && -r $src ]]; then
+        printf '  preset %s (file):\n' "$dest"
+        preset_file "$src" "$(basename "$src")"
+      elif [[ -d $src && -r $src && -x $src ]]; then
+        printf '  preset %s (directory):\n' "$dest"
+        # Links are followed: a preset directory may link its files from elsewhere.
+        local files=()
+        mapfile -t files < <(find -L "$src" -maxdepth 3 -type f -size -1024k -printf '%P\n' \
+          2>/dev/null | sort)
+        # With none, each entry's name and kind, by find's letters (f file, d directory, l link,
+        # and through a link N for a missing target): never a link's target, which is a path.
+        if ((${#files[@]} == 0)); then
+          echo "    no regular file under 1 MiB; entries (name, kind, kind through a link):"
+          find "$src" -mindepth 1 -maxdepth 3 -printf '      %P %y %Y\n' 2>/dev/null
+        fi
+        for file in "${files[@]}"; do
+          if [[ -r $src/$file ]]; then
+            preset_file "$src/$file" "$file"
+          else
+            printf '    file %s: unreadable without root\n' "$file"
+          fi
+        done
+      else
+        skip "preset $dest (container $cname): its host-side source is unreadable without root"
+      fi
+    done < <(docker inspect "$cname" \
+      --format '{{range .Mounts}}{{.Source}}{{"\t"}}{{.Destination}}{{"\n"}}{{end}}')
+    ((found)) || echo "  preset none mounted"
   }
 
   # Prints the installed version of each named package (globs allowed), on pacman or dpkg hosts,
@@ -277,6 +374,9 @@ probe() {
       printf '  flags%s\n' "$(docker inspect "$name" \
         --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}' |
         serving_flags)"
+      presets "$name"
+      # Its restart policy: a container set to restart (always, unless-stopped) is meant to run.
+      docker inspect --format '  restart policy {{.HostConfig.RestartPolicy.Name}}' "$name"
       # Its ports: what it publishes now (docker port), and the bindings it is configured with
       # (HostConfig.PortBindings), each by bind class. A running container that publishes nothing,
       # or has no network at all, is the boot-order failure: healthy, but unreachable.
@@ -429,15 +529,18 @@ probe() {
     [[ -d $store && $listed != *" $store "* ]] || continue
     listed+="$store "
     if compgen -G "$store/models--*" >/dev/null; then
-      printf 'store %s (Hugging Face cache; snapshot size, links followed):\n' "$store"
+      printf 'store %s (Hugging Face cache; snapshot size, links followed, last modified):\n' \
+        "$store"
       for dir in "$store"/models--*; do
-        printf '  %s  %s\n' "$(du -sLh "$dir/snapshots" 2>/dev/null | cut -f1)" \
+        printf '  %s  %s  %s\n' "$(du -sLh "$dir/snapshots" 2>/dev/null | cut -f1)" \
+          "$(find "$dir" -printf '%TF\n' 2>/dev/null | sort | tail -n 1)" \
           "$(basename "$dir" | sed 's/^models--//; s/--/\//')"
       done
     elif [[ -n $(find "$store" -maxdepth 4 -name '*.gguf' -print -quit 2>/dev/null) ]]; then
-      printf 'store %s (GGUF files):\n' "$store"
-      find "$store" -maxdepth 4 -name '*.gguf' -printf '%s %P\n' 2>/dev/null | sort -k2 |
-        awk '{ printf "  %.1fG  %s\n", $1 / 1073741824, $2 }'
+      # A file's last-modified date is when it was written: a model can sit unused long after it.
+      printf 'store %s (GGUF files; size, last modified):\n' "$store"
+      find "$store" -maxdepth 4 -name '*.gguf' -printf '%s %TF %P\n' 2>/dev/null | sort -k3 |
+        awk '{ printf "  %.1fG  %s  %s\n", $1 / 1073741824, $2, $3 }'
     fi
   done
   [[ $listed == " " ]] && echo "no model store found"
@@ -445,6 +548,121 @@ probe() {
     ollama list 2>&1
   else
     skip "ollama list: ollama absent"
+  fi
+
+  section updates
+  # Pending package updates, read without root and without refreshing anything root keeps: apt's
+  # cached lists (apt-get update is root's, and never run), or Arch's checkupdates, which syncs a
+  # temporary copy of the databases as this user. Each update is an "update:" line, whose versions
+  # the guard keeps, as it keeps a "package:" line's.
+  local lines=() now
+  now=$(date +%s)
+  if have apt; then
+    if [[ -d /var/lib/apt/lists ]]; then
+      printf 'apt lists: last refreshed %s (%d days ago); the run never refreshes them\n' \
+        "$(date -r /var/lib/apt/lists '+%F %T')" \
+        $(((now - $(date -r /var/lib/apt/lists +%s)) / 86400))
+    else
+      echo "apt lists: /var/lib/apt/lists absent"
+    fi
+    mapfile -t lines < <(apt list --upgradable 2>/dev/null | grep '/')
+    printf 'pending: %d packages (apt, from the cached lists)\n' "${#lines[@]}"
+    # apt's line: name/suite new-version arch [upgradable from: old-version]
+    printf '%s\n' "${lines[@]}" | awk 'NF {
+      split($1, p, "/"); old = $NF; sub(/\]$/, "", old)
+      print "update:", p[1], old, "->", $2, "(" p[2] ")"
+    }'
+  elif have checkupdates; then
+    local out rc
+    out=$(timeout 90 checkupdates 2>&1)
+    rc=$?
+    case $rc in
+      0)
+        mapfile -t lines <<<"$out"
+        printf 'pending: %d packages (checkupdates, a fresh sync of the databases)\n' \
+          "${#lines[@]}"
+        printf 'update: %s\n' "${lines[@]}"
+        ;;
+      2) echo "pending: 0 packages (checkupdates, a fresh sync of the databases)" ;;
+      *) skip "pending updates: checkupdates failed (exit $rc): $(head -n 1 <<<"$out")" ;;
+    esac
+  elif have pacman; then
+    skip "pending updates: checkupdates absent (pacman-contrib)"
+  else
+    skip "pending updates: no apt or checkupdates"
+  fi
+
+  section firmware-updates
+  # fwupd's view of the devices it can update, by name and version only: no serial numbers or
+  # device IDs. "No updates" is an answer, not a skip. The metadata is never refreshed here.
+  if have fwupdmgr; then
+    local fw meta
+    meta=$(find /var/lib/fwupd/metadata -type f -printf '%TF\n' 2>/dev/null | sort | tail -n 1)
+    printf 'fwupd metadata: last refreshed %s\n' "${meta:-unknown}"
+    fw=$(timeout 60 fwupdmgr get-updates --json --no-unreported-check --no-metadata-check \
+      2>/dev/null)
+    if have jq && jq -e '.Devices' >/dev/null 2>&1 <<<"$fw"; then
+      jq -r '.Devices | if length == 0 then "firmware: no updates" else .[] |
+        "firmware: \(.Name) \(.Version // "?") -> \([.Releases[]?.Version] | join(", "))" end' \
+        <<<"$fw"
+    else
+      timeout 60 fwupdmgr get-updates --no-unreported-check --no-metadata-check 2>&1 |
+        grep -viE 'serial|guid|device ?id|checksum' | sed '/^\s*$/d; s/^/fwupdmgr: /' | head -n 40
+    fi
+  else
+    skip "firmware updates: fwupdmgr absent"
+  fi
+
+  section units
+  # Failed units, system and user. An engine's own units, enabled or not, are under == engines ==.
+  if have systemctl; then
+    local scope state
+    for scope in system user; do
+      local flag=()
+      [[ $scope == user ]] && flag=(--user)
+      state=$(systemctl "${flag[@]}" is-system-running 2>/dev/null)
+      if [[ -z $state ]]; then
+        skip "failed units ($scope): no $scope manager reachable"
+        continue
+      fi
+      printf 'systemd (%s): %s\n' "$scope" "$state"
+      mapfile -t lines < <(systemctl "${flag[@]}" --failed --no-legend --plain 2>/dev/null |
+        awk 'NF { print $1, "load=" $2, "active=" $3, "sub=" $4 }')
+      if ((${#lines[@]})); then
+        local line
+        for line in "${lines[@]}"; do
+          printf 'failed (%s): %s\n' "$scope" "$line"
+        done
+      else
+        printf 'failed (%s): none\n' "$scope"
+      fi
+    done
+  else
+    skip "failed units: systemctl absent"
+  fi
+
+  section docker-disk
+  # What docker holds on disk, and what of it nothing uses: dangling images (untagged layers a
+  # newer pull left behind), and tagged images no container, running or stopped, was made from.
+  if ((docker_ok)); then
+    docker system df 2>&1
+    local id bytes=0 used=" " ref size unused=()
+    mapfile -t lines < <(docker image ls -q --no-trunc -f dangling=true 2>/dev/null | sort -u)
+    for id in "${lines[@]}"; do
+      bytes=$((bytes + $(docker image inspect --format '{{.Size}}' "$id" 2>/dev/null || echo 0)))
+    done
+    printf 'dangling images: %d, %s\n' "${#lines[@]}" "$(gib "$bytes")"
+    for name in "${names[@]}"; do
+      used+="$(docker inspect --format '{{.Image}}' "$name") "
+    done
+    while IFS=$'\t' read -r id ref size; do
+      [[ -n $id && $used != *" $id "* ]] && unused+=("$ref  $size")
+    done < <(docker image ls --no-trunc -f dangling=false \
+      --format '{{.ID}}{{"\t"}}{{.Repository}}:{{.Tag}}{{"\t"}}{{.Size}}' 2>/dev/null)
+    printf 'images no container uses: %d\n' "${#unused[@]}"
+    ((${#unused[@]})) && printf '  %s\n' "${unused[@]}"
+  else
+    skip "docker disk: docker unavailable"
   fi
 
   section skipped
@@ -456,15 +674,15 @@ probe() {
 }
 
 # The guard: redacts every IPv4 address, tailnet IPv6 address (fd7a:115c:a1e0::/48), and
-# MagicDNS name or suffix still in the output. A "package:" line comes from the package database
-# and its four-part versions (vulkan-icd-loader 1.4.363.0) read as addresses, so only tailnet
-# addresses are redacted there; every other line loses every IPv4 address, version or not. An
-# address ending a sentence ("10.0.0.1.") is still an address: only a dot followed by a digit
-# makes it part of a longer version. Hex and DNS names are matched in either case.
+# MagicDNS name or suffix still in the output. A "package:" or "update:" line comes from the
+# package database and its four-part versions (vulkan-icd-loader 1.4.363.0) read as addresses, so
+# only tailnet addresses are redacted there; every other line loses every IPv4 address, version
+# or not. An address ending a sentence ("10.0.0.1.") is still an address: only a dot followed by a
+# digit makes it part of a longer version. Hex and DNS names are matched in either case.
 redact() {
   sed -E \
     -e 's/(^|[^0-9.])100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])(\.[0-9]{1,3}){2}/\1[tailnet-ipv4]/g' \
-    -e '/^package: /!{' -e ':a' \
+    -e '/^(package|update): /!{' -e ':a' \
     -e 's/(^|[^0-9.])([0-9]{1,3}\.){3}[0-9]{1,3}($|[^0-9.]|\.$|\.[^0-9])/\1[ipv4]\3/' -e 'ta' -e '}' \
     -e 's/[Ff][Dd]7[Aa]:115[Cc]:[Aa]1[Ee]0:[0-9a-fA-F:]*/[tailnet-ipv6]/g' \
     -e 's/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[Tt][Ss]\.[Nn][Ee][Tt]/[magicdns-name]/g' \
