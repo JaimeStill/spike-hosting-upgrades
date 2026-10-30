@@ -12,8 +12,8 @@
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
 # it reads listening ports from ss -Hltn and docker port and drops the address from each, and
-# reports a container's published and configured ports by bind class (tailnet, all, loopback,
-# other), never by address. Engine endpoints are reached on 127.0.0.1 only, from the host or from
+# reports a container's published and configured ports by bind class (tailnet4, tailnet6, all,
+# loopback, other), never by address. Engine endpoints are reached on 127.0.0.1 only, from the host or from
 # inside the engine's container. A final guard redacts any IPv4 address, tailnet IPv6 address, or
 # MagicDNS name that slips through, so the output can be committed as is.
 #
@@ -221,19 +221,26 @@ probe() {
     skip "nvidia-ctk: absent"
   fi
 
-  # Whether a process may bind an address the host doesn't hold yet: 1 lets a container that
-  # binds the tailnet address start before Tailscale has assigned it.
+  # Whether a process may bind an address the host doesn't hold yet, one key per address family:
+  # 1 lets a container that binds the tailnet address of that family start before Tailscale has
+  # assigned it. The IPv6 key is absent on a kernel without IPv6.
   if [[ -r /proc/sys/net/ipv4/ip_nonlocal_bind ]]; then
     printf 'net.ipv4.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv4/ip_nonlocal_bind)"
   else
     skip "net.ipv4.ip_nonlocal_bind: /proc/sys/net/ipv4/ip_nonlocal_bind unreadable"
   fi
+  if [[ -r /proc/sys/net/ipv6/ip_nonlocal_bind ]]; then
+    printf 'net.ipv6.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv6/ip_nonlocal_bind)"
+  else
+    echo "net.ipv6.ip_nonlocal_bind: absent"
+  fi
 
   section engines
   local name names=()
-  # The kind of address a published port binds, never the address: tailnet (100.64.0.0/10,
-  # fd7a:115c:a1e0::/48), all (0.0.0.0, ::, or no address given), loopback (127.0.0.0/8, ::1), or
-  # other. The address is dropped here, before anything prints; the redact guard is the backstop.
+  # The kind of address a published port binds, never the address: tailnet4 (100.64.0.0/10),
+  # tailnet6 (fd7a:115c:a1e0::/48), all (0.0.0.0, ::, or no address given), loopback
+  # (127.0.0.0/8, ::1), or other. The family matters because each has its own ip_nonlocal_bind
+  # key. The address is dropped here, before anything prints; the redact guard is the backstop.
   bind_class() {
     local ip=${1#[}
     ip=${ip%]}
@@ -246,9 +253,10 @@ probe() {
       echo all
     elif [[ $ip == 127.* || $ip == ::1 ]]; then
       echo loopback
-    elif [[ $ip == fd7a:115c:a1e0:* ]] ||
-      { [[ $# -eq 4 && $1 == 100 && $2 =~ ^[0-9]+$ ]] && ((10#$2 >= 64 && 10#$2 <= 127)); }; then
-      echo tailnet
+    elif [[ $ip == fd7a:115c:a1e0:* ]]; then
+      echo tailnet6
+    elif [[ $# -eq 4 && $1 == 100 && $2 =~ ^[0-9]+$ ]] && ((10#$2 >= 64 && 10#$2 <= 127)); then
+      echo tailnet4
     else
       echo other
     fi

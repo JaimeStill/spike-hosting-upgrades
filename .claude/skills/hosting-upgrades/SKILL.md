@@ -146,9 +146,10 @@ another way the probe doesn't read (an environment variable such as `LLAMA_ARG_C
 preset or config file); a flag outside the filter's list doesn't show either.
 Each engine container also carries a `published ports` line (what it publishes now, or `none`,
 and `none (no network)` when it is on no network) and a `configured binds` line (the bindings it
-was created with), each port named by its bind class: `tailnet`, `all`, `loopback`, or `other`.
-`== container-runtime ==` prints `net.ipv4.ip_nonlocal_bind`. Step 5's boot-order check reads all
-three.
+was created with), each port named by its bind class: `tailnet4` (the tailnet IPv4 address),
+`tailnet6` (the tailnet IPv6 address), `all`, `loopback`, or `other`. `== container-runtime ==`
+prints `net.ipv4.ip_nonlocal_bind` and `net.ipv6.ip_nonlocal_bind` (`absent` on a kernel without
+IPv6). Step 5's boot-order check reads them all.
 A probe whose command is absent on the host prints `skipped:` and the probe goes on; a skip is a
 fact too, and the report keeps it. The probe prints no network address: it reads listening ports
 from `ss -Hltn` and `docker port` and drops the address from each, and a final guard redacts any
@@ -241,23 +242,32 @@ root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root"
 
 An engine container that binds its port on the tailnet address can't publish it until Tailscale
 has assigned that address, and docker may start first at boot. Read each engine container's
-`published ports` and `configured binds` lines and `net.ipv4.ip_nonlocal_bind` from the probe,
-and report each of these in the section, cited to the probe:
+`published ports` and `configured binds` lines and both `ip_nonlocal_bind` keys from the probe,
+and report each of these in the section, cited to the probe. Each family has its own key: a
+`tailnet4` bind is judged against `net.ipv4.ip_nonlocal_bind`, and a `tailnet6` bind against
+`net.ipv6.ip_nonlocal_bind`.
 
-- **A tailnet bind with `ip_nonlocal_bind` 0**: flag that a boot where docker starts before
-  Tailscale leaves the container with no published port. The remedy is
-  `net.ipv4.ip_nonlocal_bind = 1` in a file under `/etc/sysctl.d`, a root step the architect runs
+- **A `tailnet4` or `tailnet6` bind with its family's key 0 (or the IPv6 key `absent`)**: flag
+  that a boot where docker starts before Tailscale leaves the container with no published port.
+  The remedy is the matching key, `net.ipv4.ip_nonlocal_bind = 1` or
+  `net.ipv6.ip_nonlocal_bind = 1`, in a file under `/etc/sysctl.d`, a root step the architect runs
   (the run prints it as "Facts that need root" does, and never runs it). Its side effect: any
-  process on the host may then bind an address the host doesn't hold yet. Its rollback, also
-  root, is removing the file and running `sysctl -w net.ipv4.ip_nonlocal_bind=0`, or rebooting:
+  process on the host may then bind an address of that family the host doesn't hold yet. Its
+  rollback, also root, is removing the file and running `sysctl -w <key>=0`, or rebooting:
   `sysctl --system` alone leaves the value at 1, since it applies only the keys a file sets.
 - **A running container whose `published ports` is `none` while its `configured binds` is not**:
   flag that it serves nothing off the host, however healthy docker reports it, which is the
-  boot-order failure itself. The recovery is `docker network connect bridge <name>`, which needs
-  no root; the architect runs it. A container configured with no binds (one on the host's network,
-  say) publishes nothing by design, and a stopped container publishes nothing either; neither is
-  flagged.
-- **`ip_nonlocal_bind` 1**: report the remedy as present, with its side effect.
+  boot-order failure itself. The recovery depends on the cause, and needs no root either way; the
+  architect runs it:
+  - `published ports none (no network)`: the container is attached to no network. The recovery
+    is `docker network connect bridge <name>`.
+  - `published ports none`, still on a network: the start failed to bind. The recovery is
+    `docker restart <name>`, once the address exists.
+
+  Either recovery serves the container now; the sysctl remedy above prevents it recurring, so
+  point to it. A container configured with no binds (one on the host's network, say) publishes
+  nothing by design, and a stopped container publishes nothing either; neither is flagged.
+- **A family's key 1**: report the remedy as present for that family, with its side effect.
 
 ### 6. Engines
 

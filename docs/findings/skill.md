@@ -140,3 +140,31 @@ aside).
   container publishes `8080/tcp tailnet` and is configured with `8080/tcp tailnet`; the exited
   vllm container publishes none and is configured with `8000/tcp tailnet`.
 - **Tailnet identifiers**: none in either output.
+
+## The probe's bind classes by address family, 2026-10-30
+
+The probe's bind classes now split the tailnet by address family, `tailnet4` (100.64.0.0/10) and
+`tailnet6` (fd7a:115c:a1e0::/48), since each family has its own `ip_nonlocal_bind` key, and
+`== container-runtime ==` prints `net.ipv6.ip_nonlocal_bind` beside the IPv4 key (`absent` when
+the kernel has no IPv6). The session ran the updated probe on both hosts, read-only and without
+sudo, from the repository root:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-families.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-families.txt
+```
+
+Beside the new lines, the outputs matched each host's previous probe (memory figures and uptimes
+aside).
+
+- **framework**: `net.ipv4.ip_nonlocal_bind: 0` and `net.ipv6.ip_nonlocal_bind: 0`. The running
+  llama container publishes `8080/tcp tailnet4` and is configured with `8080/tcp tailnet4`; the
+  exited vllm container publishes none and is configured with `8000/tcp tailnet4`. Every bind is
+  IPv4, so the IPv4 key is the one that matters here, and it is still without the remedy.
+- **gb10-1**: `net.ipv4.ip_nonlocal_bind: 1` and `net.ipv6.ip_nonlocal_bind: 0`. The running
+  llama container publishes `8080/tcp tailnet4` and is configured with `8080/tcp tailnet4`; the
+  exited vllm container publishes none and is configured with `8000/tcp tailnet4`. Every bind is
+  IPv4, so the IPv4 remedy covers them; the IPv6 key at 0 matters only if a container is given a
+  `tailnet6` bind.
+- **Tailnet identifiers**: none in either output, and no redaction marker either: the address
+  was dropped before printing, not caught by the guard.
