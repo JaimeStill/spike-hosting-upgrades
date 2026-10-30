@@ -140,12 +140,20 @@ and of every weight file the repository holds for it, from what the file is, nev
 an extension says what a file claims to be, and `.bin` names a pickle checkpoint, a GGML file, or
 raw bytes alike.
 
-1. **The record's file metadata.** Read the Hugging Face record: the `siblings` list, and the
-   format the record itself parsed (`https://huggingface.co/api/models/<id>?expand[]=gguf` for a
-   GGUF, `?expand[]=safetensors` for safetensors, which the record fills only when the files parse
-   as that format). Where the record or the file's page exposes Hugging Face's own scan results
-   (its pickle scan, listing the imports a pickle would run), cite them in the row.
-2. **The file's first bytes**, when the record doesn't settle a file's format: a ranged read of
+1. **The Hugging Face record's file metadata.** Read each file's own record from the Hub's tree
+   listing, `https://huggingface.co/api/models/<id>/tree/main?expand=true`. The repository-level
+   record (`?expand[]=gguf`, `?expand[]=safetensors`) says what the repository holds, not what
+   each file is: a multi-quant repository holds many files under one record. Per file, the
+   listing's `securityFileStatus` carries the scanners' verdicts, among them a message naming the
+   format (its `jFrogScan` message, such as "Safe GGUF model", "Safe PyTorch model", or "Safe
+   model, does not support code execution on load."), and a `pickleImportScan` that lists the
+   imports a pickle would run, each with its module, name, and safety. Cite the file's entry in
+   the row. As read 2026-10-30, `unsloth/Qwen3-0.6B-GGUF` gives each `.gguf` file "Safe GGUF
+   model" with an unscanned pickle scan, and `openai-community/gpt2` gives `model.safetensors`
+   "Safe model, does not support code execution on load." and `pytorch_model.bin` "Safe PyTorch
+   model" with a pickle scan listing three imports (`collections.OrderedDict`,
+   `torch._utils._rebuild_tensor_v2`, `torch.FloatStorage`), each "innocuous".
+2. **The file's first bytes**, when the file's record doesn't settle its format: a ranged read of
    the file's start through WebFetch (`https://huggingface.co/<id>/resolve/main/<file>`), asking
    for its first bytes verbatim, in hex. WebFetch sets its own request headers, so when it can't
    return the start of the file (a file past its size limit, say), the read is recorded as not
@@ -158,13 +166,13 @@ raw bytes alike.
    When neither read settles the format, the file fails as a pickle would, and the row says what
    was read.
 
-GGUF and safetensors pass. A pickle, a zip-based torch checkpoint, or a model whose card or config
-needs `trust_remote_code` or other shipped code fails unless the code is on the policy's
-"Accepted code" list: the same repository, at the exact revision the host would load, and the
-file the architect reviewed. A model whose code isn't listed is skip, failed at artifact
-integrity, and the run proposes the acceptance under "Proposed changes", "Policy and the model
-gates" (SKILL.md, step 10), naming the repository, the revision, and the file to review. The run
-never adds to the list.
+GGUF and safetensors pass. A pickle, a zip-based torch checkpoint, a file the scanner marks as a
+pickle with imports (a `pickleImportScan` that lists any), or a model whose card or config needs
+`trust_remote_code` or other shipped code fails unless the code is on the policy's "Accepted code"
+list: the same repository, at the exact revision the host would load, and the file the architect
+reviewed. A model whose code isn't listed is skip, failed at artifact integrity, and the run
+proposes the acceptance under "Proposed changes", "Policy and the model gates" (SKILL.md, step 10),
+naming the repository, the revision, and the file to review. The run never adds to the list.
 
 ### Quantization floor
 

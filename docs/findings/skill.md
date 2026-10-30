@@ -513,3 +513,37 @@ Both sections set `--parallel`, so it isn't auto, and the cache is split. Per se
 The fix for either is a context, slot count, or unified cache that gives each session at least
 32,768 tokens: `-c 131072 --parallel 4` split, or a unified pool, which the gb10-1 report of
 2026-10-30 already holds as its proposed agent section.
+
+## The probe reads shell-form command lines, 2026-10-30
+
+The slice 7 review follow-ups gave `serving_flags()` the word-splitting `drafters()` uses: an
+argument with spaces that is not a flag or JSON is a shell-form command line (`sh -c
+"llama-server ..."`), read word by word. The `-c` before it is the shell's, so it is dropped. The
+whitelist is unchanged. Before the change, such a container printed the shell's `-c` with the
+whole command line as its value, paths and keys included, since `-c` is on the whitelist as
+llama.cpp's context size. Neither host runs a shell-form container, so their lines don't change.
+
+### Commands, exactly as run
+
+The session ran the probe on both hosts, read-only and without sudo, from the repository root,
+reaching each over the tailnet by its short name:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-s7b.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-s7b.txt
+```
+
+Both exited 0.
+
+### What the probe found
+
+- **Flags and drafter lines**: identical to each host's previous run (`-s7.txt`), on every
+  container, preset section, and router model. gb10-1's vllm container still prints `flags
+  --max-num-seqs 4 --max-model-len 8192 --gpu-memory-utilization 0.80 --kv-cache-dtype bfloat16`:
+  on vLLM `--max-model-len` caps each request rather than being shared across `--max-num-seqs`,
+  so each of its 4 sessions reaches 8,192 tokens, not 2,048 (vLLM's engine arguments: "Model
+  context length (prompt and output)"; <https://docs.vllm.ai/en/latest/configuration/engine_args.html>).
+- **Everything else**: unchanged apart from the memory counters, gb10-1's `llama` uptime (5 hours
+  to 6), and the order of gb10-1's two `llama` mounts.
+- **Tailnet identifiers**: none in either output (no `100.64.0.0/10` address, `fd7a:115c:a1e0:`
+  prefix, `.ts.net` name, or `tailscale`).

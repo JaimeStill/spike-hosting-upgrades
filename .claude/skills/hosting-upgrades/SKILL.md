@@ -437,6 +437,10 @@ descriptor declares.
      can reach it all while the others take what is left; a per-slot cap the engine applies (a
      `--kv-unified-per-slot`, the model's trained context) bounds it, and the report names the
      cap.
+   - **vLLM**: `--max-model-len`, which caps each request rather than being a total shared
+     across `--max-num-seqs`; the KV pool (from `--gpu-memory-utilization`) limits how many
+     sessions run at once, not how far each one reaches. So `--max-num-seqs 4 --max-model-len
+     8192` gives each session 8,192, not 2,048.
 
    Whether the cache is unified comes from the section's keys and the flags (`--kv-unified`,
    `-kvu`, `--no-kv-unified`). Where neither says, read the engine's default at the probed build
@@ -546,11 +550,11 @@ their checks are in [models.md](models.md); this step says what the section hold
    contradict each other) goes, without a pause, in the "origin unclear" list beside it, and
    never reaches a verdict either. Each entry names what the run checked, each source cited
    inline. A pass means "no disclosed or detected involvement at an excluding level", and the
-   section says so. A model that already fails a later gate (the floor, fit, the engine, the agent
-   bar), shown by a read the run has made, may stop at "not settled" for origin instead of being
-   researched to the end: its row says origin is not settled, that the research stopped because
-   the model fails that gate, and names the gate and its source (models.md, "Origin"). It is
-   listed under the gate it fails, not under "origin unclear".
+   section says so. A model that already fails a later gate (artifact integrity, the floor, fit, the
+   engine, the agent bar), shown by a read the run has made, may stop at "not settled" for origin
+   instead of being researched to the end: its row says origin is not settled, that the research
+   stopped because the model fails that gate, and names the gate and its source (models.md,
+   "Origin"). It is listed under the gate it fails, not under "origin unclear".
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",

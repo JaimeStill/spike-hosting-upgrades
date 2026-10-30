@@ -126,12 +126,16 @@ host step for a task to plan; a run names it and never takes it.
 ## Artifact integrity
 
 The file the host loads must not be able to run code when loaded. GGUF and safetensors pass. A
-pickle-based checkpoint (a raw pickle, or a zip-based torch checkpoint with a pickle inside), or a
-model that needs `trust_remote_code` or other code shipped with it, fails unless the code is on
-the "Accepted code" list below. The run reads the format from what the file is, never from its
-extension: from the Hugging Face record's file metadata, or else from the file's first bytes. A
-`.bin` file may be a pickle or not, and only its contents say which. Where Hugging Face shows its
-own security scan for the file, the run cites it.
+pickle-based checkpoint (a raw pickle, or a zip-based torch checkpoint with a pickle inside), a
+file Hugging Face's scanner marks as a pickle with imports, or a model that needs
+`trust_remote_code` or other code shipped with it, fails unless the code is on the "Accepted
+code" list below. The run reads the format from what the file is, never from its extension:
+first from the Hugging Face record's file metadata, the Hub's per-file tree listing
+(`https://huggingface.co/api/models/<id>/tree/main?expand=true`), whose security status names
+each file's format as the scanner read it ("Safe GGUF model", say) and lists the imports a pickle
+would run; then from the file's first bytes, where WebFetch can return them. A file that neither
+read settles fails as a pickle would. A `.bin` file may be a pickle or not, and only its contents
+say which. The run cites the file's security status in the row.
 
 **Accepted code.** The code the architect has reviewed and accepts, which only the architect
 edits. Each entry names the repository, the exact revision (a commit, not a branch or tag), and
@@ -231,6 +235,9 @@ that serves the agent purpose is judged by what one session can reach, not by it
 - `ctx-size / parallel` when the KV cache isn't unified: each slot holds its share alone
 - the whole pool, `ctx-size`, shared by every session, when it is unified, bounded by any
   per-slot cap the engine applies (a `--kv-unified-per-slot`, the model's trained context)
+- on vLLM, `--max-model-len`: it caps each request, not a total shared across
+  `--max-num-seqs`, so it is each session's context, and the KV pool (from
+  `--gpu-memory-utilization`) limits how many sessions run at once, not how far each reaches
 
 Whether the cache is unified comes from the preset's keys and the flags. Where neither says, the
 engine's default at the probed build decides, read from its source and cited. A preset whose

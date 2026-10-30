@@ -47,7 +47,8 @@ probe() {
   # shape serving (context, parallel slots, batching, offload, attention, KV cache and its
   # checkpoints, memory, sampling), each with its value. Only these flags print, so no model path,
   # address, alias, or key on the command line reaches the output. Both --flag value and
-  # --flag=value forms are read.
+  # --flag=value forms are read. A shell-form command line (sh -c "llama-server ...") arrives as
+  # one argument, and is read word by word, as drafters reads it.
   serving_flags() {
     awk '
       BEGIN {
@@ -70,13 +71,22 @@ probe() {
           "--frequency-penalty --dry-multiplier --xtc-probability --xtc-threshold --seed", w, " ")
         for (i = 1; i <= n; i++) want[w[i]] = 1
       }
-      { t[NR] = $0 }
+      # An argument with spaces that is not a flag or JSON is a shell-form command line: its
+      # words are read as arguments. The -c before it belongs to the shell, not to the context
+      # size (whose value has no spaces), so it is dropped, never read with the first word.
+      {
+        if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/) {
+          if (n_t && t[n_t] == "-c") n_t--
+          n = split($0, w, /[[:space:]]+/)
+          for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
+        } else t[++n_t] = $0
+      }
       END {
         out = ""
-        for (i = 1; i <= NR; i++) {
+        for (i = 1; i <= n_t; i++) {
           f = t[i]; v = ""
           if (f ~ /^-[^=]*=/) { v = " " substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1) }
-          else if (i < NR && t[i + 1] !~ /^-/) v = " " t[i + 1]
+          else if (i < n_t && t[i + 1] !~ /^-/) v = " " t[i + 1]
           # A preset key reaches here as --<key>, so a short key (c, np) arrives as --c: read it
           # as its short flag.
           if (!(f in want) && f ~ /^--/ && substr(f, 2) in want) f = substr(f, 2)
