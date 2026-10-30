@@ -236,8 +236,8 @@ The verdict rules are the same as SKILL.md's "Verdicts". For a model:
 - **verify**: an attributed benchmark on the same host class and backend measured it ahead of the
   incumbent, or at the incumbent's speed with better card evals for the purpose.
 - **take**: a new revision of the incumbent's own file (the same repository, the same build)
-  whose publisher claims nothing for it and reports no regression; applied with the next host
-  update.
+  that meets SKILL.md's "Verdicts" for take, its known rollback included; applied with the next
+  host update.
 - **hold**: its speed on the class is unpublished, comes from another class, or is a lead; or it
   is an agent candidate that needs measurement (Gate 4); or it is measured slower than the
   incumbent but ahead on the card's evals for the purpose. Measured slower but ahead on evals is

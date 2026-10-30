@@ -239,3 +239,26 @@ and one (the third) was framework's command alone.
 ### Both hosts
 
 - **Tailnet identifiers**: none in either output, and no redaction marker either.
+
+## The probe prints ~ for the home directory, 2026-10-30
+
+The redact guard gained one rule: the remote user's home directory (`$HOME` on the host) prints
+as `~`, by a literal string match on whole path components. The session ran the probe on both
+hosts, read-only and without sudo, from the repository root:
+
+```sh
+timeout 120 ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-framework-home.txt
+timeout 120 ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > .state/probe-gb10-1-home.txt
+```
+
+Each run was compared with the same host's run in the previous section (`-debt.txt`):
+
+- **Home paths**: each host's two mount sources now read `~/.cache/vllm` and
+  `~/repos/spike-model-engines/host/llama-preset`. The one `/home/` left in each output is the vllm
+  container's mount destination, `/home/vllm`, a path inside the container rather than the remote
+  user's home, which the rule leaves as it is.
+- **Everything else**: unchanged apart from the memory counters (`MemFree`, `MemAvailable`,
+  `Cached`, and on framework `SwapFree`). On gb10-1, the `apt lists` line also moved from
+  11:44:34 to 12:44:37: the host refreshed its own lists between the runs, the probe never does,
+  and the pending count stayed 0.
+- **Tailnet identifiers**: none in either output, and no redaction marker either.

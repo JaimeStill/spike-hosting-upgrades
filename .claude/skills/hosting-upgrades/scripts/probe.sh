@@ -16,7 +16,8 @@
 # reports a container's published and configured ports by bind class (tailnet4, tailnet6, all,
 # loopback, other), never by address. Engine endpoints are reached on 127.0.0.1 only, from the
 # host or from inside the engine's container. A final guard redacts any IPv4 address, tailnet
-# IPv6 address, or MagicDNS name that slips through, so the output can be committed as is.
+# IPv6 address, or MagicDNS name that slips through, and prints the remote user's home directory
+# as ~, so the output can be committed as is.
 #
 # The whole script is one function, called on its last line with stdin from /dev/null: bash reads
 # the script from stdin, so a command that reads stdin (docker exec) would otherwise eat the rest.
@@ -699,4 +700,32 @@ redact() {
     -e 's/\.[Tt][Ss]\.[Nn][Ee][Tt]/[magicdns-suffix]/g'
 }
 
-probe </dev/null 2>&1 | redact
+# Prints the remote user's home directory ($HOME on the host) as ~ on every line: mount sources,
+# stores, and any other path. The match is a literal string, never a regex built from $HOME, and
+# only a whole path component counts: /home/jaime matches in /home/jaime/models and on its own,
+# not in /home/jaimex or /data/home/jaime. An empty home, or /, replaces nothing.
+home_to_tilde() {
+  local home=${HOME%/}
+  if [[ -z $home ]]; then
+    cat
+    return
+  fi
+  HOME_PREFIX=$home awk '
+    BEGIN { h = ENVIRON["HOME_PREFIX"]; n = length(h) }
+    {
+      rest = $0; out = ""
+      while ((i = index(rest, h)) > 0) {
+        before = (i > 1) ? substr(rest, i - 1, 1) : (out == "" ? "" : substr(out, length(out), 1))
+        after = substr(rest, i + n, 1)
+        if (before !~ /[A-Za-z0-9._\/~-]/ && after !~ /[A-Za-z0-9._~-]/) {
+          out = out substr(rest, 1, i - 1) "~"
+        } else {
+          out = out substr(rest, 1, i - 1 + n)
+        }
+        rest = substr(rest, i + n)
+      }
+      print out rest
+    }'
+}
+
+probe </dev/null 2>&1 | redact | home_to_tilde

@@ -281,9 +281,9 @@ verify item, with its rollback, is a later task's, and the report says what each
 Each item names what the probe found, cited to its section, and takes a verdict by "Verdicts"
 (step 6) with its sources:
 
-- **take** is an update of something the host already runs (a package, firmware, an image to its
-  tag's newer release, a model file's new revision) that claims nothing and has no reported
-  regression.
+- **take** is as "Verdicts" (step 6) defines it, with the item's known rollback named in its
+  row, and under the same two rules: a root step with no rollback is hold, and an engine build is
+  never take.
 - **verify** needs an attributed gain, as everywhere; in this step it arises only where an update
   reaches the engine, and that item is judged in step 6 and referenced here.
 - **hold** is everything that needs the architect's decision before a later task acts on it: an
@@ -306,11 +306,12 @@ boot-order failure, a stopped engine), then by disk freed.
 2. **Firmware updates** (`== firmware-updates ==`). Each device with an update, by name, from and
    to, with the vendor's release notes for that version (LVFS or the vendor's page). "No updates"
    is an item too, with the fwupd metadata's date, which bounds what it can know. Applying
-   firmware is a root step; one with no downgrade path is hold.
+   firmware is a root step; one with no downgrade path has no rollback, so it is hold
+   ("Verdicts").
 3. **The kernel and a pending reboot** (`== kernel ==`). An installed kernel newer than the
    running one, or a pending reboot (`reboot: pending`), is an item: the reboot that takes it is
-   take when step 5's kernel row finds no regression at the installed version, and hold
-   otherwise.
+   take when step 5's kernel row finds no regression at the installed version and the running
+   kernel stays in the boot menu as its rollback, and hold otherwise ("Verdicts").
 4. **Failed units, and services meant to run** (`== units ==`, `== engines ==`). Every failed
    unit, system and user, with its state. Then every service a descriptor or container implies
    should run that doesn't: an engine unit that is disabled or inactive while the purpose it
@@ -408,8 +409,8 @@ descriptor declares.
    one.
 5. **The conclusion.** Name the most effective engine platform and configuration to date for the
    host: either an adjustment to the incumbent (a version, a backend, a flag) or a migration to
-   another engine, with its verdict by the same rules. Then list the other candidates, ordered
-   verify, take, hold, skip.
+   another engine, with its verdict by the same rules; a newer build of the incumbent is never
+   take ("Verdicts"). Then list the other candidates, ordered verify, take, hold, skip.
 
 An engine change is judged within how the host installs engines, which the probe shows (a
 container from the engine's published image, a systemd unit, a package). A candidate that needs
@@ -423,10 +424,16 @@ Every item in steps 5, 5b, 6, and 7 takes one of four verdicts:
 - **verify**: a source that names its hardware, engine version, and method (an attributed
   benchmark) measured a gain on the same host class and backend, and no such source reports a
   regression. A verify verdict is a reason to measure on this host, not a decision to adopt.
-- **take**: a version update of something the host already runs (a package, firmware, the
-  engine's build, a new revision of a model's file) that claims nothing and has no reported
-  regression. It needs no measurement first: it is applied with the next host update, which keeps
-  the host current. A change of engine, backend, or model is never take.
+- **take**: a version update of something the host already runs (a package, firmware, an image
+  to its tag's newer release, a new revision of a model's file) that claims nothing, has no
+  reported regression, and has a known rollback: the previous kernel kept in the boot menu, a
+  package downgrade from the cache, or the previous image tag. It needs no measurement first: it
+  is applied with the next host update, which keeps the host current. Two rules bound it:
+  - A root step with no rollback is hold, never take. Whenever both take and hold seem to apply,
+    hold wins.
+  - A change to the engine's build is never take, because engine changes go through
+    spike-model-engines' `engines` suite with anchors. A newer engine build is verify or hold,
+    by the rules here. Nor is a change of engine, backend, or model ever take.
 - **hold**: the only claim is release notes, or comes from another hardware class, or the
   upgrade needs a root step with no rollback. An agent candidate with no comparable evals, or no
   tool-reliability measurement, is hold, "needs measurement" ([models.md](models.md), "Gate 4").
