@@ -288,9 +288,72 @@ Slices
 ```
 
 
+### Revision 3 · adopt the skill backlog, approved 2026-10-30
+
+```
+Research and origin
+  R1. A second, narrower research round feeds candidates the model parts
+      surfaced late to the origin part, so every ranked model has an origin
+      chain.
+  R2. A model already failing a later gate may stop at "not settled" for
+      origin, and the report says so.
+  R8. On a host whose inventory is unchanged since its last report, the run
+      researches only what moved, and cites that report for the rest.
+  R6. A version conflict among vendor notes that no verdict depends on is
+      settled by the probe, not a pause.
+
+Models
+  R3. A speed figure for another quantization of the same model stands in
+      for sorting at the same bit width and hardware class. It is marked as
+      a stand-in estimate and never makes an item verify.
+  R4. Evals from different cards compare only when both name the same suite
+      version and task set. Otherwise both are listed and the sort uses
+      speed alone, with the gap stated.
+  R12. docs/policy.md states a minimum context per agent session of 32,768
+      tokens, aiming at the model's native context when memory allows. The
+      engines and model-set steps compute each agent preset's per-session
+      context (ctx-size / parallel, or the unified pool) and flag presets
+      under the minimum.
+
+Policy and gates
+  R9. docs/policy.md gains an "Accepted code" list that the architect
+      edits: the repository, the exact revision, and the file reviewed. A
+      model whose code isn't listed is skip under artifact integrity, and the
+      acceptance is proposed under "Policy and the model gates".
+  R10. An adversary-origin drafter that a preset loads is a host
+      configuration fault, not an exclusion. Verification keeps it from
+      changing the output, so the target model stays eligible. Step 5b
+      flags it as hold, and the fix is removing it from the preset.
+  R7. The probe and report check that no preset section loads an excluded
+      drafter. R10 decides how the report treats a finding.
+  R11. Artifact integrity detects a pickle checkpoint from the file's format
+      (its magic bytes, or the HF record's file metadata), never from a .bin
+      extension.
+
+Inputs and reports
+  R5. gb10-1's descriptor lists spike-model-engines' GB10 measurements
+      under Measurements, as the run's Proposed changes named them.
+  Same-day report: a later run on a host that already has that date's
+      report writes <date>-2.md, then -3, and so on. The earlier one is never
+      edited. STANDARDS.md and SKILL.md step 11 change to say so.
+
+Slices
+  1-6. (done)
+  7. Adopt the backlog: R1-R12 and the same-day rule. Demo:
+     - setup still prints eight rules
+     - the probe's drafter check runs read-only on both hosts, recorded in
+       the finding
+     - a by-hand per-session context check flags gb10-1's 8,192-token
+       presets against 32,768
+  8. Fresh runs (the architect), each in a new session on skill:
+     /hosting-upgrades framework, then /hosting-upgrades gb10-1, writing
+     docs/reports/<host>/2026-10-30-2.md, or the date they run. Commit both
+     reports.
+```
+
 ## Progress
 
-slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) · editor ✓ · validation (architect, slice 6) ✓ framework 12067db, gb10-1 d849879 (review 8129462) · fresh runs on both hosts —
+slices 6/7 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) — · standards — · spec — · editor — · fresh runs (architect, slice 8) —
 
 ## Decisions
 
@@ -500,19 +563,13 @@ slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) �
 - skill: the gb10-1 validation run's findings and refinements are consolidated in a session
   report at the end of the session (architect, 2026-10-30).
 
-- skill: the skill backlog, for verify-framework's plan to take as its first slice beside the apply
-  step (architect, 2026-10-30, round 6): (1) a second, narrower research round that feeds late
-  candidates to the origin part; (2) "not settled" for a model already failing a later gate;
-  (3) whether a same-model, same-bit-width speed figure stands in for another quantization;
-  (4) comparing evals across cards; (5) listing spike-model-engines' GB10 measurements in gb10-1's
-  descriptor; (6) a version conflict among vendor notes is settled by the probe, not a pause;
-  (7) a check that no preset loads an excluded drafter; (8) researching only what moved on an
-  unchanged host; (9) how the architect accepts code by name for the artifact-integrity gate;
-  (10) whether a loaded, not bundled, adversary-origin drafter excludes; (11) pickle detected by
-  format, not the .bin extension; (12) a minimum per-session context for the agent purpose, set at
-  or after verify-gb10's --kv-unified measurement.
-- skill: before SHIP, fresh runs of the current skill on framework and gb10-1, each in a new
-  session (architect, 2026-10-30).
+- skill: revision 3 (architect, 2026-10-30, rounds 6 and 7): the 12 improvements from the gb10-1
+  validation land in this task, as slice 7 (R1-R12), then fresh runs on both hosts (slice 8)
+  before SHIP. A same-model, same-bit-width speed figure stands in for sorting, never for verify;
+  cross-card evals compare only on the same suite version and tasks; accepted code is a policy
+  list the architect edits; a loaded adversary-origin drafter is a configuration fault, not an
+  exclusion; the minimum agent session context is 32,768 tokens; a later same-day report is
+  <date>-2.md. Eight slices, a third exception the architect approved.
 
 ## Pending edits
 
