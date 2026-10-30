@@ -331,6 +331,28 @@ slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-
   an engine's container, not sources.
 - skill: the probe classes an IPv4-mapped IPv6 address by its IPv4 part.
 
+- skill: the floor reads as three paths (architect, 2026-10-30): trained-in formats (native, QAT) pass
+  by name when the publisher releases them; publisher post-training checkpoints pass only with every
+  reported eval within about 1% relative; everything else meets Q5_K_M/FP8, and embedding, ASR, and
+  dense models under 8B effective meet Q8_0/FP8. This amends behavior 3's floor reading.
+- skill: a file's floor path comes from its provenance (the publisher's repo and card, the GGUF or
+  card base_model), never its label; ggml-org's Gemma 4 26B-A4B Q4_0 is post-training and fails,
+  Google's QAT passes (from gb10-2's finding, 2026-10-30). Rows name the exact repo, file, and
+  projector with its precision.
+- skill: origin excludes any involvement of a Chinese AI lab or other entity adversarial to the USA,
+  at any level (architect, 2026-10-30): 15 CFR 791.4 countries, entities domiciled in or controlled
+  from them, the Consolidated Screening List; levels are publisher and uploader, the base chain, a
+  distillation teacher, a synthetic-data generator, and components. A pass means no disclosed or
+  detected involvement. Stricter than ai-strategy.md and than the brief's first rule.
+- skill: "origin unclear" first triggers further research (uploader identity and affiliation, the
+  conversion against the publisher's weights, the publisher's channels); only what research can't
+  settle is held out, with no pause (architect, 2026-10-30). Amends behaviors 3 and 7.
+- skill: origin is never a pause; a file whose floor path provenance doesn't settle pauses, defaulting
+  to "fails the floor".
+- skill: the Consolidated Screening List's downloads exceed WebFetch's 10 MiB and its search API needs
+  a key, so a run writes "screening list not read" until the architect decides; eCFR is read through
+  its renderer API.
+
 ## Pending edits
 
 - coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
