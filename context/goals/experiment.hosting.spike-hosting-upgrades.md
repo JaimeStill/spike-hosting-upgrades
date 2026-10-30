@@ -202,7 +202,7 @@ Slices
 
 ## Progress
 
-slices 4/4 committed · standards — · spec — · editor — · walkthrough (architect, slice 5) —
+slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-up 506918c · editor — · walkthrough (architect, slice 5) —
 
 ## Decisions
 
