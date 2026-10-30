@@ -353,6 +353,12 @@ slices 4/4 committed · standards ✓ (2 fixes) · spec ✓ (no gaps) · follow-
   a key, so a run writes "screening list not read" until the architect decides; eCFR is read through
   its renderer API.
 
+- skill: the Consolidated Screening List is read by a second bundled script that downloads trade.gov's
+  public CSL JSON once a day into .state/ and matches normalized names with jq (architect, 2026-10-30);
+  rejected a developer.trade.gov key and dropping the list. A miss is "no match", never clean. It is
+  behavior 8's one curl exception, and the readiness check prints its exact rule. Built in the tuning
+  pass after the walkthrough.
+
 ## Pending edits
 
 - coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
