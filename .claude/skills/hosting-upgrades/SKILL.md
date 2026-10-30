@@ -462,7 +462,8 @@ their checks are in [models.md](models.md); this step says what the section hold
    publishers in [sources.md](sources.md), "Models", and what a web search finds. A model whose
    card serves several purposes (a multimodal model that takes text, images, and audio) is a
    candidate for each, and the report says which incumbents it would replace.
-3. **The gates, in order**: the policy (the origin rule, then the quantization floor, as
+3. **The gates, in order**: the policy (the origin rule, then artifact integrity, then the
+   quantization floor, as
    `docs/policy.md` states them and reads them), a fit in the probed memory, and the host's engine
    serving the architecture on its backend, and, for the agent purpose, the policy's agent
    quality bar. A model that fails a gate stops there and is listed with the gate it failed and
@@ -475,9 +476,11 @@ their checks are in [models.md](models.md); this step says what the section hold
 4. **Excluded on origin, and origin unclear.** The run builds each model's evidence chain
    (publisher identity, the publisher's own documents, then artifact checks, as models.md,
    "Origin", gives it). A model with any disclosed or detected involvement of an adversarial
-   entity, at any level the policy names, goes in the section's "excluded on origin" list and
-   never reaches a verdict. Each entry names the level and cites, inline, the URL and read date of
-   the source that shows it. A model the chain leaves short of the policy's pass bar, with no
+   entity at a level the policy excludes on, or a publisher or uploader that fails the policy's
+   compliance gate, goes in the section's "excluded on origin" list and never reaches a verdict.
+   Each entry names the level and cites, inline, the URL and read date of the source that shows
+   it. Involvement at a level the policy only records goes in the model's row, cited, and the
+   model goes on to the next gate. A model the chain leaves short of the policy's pass bar, with no
    involvement found, is researched further (the uploader's identity and affiliation, the
    conversion against the publisher's weights, the publisher's own mentions of it, the uploader's
    other work) until the answer is definitive; a model the research brings to the pass bar passes,

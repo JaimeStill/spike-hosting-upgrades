@@ -20,32 +20,45 @@
 - <an entity domiciled in, or owned or controlled from, such a country>
 - <an entity on a named screening list>
 
-<!-- The levels of a model at which involvement excludes it, such as the publisher, the uploader,
-     the base chain, a distillation teacher, a synthetic-data generator, a judge, a labeler, a
-     translator, and a component. -->
+<!-- The threat the rule guards against, in a sentence or two, so the levels below can be read by
+     it: what an adversary's involvement could do to the served model. -->
 
-**Levels.** The model is excluded on any disclosed or detected involvement at any of these:
+**The threat.** <What the rule guards against.>
+
+<!-- The levels of a model at which involvement excludes it: those that give an adversary control
+     over the model's behavior, such as its weights (the publisher, the base chain, a merge), its
+     behavioral training signal (a distillation teacher, a generator of the responses or traces it
+     trained on), and the components in its inference path (an encoder, a projector, the
+     tokenizer). -->
+
+**Excluding levels.** The model is excluded on any disclosed or detected involvement at any of
+these:
 
 - <level>
 
-<!-- Optional. What doesn't count as involvement, such as a chat template, a tool-call format, or
-     an input-placeholder layout copied from an excluded family. Delete it if every resemblance
-     counts. -->
+<!-- Optional. The levels at which involvement is recorded and doesn't exclude, such as a model
+     that only transformed data (punctuation restoration, translation, filtering, quantization
+     calibration), a component outside the output path (a speculative-decoding drafter), and a
+     convention (a chat template, a tool-call format, an input-placeholder layout). Delete it if
+     every involvement excludes. -->
 
-**Conventions are not involvement.** <What a model may share with an excluded family without
-being excluded.>
+**Recorded levels.** <What is recorded in a model's row without excluding it.>
 
 <!-- How the run judges a model's components: as the publisher ships them, or as the project
      would configure them. -->
 
 **Components.** A model is judged <with the components its publisher ships, or as configured>.
 
-<!-- Which training data counts as involvement: such as data an excluded model generated,
-     labelled, judged, or translated, a subset inside a larger dataset included. Say how the run
-     records data that doesn't count, how it reads a model whose relevant subsets can't be told
-     apart, and why the line is drawn there. -->
+<!-- Which training data counts as involvement, a subset inside a larger dataset included. Say how
+     the run records data that doesn't count, how it reads a model whose relevant subsets can't be
+     told apart, and why the line is drawn there. -->
 
 **Data.** <Which data excludes a model, and which the run records instead.>
+
+<!-- Optional. Whether dealing with an adversarial publisher or uploader excludes a model whatever
+     its levels show. -->
+
+**Compliance.** <Whether an adversarial publisher or uploader excludes the model outright.>
 
 <!-- What a model must show to pass, and what a pass does and doesn't claim. -->
 
@@ -64,6 +77,13 @@ involvement found, the run researches <what> before deciding.
 
 **Origin unclear.** A model the research can't bring to the pass bar is held out as "origin
 unclear". The report lists it beside "excluded on origin", with what the run checked.
+
+## Artifact integrity
+
+<!-- Which file formats the host may load, and how the run treats a model that runs code when
+     loaded (a pickle checkpoint, trust_remote_code). -->
+
+<The formats that pass, and what fails until the architect accepts it.>
 
 ## Quantization floor
 

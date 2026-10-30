@@ -484,6 +484,21 @@ slices 5/5 committed · standards ✓ (3 fixes) · spec ✓ (editor gaps only) �
 - skill: the framework walkthrough (architect, 2026-10-30): its report and the seven rules are
   committed as 12067db; its six sampled claims and the blocklist review are done. It ran in auto
   mode, so whether the exact ssh rule matches outside auto mode is untested.
+- skill: the origin rule is refined (architect, 2026-10-30, during the gb10-1 validation run). A
+  level excludes by how much control it gives an adversary's model over the served behavior:
+  weights (publisher, base chain, merges), behavioral training signal (a teacher, a generator of
+  the responses, traces, or preferences trained on), and components in the inference path
+  (encoders, projector, tokenizer) exclude. Narrow transformations (punctuation restoration,
+  translation, filtering, quantization calibration), components outside the output path (a
+  speculative-decoding drafter), and conventions are recorded, not excluded. The data rule narrows
+  to the behavioral signal. Compliance (an adversarial publisher or uploader) is its own gate, and
+  a new artifact-integrity gate passes GGUF and safetensors and fails code-running checkpoints.
+  Rejected "any contact at any level", which the gb10-1 research showed caught a drafter,
+  calibration data, and a punctuation labeler, none of which can steer output, and which excluded
+  the publishers that disclose their data. Amends behavior 3 and revision 2's data rule. A local
+  behavioral probe for adversary-aligned output is proposed, not adopted.
+- skill: the gb10-1 validation run's findings and refinements are consolidated in a session
+  report at the end of the session (architect, 2026-10-30).
 
 ## Pending edits
 

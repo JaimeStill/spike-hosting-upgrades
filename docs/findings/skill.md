@@ -262,3 +262,185 @@ Each run was compared with the same host's run in the previous section (`-debt.t
   11:44:34 to 12:44:37: the host refreshed its own lists between the runs, the probe never does,
   and the pending count stayed 0.
 - **Tailnet identifiers**: none in either output, and no redaction marker either.
+
+## Session report: gb10-1's validation run, 2026-10-30
+
+Slice 6 of task `skill`: the tuned skill's validation run on gb10-1, `/hosting-upgrades gb10-1`,
+in the architect's view. During the run the architect refined the origin rule, and the session
+carried the refinement through the policy and the skill. This section consolidates the session.
+The run's own record is the report, [gb10-1, 2026-10-30](../reports/gb10-1/2026-10-30.md).
+
+### Commands, exactly as run
+
+The session ran the probe once, read-only and without sudo, from the repository root, by the
+readiness check's exact rule, with no `timeout` and no redirect:
+
+```sh
+ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
+```
+
+The origin research part ran the screening-list script twice from the repository root. It
+reported the names below; the commands are rebuilt from its report, not copied from a log:
+
+```sh
+.claude/skills/hosting-upgrades/scripts/screen.sh "Google LLC" "OpenAI" "International Business Machines" "IBM" "ggml-org" "ggml.ai" "NVIDIA Corporation" "Mistral AI" "Microsoft Corporation" "Meta Platforms" "Liquid AI" "mrutkows" "Michael Rutkowski" "Alphabet Inc" "Mistral AI SAS"
+.claude/skills/hosting-upgrades/scripts/screen.sh "Matt Rutkowski" "Google DeepMind" "Answer.AI" "LightOn" "Allen Institute for Artificial Intelligence" "Liquid AI, Inc." "Meta Platforms, Inc." "Kokoro" "Hugging Face"
+```
+
+Every name came back "no match on normalized name". The first call downloaded the day's list to
+`.state/csl/2026-10-30.json`. No other command touched a host; every other read was WebFetch,
+WebSearch, or `gh search`.
+
+### Network path and host stack
+
+The session's machine reached gb10-1 over the tailnet by SSH, by its short name. The host stack is
+the report's Inventory:
+
+- DGX OS 7.4.0 with OTA 7.6.0
+- kernel 7.0.0-1024-nvidia
+- driver 580.178.04
+- llama.cpp b11669 in `server-cuda13-b11669`
+
+### How the run went
+
+- **Readiness check.** All eight rules were present in `.claude/settings.json`.
+  - The probe ran under its exact ssh rule, and the session saw no denial.
+  - The session ran in plan mode, so whether a permission prompt reached the architect isn't
+    visible here.
+  - The question the framework walkthrough left open, whether the exact rule matches outside
+    auto mode, is therefore not settled by this run.
+- **Research.** The run split step 4 into SKILL.md's five parts (hardware and system, engines,
+  agent models, other models, origin), as five parallel subagents.
+  - Together they used about 578,000 tokens and 340 tool calls, and took up to about 10 minutes.
+  - The session then made three reads of its own: Muse-Glimmer's card and `.src_sha`, Granite
+    4.1's card, and b12004's release date.
+- **Pauses.** There were nine questions in all, each recorded with its answer in the report's
+  Inventory:
+  - three at step 3: the valid set, then two follow-ups on vision size and the audio build
+  - the agent preset, answered with two questions of the architect's own
+  - vLLM and the bare-metal stack
+  - the agent bar's floors
+  - the origin rule's edges, which became the refinement below
+  - conflicting DGX OS version notes
+  - one source's tier
+
+### The architect's decisions
+
+1. **The valid set.**
+   - agent: gpt-oss-120b MXFP4
+   - vision: Gemma 4 QAT Q4_0, 26B-A4B or 31B
+   - audio: Gemma 4 E4B QAT Q4_0
+   - embedding: granite-embedding-english-r2 BF16
+
+   Every other stored or listed model is extraneous.
+2. **Containerized llama.cpp stays the GB10 engine.** vLLM stays down unless a finding favours it,
+   and the bare-metal units and the vllm container are to be removed.
+3. **The agent bar's floors are confirmed:** BFCL single-turn ≥ 0.630, multi-turn ≥ 0.325.
+4. **The origin rule is refined.** A level excludes by how much control it gives an adversary's
+   model over the served behavior.
+   - **Excluding levels:** weights, behavioral training signal, and components in the inference
+     path.
+   - **Recorded levels:** narrow transformations, components outside the output path, and
+     conventions.
+   - **Two new gates:** compliance, and artifact integrity.
+5. **DGX OS version conflicts:** "trust the current state of the GB10 workstation". The probe's
+   installed versions decide.
+6. **ggml-org's `benches/dgx-spark/dgx-spark.md` is an attributed benchmark.**
+7. **Refinements are worked out in this session** and consolidated here, rather than handed to
+   another session.
+
+### Changes made in the session
+
+- **`docs/policy.md`:**
+  - Model origin is rewritten as the tiered levels, with the threat stated, the data rule
+    narrowed to behavioral training signal, and a compliance gate.
+  - A new "Artifact integrity" section passes GGUF and safetensors and fails code-running
+    checkpoints.
+  - The agent bar is marked confirmed.
+  - The granite example now records the research that passed the conversion.
+- **`.claude/skills/hosting-upgrades/models.md`:** origin's documents step notes each named model's
+  role. The judging rules follow the tiers, with compliance added. A new "Artifact integrity"
+  subsection sits under Gate 1.
+- **`.claude/skills/hosting-upgrades/SKILL.md`:** step 7 gates on artifact integrity after origin,
+  and excludes only at the levels the policy excludes on.
+- **`.claude/skills/hosting-upgrades/templates/policy.md`:** the template has the threat,
+  excluding and recorded levels, compliance, and an artifact-integrity section.
+- **`context/goals/experiment.hosting.spike-hosting-upgrades.md`:** two decisions, the refinement
+  and this session report.
+- **`docs/reports/gb10-1/2026-10-30.md`:** the run's report.
+
+`mise run check` passes. Nothing is committed: the commits are the architect's.
+
+### What the run found
+
+The report holds every finding with its citation; these are the ones that matter most.
+
+- **Per-session context is 8,192 tokens** on both agent sections. Each sets `--parallel`, which
+  leaves the KV cache split (llama.cpp source at b11669). gpt-oss-120b's trained context is
+  131,072.
+- **Memory and concurrency (estimate).** With the valid set loaded, about 20 GiB remains for
+  gpt-oss-120b's KV and buffer, which is **4 sessions at full context** at about 36 KiB per token.
+  ggml-org's GB10 curve halves per-stream decode at 4 streams.
+  - The proposed section `-c 524288 --parallel 4 --kv-unified` is **hold**.
+  - It still needs a check on whether a unified slot is capped at the trained context, and on
+    `--kv-unified-per-slot`.
+- **Vision, 31B against 26B-A4B.** 31B leads every shared eval: MRCR v2 128k 66.4 against 44.1,
+  MMMU Pro 76.9 against 73.8. It decodes about 6× slower on GB10 and costs about 6 GiB more, so
+  the run holds it: "measured slower, ahead on evals".
+- **The only verify item is image `server-cuda13-b12004`.** Its GB10 measurements are +17.2%
+  prefill on a mixture-of-experts model (#31188) and +7.1% on a dense one (#29948), and no
+  regression has been reported.
+- **llama.cpp #27148, open:** the RAM prompt cache can restore one conversation's content into
+  another slot under concurrent load. It is on by default; `--cache-ram 0` is held until #27624
+  lands.
+- **Origin:**
+  - The granite embedding conversion passes after research: an IBM employee, IBM's own
+    conversion repository naming the model, and exact shapes.
+  - gpt-oss-120b's bundled Eagle3 drafter is recorded, not excluding, and must not be loaded.
+  - Only the Nemotron family is excluded.
+- **Debt.** Removals worth about 161 GiB of models, plus the vllm container and image, the
+  bare-metal units, and an unused 10 GB image. All are hold, citing the architect's decision. The
+  preset's extraneous sections belong to spike-model-engines, which owns the preset.
+
+### What the run showed about the skill
+
+These are for the skill's next tuning pass. The report's "Proposed changes" carries the
+source-list and descriptor items.
+
+- **The research partition left gaps** that only show at synthesis:
+  - origin chains for candidates the model parts surfaced late (Muse-Glimmer, Granite 4.1, Flint,
+    Mistral Small 4)
+  - Llama 4 Scout, which nobody researched
+  - E4B's config, needed for its KV estimate
+  - the mmproj files' precision, which the API doesn't show
+
+  A second, narrower round after the model parts, feeding their candidates to the origin part,
+  would close most of them.
+- **"Origin unclear" carried candidates the research didn't finish.** The policy asks for
+  research until the answer is definitive. The run listed five models as not settled, each
+  already failing another gate. The skill could say that a model failing a later gate may stop at
+  "not settled", and say so.
+- **Speed across quantizations.** No GB10 figure measures Google's QAT Q4_0 files, and the run
+  sorted by Q4_K_M figures of the same models. models.md, "Sort", should say whether a same-model,
+  same-bit-width figure stands in.
+- **Comparing evals across cards.** EmbeddingGemma 2's "MTEB (eng, v2)" and granite's "MTEB-v2
+  (41)" may be one suite, but neither card names its tasks.
+- **The descriptor's measurements decide what counts.** gb10-1's descriptor lists none, so
+  spike-model-engines' GB10 findings didn't count, though they are the basis of the architect's
+  engine decision. The report proposes listing three.
+- **Version conflicts among vendor notes.** The architect's answer, that the probe decides,
+  could go into sources.md, so that a conflict no verdict depends on isn't a pause.
+- **Bundled drafters.** A probe or report check that no preset section loads an excluded drafter
+  would make the recorded level enforceable.
+- **The run's cost.** Five research parts at about 578,000 tokens is the run's main expense. A
+  host whose inventory hasn't changed since its last report could research only what moved.
+
+### Open after the session
+
+- **The architect's commit** of the report and the session's refinements, on `skill`.
+- **The goal record's Progress line** still reads slice 6 pending. It and any brief revision for
+  the origin refinement are the editor's to bring current.
+- **verify-gb10:** b12004 with anchors A and B, the `--kv-unified` agent section beside it in one
+  session, and then the removals, each with its rollback.
+- **A spike-model-engines task** for the preset: one agent section, the extraneous sections
+  removed, and no drafter loaded.

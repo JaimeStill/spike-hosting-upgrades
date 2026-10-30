@@ -25,39 +25,58 @@ serves. The spike excludes them, and excludes any model they had a hand in.
 - any entity domiciled in, or owned or controlled from, such a country
 - any entity on the trade.gov Consolidated Screening List
 
-**Levels.** The model is excluded on any disclosed or detected involvement of an adversarial
-entity at any of these levels:
+**The threat, and how far the rule reaches** (the architect's refinement, 2026-10-30). The rule
+guards against an adversary's model choosing, token by token, what our model learns or perceives,
+which could implant a backdoor, steering, or bias that survives into what we serve. So involvement
+excludes a model by how much control it gave over the model's behavior, not by any contact at all.
+The first reading, that any contact at any level excludes, caught a speculative-decoding drafter,
+quantization calibration data, and a punctuation-restoring labeler. None of these can steer the
+served output. It also excluded the publishers who disclose their data and passed the ones who
+stay silent.
 
-- the publisher, and the uploader of a conversion or quantization
-- every ancestor in the base chain
-- a distillation teacher
-- a synthetic-data generator, a judge, a labeler, or a translator, or a model the card says the
-  model was "improved using"
-- a component: a vision or audio encoder, the tokenizer, a drafter, or a projector
+**Excluding levels.** The model is excluded on any disclosed or detected involvement of an
+adversarial entity at any of these:
 
-**Conventions are not involvement.** A chat template, a tool-call format, or an
-input-placeholder layout copied from an adversary-origin family doesn't exclude a model. These
-are conventions, not weights or training signal: a model that formats its tool calls like
-GLM-4.5, or places its image tokens like Qwen3-VL, is judged by its levels above, not by its
-format.
+1. **Weights.** The publisher, every ancestor in the base chain, and a model merged into it.
+2. **Behavioral training signal.** A distillation teacher, or a model that generated the
+   responses, reasoning traces, or preferences the model trained on, including a model the card
+   says it was "improved using" in that role.
+3. **Components in the inference path.** A vision or audio encoder, a projector, or the
+   tokenizer, judged as the publisher ships them: an excluded component excludes the model even
+   when a flag would leave it out.
 
-**Components are judged as shipped.** A model is judged with the components its publisher ships
-it with, not as we might configure it. A model that ships an excluded component is excluded,
-even when a configuration flag would leave that component out.
+**Recorded levels.** Involvement at these is recorded in the model's row, cited, and doesn't
+exclude:
 
-**Data.** Only data an adversary-origin model generated, labelled, judged, or translated excludes
-a model, and that includes such a subset inside a larger dataset. The rule follows the threat: a
-model compromised on purpose, through content an adversary's model chose token by token.
+4. **Narrow transformations.** A model that touched data without choosing its content: punctuation
+   or capitalization restoration, translation of human-written text, a judge or classifier that
+   only filtered data, and the calibration data of a post-training quantization.
+5. **Components outside the output path.** A component that can't change what the model outputs,
+   such as a speculative-decoding drafter, whose every drafted token the main model verifies. A
+   drafter the host loads is still judged as a component, and the row says it is outside the
+   output path. A drafter bundled beside the model is recorded with its origin, and a preset never
+   loads an excluded one.
+6. **Conventions.** A chat template, a tool-call format, or an input-placeholder layout copied
+   from an adversary-origin family. These are conventions, not weights or training signal: a model
+   that formats its tool calls like GLM-4.5, or places its image tokens like Qwen3-VL, is judged
+   by its levels above, not by its format.
 
-- A human-made dataset from an adversary-origin institution doesn't exclude a model. The run
-  records it under "dataset sources" in the model's row.
-- A model that trained on a dataset holding a subset an adversary-origin model made, and that
-  doesn't say which subsets it used, is "origin unclear": its relevant subsets can't be told
-  apart.
+**Data.** Data excludes a model only at level 2: responses, traces, or preferences an
+adversary-origin model generated, a subset inside a larger dataset included. A model that trained
+on a dataset holding such a subset, and that doesn't say which subsets it used, is "origin
+unclear". Its relevant subsets can't be told apart. The following go in the model's row under
+"dataset sources" and don't exclude:
 
-The reason: excluding every adversary-authored dataset would punish disclosure. Nearly every
-model trains on public datasets and few cards list them, so such a rule would exclude the
-publishers who disclose their data and pass the ones who stay silent.
+- a human-made dataset from an adversary-origin institution
+- data an adversary-origin model only transformed (level 4)
+
+Excluding every adversary-authored dataset would punish disclosure. Nearly every model trains on
+public datasets and few cards list them, so such a rule would exclude the publishers who disclose
+their data and pass the ones who stay silent.
+
+**Compliance, a gate of its own.** Apart from the threat above, the project deals with no
+adversarial entity. A publisher or an uploader that is an adversarial entity, by the lists above,
+excludes the model whatever its levels show.
 
 **The pass bar.** A model passes only when its publisher is an identified entity that is not an
 adversarial entity, the publisher's own documents establish its lineage, and no check finds
@@ -87,11 +106,25 @@ settled it.
 "origin unclear", without a pause. It never reaches a verdict or a model set. The report lists it
 beside "excluded on origin", with everything the run checked.
 
-For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16`, framework's embedding model on
-2026-10-30, is origin unclear: its repository has no card, and the conversion isn't the
-publisher's. The remedy is the project's own conversion from IBM's weights,
-`ibm-granite/granite-embedding-english-r2`, which makes the project the authority for the file.
-That conversion is a host step for a task to plan; a run names it and never takes it.
+For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16`, the embedding model on framework
+and gb10-1, has no card, and its converter isn't the publisher. framework's run of 2026-10-30 left
+it origin unclear. gb10-1's run of the same day researched further and passed it:
+
+- the uploader is an IBM employee who contributes to IBM's own conversion repository, IBM/gguf
+- that repository lists this model and describes test releases to a personal account
+- the GGUF's parameter count matches IBM's weights exactly
+
+When research can't settle a conversion like this, the remedy is the project's own conversion from
+the publisher's weights, which makes the project the authority for the file. That conversion is a
+host step for a task to plan; a run names it and never takes it.
+
+## Artifact integrity
+
+The file the host loads must not be able to run code when loaded. GGUF and safetensors pass. A
+pickle-based checkpoint, or a model that needs `trust_remote_code` or other code shipped with it,
+fails until the architect accepts that code by name. The run reads the format from the file name
+and the repository's files, and, where Hugging Face shows its own security scan for the file, cites
+it.
 
 ## Quantization floor
 
@@ -124,8 +157,8 @@ not compute, so it counts as under 8B.
 ## Agent quality bar
 
 A candidate for the agent purpose must clear this bar before speed sorts it: an agent model that
-is fast but can't call tools is no upgrade. The floors below are **proposed, for the architect to
-confirm in the validation run**. They are spike-model-hosting's bars for the agent role
+is fast but can't call tools is no upgrade. The architect confirmed the floors below in
+gb10-1's validation run of 2026-10-30. They are spike-model-hosting's bars for the agent role
 (spike-model-hosting `docs/pool.md`, whose profiles name "set A's BFCL bars"; the values are in
 `evaluation/bars.toml` and `docs/findings/baseline.md`, "Quality: each tier's two scores, spread
 and bar"): set A's gpt-oss-120b, measured twice on llama.cpp b11715, less its two-run spread.

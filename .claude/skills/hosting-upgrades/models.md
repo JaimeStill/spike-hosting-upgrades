@@ -43,11 +43,13 @@ file the host would load was made.
    distillation, and training-data sections, for every level the policy names: the base chain,
    followed through each record's `cardData.base_model` from the API record
    (`https://huggingface.co/api/models/<org>/<name>`) until a record names none; a distillation
-   teacher; a synthetic-data generator, a judge, a labeler, or a translator, or a model the card
-   says it was "improved using"; and each component the publisher ships (a vision or audio
-   encoder, the tokenizer, a drafter, a projector). Read the training-data sections for the
+   teacher; a model that generated responses, traces, or preferences, or that the card says the
+   model was "improved using"; a model that only transformed data (a labeler, a translator, a
+   filtering judge, quantization calibration data); and each component the publisher ships (a
+   vision or audio encoder, the tokenizer, a projector, a drafter). Note the role each named model
+   played, since the policy's levels turn on the role. Read the training-data sections for the
    datasets too: a dataset is involvement only as the policy's data rule says (below), and the
-   row lists the human-made datasets from adversary-origin institutions under "dataset sources".
+   row lists the datasets the rule records under "dataset sources".
    These documents are authoritative for what they disclose, and only for that.
 3. **Artifact checks.** These find contradictions with what the documents say; they can't prove a
    model clean. A check that ties the model to an adversarial entity is detected involvement.
@@ -87,18 +89,26 @@ file the host would load was made.
    makes the project the authority for the file. That conversion is a host step for a task to
    plan; the run names it under "Proposed changes" and never takes it.
 
-Then judge the model, reading the policy's own limits on what counts:
+Then judge the model, reading the policy's own limits on what counts. The policy separates the
+levels that exclude a model (its weights, its behavioral training signal, and the components in
+its inference path) from the levels it only records (narrow transformations, components outside
+the output path, and conventions):
 
-- **Conventions**: what the policy says is not involvement (a chat template, a tool-call format,
-  an input-placeholder layout copied from an excluded family) excludes nothing. The row names
-  the convention and the family it comes from.
-- **Components as shipped**: judge the model with the components its publisher ships. An
-  excluded component excludes the model even when a flag would leave it out.
+- **Recorded levels**: involvement at a level the policy records excludes nothing. The row names
+  the level, the adversary-origin model or family, and the source, cited inline, so the
+  architect sees it.
+- **Components as shipped**: judge the model with the components its publisher ships. An excluded
+  component in the inference path excludes the model even when a flag would leave it out. A
+  component outside the output path (a speculative-decoding drafter) is recorded, and the row
+  says the preset must not load an excluded one.
 - **Data**: only the data the policy's data rule names excludes. A dataset that holds such a
-  subset, used without saying which subsets, makes the model origin unclear. A human-made
-  dataset from an adversary-origin institution goes in the row under "dataset sources".
+  subset, used without saying which subsets, makes the model origin unclear. A dataset the rule
+  records goes in the row under "dataset sources".
+- **Compliance**: a publisher or uploader that is itself an adversarial entity excludes the model,
+  whatever its levels show.
 
-- **Excluded on origin**: any disclosed or detected involvement at any level. The model goes in
+- **Excluded on origin**: any disclosed or detected involvement at a level the policy excludes
+  on, or a compliance failure. The model goes in
   the section's "excluded on origin" list, with the level and the source that shows it, cited
   inline. It never reaches a verdict or the model set.
 - **Passes**: the publisher is identified and not an adversarial entity, its own documents
@@ -151,6 +161,14 @@ names the format, not how the weights were made. The build, not the label, is on
    build doesn't settle. The default is that the model fails the floor until the architect
    answers. The report still shows the gates it would otherwise pass, so the architect sees what
    the answer decides.
+
+### Artifact integrity
+
+The policy names the formats the host may load. Read the format from the file the host would load
+and the repository's files (`siblings`): a `.gguf` or `.safetensors` file passes; a pickle
+checkpoint (`.bin`, `.pt`, `.pth`, `.ckpt`), or a model whose card or config needs
+`trust_remote_code` or other shipped code, fails as the policy says. Where Hugging Face shows its
+own security scan for the file, cite it in the row.
 
 ### A model's row
 
