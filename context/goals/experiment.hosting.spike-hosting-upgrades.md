@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
+- **State:** building
 - **Task:** skill
 - **Branch:** skill
 
@@ -139,9 +139,70 @@ Door          two-way: the task adds a skill, project documents, and reports to 
               spike; its host step only reads, with no root; nothing is released.
 ```
 
+### Revision · redirect at BRIEF, approved 2026-10-30
+
+Problem, Test seams, Out of scope, and Door are unchanged. These behaviors are amended or added, and
+the slices continue as below (an exception to the four-slice limit, approved with this revision):
+
+```
+Behaviors (amended)
+  3.  The policy document also states two readings:
+      - The floor's "card evals within about 1% of BF16" means every eval the
+        card reports for the checkpoint is within about 1%, relative.
+      - A model whose base can't be established from its card, its API record,
+        or its publisher's repository or paper is held out as "origin unclear",
+        without a pause. It is listed beside "excluded on origin" with what the
+        run checked.
+  4.  The probe is run by its project-relative path, the same literal path the
+      readiness check's ssh rules name.
+  5.  The probe prints no network address: it reads only ports and drops the
+      address.
+  7.  The origin pause narrows to conflicting origin evidence. Undocumented
+      origin no longer pauses (behavior 3).
+  8.  The skill reads sources with WebSearch and WebFetch, GitHub included
+      (release pages, api.github.com JSON, raw files), and runs no curl. It
+      searches GitHub with `gh search`. A prompted `gh api` call is only the
+      fallback when unauthenticated API reads run out.
+
+Behaviors (added)
+  18. A readiness check, run after the inputs load at the start of every run:
+      - It works out the permission rules this workspace needs: one exact ssh
+        probe rule per host in the descriptors, `gh search issues` and
+        `gh search prs`, WebSearch, WebFetch, and edits under the reports
+        directory.
+      - It reads the project's .claude/settings.json and
+        .claude/settings.local.json.
+      - It prints the exact JSON for every missing rule and the file it belongs
+        in: settings.json for a skill inside the project, settings.local.json
+        for one installed outside it.
+      - It then asks whether to continue with prompts or wait while the
+        architect adds the rules.
+      - It never writes a settings file, and it prints no rule for `gh api`.
+  19. `/hosting-upgrades setup` runs the readiness check alone and prints the
+      full rule set, for a new workspace or a new host, without starting a run.
+  20. The skill's frontmatter grants no tools. A frontmatter grant clears at the
+      first pause, so the durable rules come from the readiness check.
+
+Slices
+  1-3. (committed)
+  4. Readiness check and policy readings (behaviors 3, 4, 5, 7, 8, 18-20): the
+     check and `setup`; the frontmatter without allowed-tools; the probe run
+     by its project-relative path; sources.md's GitHub and curl reads moved to
+     WebFetch; the policy's two readings; the narrowed origin pause; the
+     finding gains gb10-1's 2026-10-30 probe after its kernel update. Demo:
+     `setup`'s printed rules for framework and gb10-1, checked against the
+     current settings files (nothing is written), and a scratch run's
+     Inventory showing the check's output.
+  5. Walkthrough (the architect), as slice 4 was. It starts with
+     `/hosting-upgrades setup`: the architect adds the printed rules to
+     .claude/settings.json and commits them on `skill`, then runs framework
+     and gb10-1. Pause 3c: the gb10-1 run resolves VibeVoice-ASR-Streaming-7B's
+     base from Microsoft's VibeVoice repository or paper.
+```
+
 ## Progress
 
-slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor ✓ · walkthrough (architect) —
+slices 3/4 committed (slice 4 is the redirect's) · standards — · spec — · editor — · walkthrough (architect, slice 5) —
 
 ## Decisions
 
@@ -225,6 +286,29 @@ slices 3/3 committed · standards ✓ (2 fixes) · spec ✓ (2 rounds) · editor
 - skill: a group row in a report's Sources never replaces an inline citation, and a search summary
   is never the cited source.
 - skill: `docs/findings/skill.md` records the probe runs.
+- skill: the skill reads its permission rules and prints what's missing; it never writes
+  settings; rejected a setup that writes them, since a checked-in skill editing its own allow
+  rules is a self-granting path that a later edit or an injected page could widen.
+- skill: the readiness check runs at the start of every run and as `/hosting-upgrades setup`;
+  its JSON points to settings.json for a skill in the project and to settings.local.json for
+  one installed outside it.
+- skill: one exact ssh probe rule per described host; rejected a wildcard host, which lets ssh
+  options such as ProxyCommand ride along.
+- skill: no `gh api` rule, since settings.json applies to every agent in the workspace,
+  including their git and gh writes; GitHub reads go through WebFetch; rejected deny rules on
+  write flags, which would block other agents' writes.
+- skill: WebSearch and WebFetch on every domain; the curl reads move to WebFetch; edits under
+  docs/reports/ are allowed.
+- skill: the frontmatter drops allowed-tools, whose grant clears at an interactive skill's
+  first pause.
+- skill: the floor's "within about 1%" means every reported eval, relative; Nemotron 3.5 Super
+  VL NVFP4 fails it (WebVoyager -14.7%).
+- skill: undocumented origin is held out without a pause; the walkthrough resolves
+  VibeVoice-ASR-Streaming-7B's base.
+- skill: the task runs five slices, an exception to the experiment's limit of four, which the
+  architect approved with the revised brief.
+- skill: gb10-1 took a system update on 2026-10-30 (kernel 7.0.0-1019 to 1024), by the
+  architect; the walkthrough's fresh probe judges the new kernel.
 
 ## Pending edits
 
