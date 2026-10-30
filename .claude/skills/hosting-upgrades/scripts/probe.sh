@@ -13,9 +13,9 @@
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
 # it reads listening ports from ss -Hltn and docker port and drops the address from each, and
 # reports a container's published and configured ports by bind class (tailnet, all, loopback,
-# other), never by address. Engine
-# endpoints are reached on 127.0.0.1 only, from the host or from inside the engine's container. A final guard redacts any IPv4 address, tailnet
-# IPv6 address, or MagicDNS name that slips through, so the output can be committed as is.
+# other), never by address. Engine endpoints are reached on 127.0.0.1 only, from the host or from
+# inside the engine's container. A final guard redacts any IPv4 address, tailnet IPv6 address, or
+# MagicDNS name that slips through, so the output can be committed as is.
 #
 # The whole script is one function, called on its last line with stdin from /dev/null: bash reads
 # the script from stdin, so a command that reads stdin (docker exec) would otherwise eat the rest.
@@ -238,6 +238,7 @@ probe() {
     local ip=${1#[}
     ip=${ip%]}
     ip=${ip,,}
+    ip=${ip#::ffff:} # an IPv4-mapped IPv6 address classes as its IPv4 address
     local IFS=.
     # shellcheck disable=SC2086 # split the dotted quad on the IFS above
     set -- $ip
