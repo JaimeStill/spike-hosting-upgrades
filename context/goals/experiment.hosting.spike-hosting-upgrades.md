@@ -811,11 +811,12 @@ disclosure file shows a teacher.
   walkthrough).
 - skill: left for a later pass: the probe's older `compgen -G "$store/models--*"` check reads glob
   characters in a store's name as a pattern. It is outside revision 4's diff.
+- plan: the five coordinator pending edits (skill's summary; verify-framework's and verify-gb10's
+  take and verify items, with rollbacks, and verify-gb10's decided removals; screen's BFCL samples
+  and tool-reliability check; spike-model-layout's role-split idea) landed early through this
+  goal's plan, standards-lab PR #110 (architect, 2026-10-31). verify-framework's next brief is
+  left to `start`.
 
 ## Pending edits
 
-- coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
-- coordinator · roadmap: verify-framework's and verify-gb10's summaries gain "applies the run's take and verify items, with rollbacks".
-- coordinator · roadmap: experiment.hosting.spike-model-layout's summary gains the architect's idea of 2026-10-30: split hosts by role, with one GB10 for the agent model alone (about 49 GiB of KV after weights and headroom, roughly 10 concurrent 128K sessions by estimate), the second GB10 or the Framework for the capability models (vision, audio, embedding), and the remaining workstation routing overflow. Open points: gb10-2 is reserved for spike-ai-pipeline and becomes available to the layout spike once that goal completes; the routing layer, and whether the capability host's backend changes which builds pass the floor.
-- coordinator · roadmap: task `screen`'s summary gains "BFCL samples (100 single-turn, 20 multi-turn) and the tool-reliability check on the agent candidates no card can place, Gemma 4 26B-A4B QAT first".
-- coordinator · roadmap: verify-gb10's summary gains "and the run's decided removals" (the vLLM container and image, and both bare-metal units).
+None.
