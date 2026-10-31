@@ -27,6 +27,9 @@
 # It exits nonzero when an argument is refused, when the request fails (the file is missing,
 # gated, or the network is down), or when fewer than 4 bytes come back.
 set -u
+# The allowlist's ranges mean ASCII only in the C locale: in a UTF-8 locale bash's [A-Za-z] also
+# matches letters such as "é" and "İ", which would then reach the URL.
+export LC_ALL=C
 
 magic() {
   if (($# != 2)); then
@@ -48,9 +51,10 @@ magic() {
   local url="https://huggingface.co/$repo/resolve/main/$file" hex rc
   # --max-filesize stops a server that ignores the range from sending the whole file: a ranged
   # answer is 4 bytes long, and a full one names the file's size, so curl refuses it (exit 63).
-  # The substitution exits with curl's status, which the pipeline would otherwise hide.
+  # -q, first, keeps a ~/.curlrc from adding options. The substitution exits with curl's status,
+  # which the pipeline would otherwise hide.
   hex=$(
-    curl -fsSL -r 0-3 --max-time 30 --max-filesize 64 --proto =https --proto-redir =https \
+    curl -q -fsSL -r 0-3 --max-time 30 --max-filesize 64 --proto =https --proto-redir =https \
       "$url" | od -An -tx1 -v | tr -s ' \n' ' '
     exit "${PIPESTATUS[0]}"
   )
