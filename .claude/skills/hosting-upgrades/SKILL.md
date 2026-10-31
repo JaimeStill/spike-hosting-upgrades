@@ -540,13 +540,15 @@ their checks are in [models.md](models.md); this step says what the section hold
    entity at a level the policy excludes on, or a publisher or uploader that fails the policy's
    compliance gate, goes in the section's "excluded on origin" list and never reaches a verdict.
    Each entry names the level and cites, inline, the URL and read date of the source that shows
-   it. Involvement at a level the policy only records goes in the model's row, cited, and the
-   model goes on to the next gate. A model the chain leaves short of the policy's pass bar, with no
+   it. A teacher is read by its role, not by its label. Involvement at a level the policy only
+   records, and adversary-generated data that is one dataset in the training mix (under "dataset
+   sources"), go in the model's row, cited, and the model goes on to the next gate. A model the chain leaves short of the policy's pass bar, with no
    involvement found at an excluding level, is researched further (the uploader's identity and
    affiliation, the conversion against the publisher's weights, the publisher's own mentions of
    it, the uploader's other work) until the answer is definitive; a model the research brings to
    the pass bar passes, and its row records the evidence that settled it. Only a model the
-   research can't settle (an unidentified publisher, an unestablished lineage, or sources that
+   research can't settle (an unidentified publisher, an unestablished lineage, a teacher the
+   card doesn't name and the publisher doesn't place in its own pipeline, or sources that
    contradict each other) goes, without a pause, in the "origin unclear" list beside it, and
    never reaches a verdict either. Each entry names what the run checked, each source cited
    inline. A pass means "no disclosed or detected involvement at an excluding level", and the
@@ -743,12 +745,14 @@ The run stops and asks the architect, rather than guessing or failing, in four c
    installed versions decide, and the report records the conflict ([sources.md](sources.md),
    "Tiers"). One that changes a verdict still is.
 3. **A policy question arises**: the policy lacks a value a step needs, or a candidate sits on a
-   rule's edge: a format the floor doesn't name, or a file whose floor path its build doesn't
-   settle. Origin is never a pause: a model with involvement found at a level the policy excludes
+   rule's edge: a format the floor doesn't name, a file whose floor path its build doesn't
+   settle, or a scanner message under a "safe" status other than the one the policy passes by
+   name. Origin is never a pause: a model with involvement found at a level the policy excludes
    on, or that fails its compliance gate, is excluded on origin; involvement at a level the policy
-   only records goes in the model's row; and a model short of the pass bar is researched further
-   and, only if the research can't settle it, including when its sources conflict, held out as
-   "origin unclear" (step 7).
+   only records, and adversary-generated data in a training mix, go in the model's row; and a
+   model short of the pass bar is researched further and, only if the research can't settle it,
+   including when its sources conflict or a teacher stays unnamed, held out as "origin unclear"
+   (step 7).
 4. **A source's tier is unclear**: the run can't tell whether a source is primary, an attributed
    benchmark, or a lead.
 

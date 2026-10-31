@@ -25,11 +25,18 @@
 
 **The threat.** <What the rule guards against.>
 
+<!-- Optional. The bar a model must clear, in its owner's words, with its date: who may have
+     been involved in the model and in the models it was directly trained on. -->
+
+**The bar.** <The bar, quoted.>
+
 <!-- The levels of a model at which involvement excludes it: those that give an adversary control
-     over the model's behavior, such as its weights (the publisher, the base chain, a merge), its
-     behavioral training signal (a distillation teacher, a generator of the responses or traces it
-     trained on), and the components in its inference path (an encoder, a projector, the
-     tokenizer). -->
+     over the model's behavior, such as its weights (the publisher, the base chain, a merge), a
+     distillation teacher (a model whose outputs or logits the model was trained to reproduce),
+     and the components in its inference path (an encoder, a projector, the tokenizer). Say how a
+     teacher is read: the skill reads it by role, not by label, so a model whose outputs the
+     publisher's documents present as what the model was distilled from, or as its principal
+     post-training corpus, is a teacher whatever the card calls it. -->
 
 **Excluding levels.** The model is excluded on any disclosed or detected involvement at any of
 these:
@@ -51,11 +58,21 @@ these:
 
 **Components.** A model is judged <with the components its publisher ships, or as configured>.
 
-<!-- Which training data counts as involvement, a subset inside a larger dataset included. Say how
-     the run records data that doesn't count, how it reads a model whose relevant subsets can't be
-     told apart, and why the line is drawn there. -->
+<!-- Which training data counts as involvement, and which the run records in the model's row
+     under "dataset sources" instead, such as adversary-generated data that is one dataset in a
+     training mix (synthetic SFT data, reasoning traces, preferences), a human-made dataset from
+     an adversary-origin institution, or data an adversary-origin model only transformed. Say why
+     the line is drawn there, and date each refinement that moves it. -->
 
-**Data.** <Which data excludes a model, and which the run records instead.>
+**Dataset sources.** <Which data excludes a model, and which the run records instead.>
+
+<!-- Optional. How the run finds a model's teachers: the publisher documents it reads (a
+     disclosure file the card points to, say), and how it reads a teacher the card doesn't name.
+     The skill passes an unnamed teacher only when the publisher's own documents say it is a
+     checkpoint from their own pipeline, and otherwise holds the model out as "origin unclear",
+     unless this says otherwise. -->
+
+**Finding the teachers.** <What the run reads, and how it treats an unnamed teacher.>
 
 <!-- Optional. Whether dealing with an adversarial publisher or uploader excludes a model whatever
      its levels show. -->
@@ -84,10 +101,27 @@ unclear". The report lists it beside "excluded on origin", with what the run che
 
 <!-- Which file formats the host may load, and how the run treats a model that runs code when
      loaded (a pickle checkpoint, trust_remote_code). The skill reads a file's format from what it
-     is (the Hugging Face record's file metadata, or the file's first bytes), never from its
-     extension. -->
+     is, never from its extension: a file stored on the host by the probe's read of its first
+     bytes, and any other file by the Hugging Face record's per-file scan where that names the
+     format, or by a ranged read of its first bytes (the skill's scripts/magic.sh). Say what a
+     file none of the reads settles does. -->
 
-<The formats that pass, and what fails unless its code is accepted below.>
+<The formats that pass, how each file's format is read, and what fails unless its code is
+accepted below.>
+
+<!-- Optional. Scanner messages that may appear under an overall "safe" status: those recorded
+     and passed, each by its exact name, and how the run treats any other. The skill treats an
+     unnamed one as a rule's edge, a pause, with the file failing until the owner answers. -->
+
+**Scanner messages under "safe".** <The messages that pass by name, and how any other is
+treated.>
+
+<!-- Optional. Whether the run compares a GGUF's embedded chat template with the publisher's
+     template (tokenizer_config.json), which the engine's renderer executes, and which differences
+     fail: the skill records each difference with the lines quoted, and one that adds text the
+     model sees (a system prompt, instructions) fails integrity. -->
+
+**The chat template.** <What the run compares, and which differences fail.>
 
 <!-- The code the architect has reviewed and accepts, which only the architect edits: one entry
      per repository, exact revision, and file reviewed. A model whose code isn't listed fails
@@ -105,7 +139,8 @@ unclear". The report lists it beside "excluded on origin", with what the run che
      knows three, and a file's build decides which it takes, not its label: formats trained in by
      the publisher, which pass by name; the publisher's post-training checkpoints, which pass
      within an evals margin; and everything else, which meets a floor. Leave a path out if the
-     policy has no such path. -->
+     policy has no such path. Name any build that resembles a trained-in format but isn't one (a
+     quantization-aware distillation build, say), and the path it takes. -->
 
 <The floor, quoted from its source.>
 
@@ -159,6 +194,8 @@ memory allows.
 ## Memory headroom
 
 <!-- How much of the GPU-reachable ceiling a loaded model set must leave free, as a share or an
-     absolute figure, and who adjusts it. -->
+     absolute figure, who adjusts it, and how it is held: by sizing the model set, where a
+     container memory limit can't hold it (memory a GPU allocator takes outside the container's
+     cgroup, say). -->
 
 A model set must leave at least <share>% of the host's GPU-reachable ceiling free.

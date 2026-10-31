@@ -22,6 +22,9 @@ model; "build" (Quantization floor) is how the file the host would load was made
    - the Hugging Face organization and whether it is verified (sources.md, "Origin and build
      checks")
    - then the entity named on the publisher's own domain, linked from the organization or card
+   - when the Hugging Face organization isn't verified (ibm-granite isn't), the publisher's own
+     GitHub organization, linked from its domain, is the second identity link, cited with the
+     domain's page that links it
    - then that entity's legal domicile, and who owns or controls it
 
    Check the entity and its domicile against the foreign-adversary list, 15 CFR 791.4, read fresh
@@ -46,11 +49,23 @@ model; "build" (Quantization floor) is how the file the host would load was made
    teacher; a model that generated responses, traces, or preferences, or that the card says the
    model was "improved using"; a model that only transformed data (a labeler, a translator, a
    filtering judge) and the quantization's calibration data; and each component the publisher
-   ships (a vision or audio encoder, the tokenizer, a projector, a drafter). Note the role each
-   named model played, since the policy's levels turn on the role. Read the training-data
-   sections for the datasets too: a dataset is involvement only as the policy's data rule says
-   (below), and the row lists the datasets the rule records under "dataset sources". These
-   documents are authoritative for what they disclose, and only for that.
+   ships (a vision or audio encoder, the tokenizer, a projector, a drafter). When the card points
+   to a disclosure file (IBM's Granite disclosures, say), read it too, to find the teachers.
+   These documents are authoritative for what they disclose, and only for that.
+
+   Note the role each named model played, since the policy's levels turn on the role, and read it
+   by what the documents say the model did, not by the word they use:
+   - **A teacher**: a model whose outputs or logits the model was trained to reproduce. A model
+     the documents present as what the model was distilled from, or whose outputs they present as
+     its principal post-training corpus, is a teacher, whether the card says "distilled from",
+     "teacher", or "improved using".
+   - **A dataset source**: a model that generated one dataset among others in the training mix
+     (synthetic SFT data, reasoning traces, preferences). The row lists it under "dataset
+     sources", with the dataset and the document that places it in the mix.
+   - **An unnamed teacher**: a card that names distillation or a teacher and no model. It passes
+     only when the publisher's own documents say the teacher is a checkpoint from their own
+     pipeline, quoted in the row; otherwise the model is origin unclear, and the row says what
+     would settle it (the publisher naming the teacher).
 3. **Artifact checks.** These find contradictions with what the documents say; they can't prove a
    model clean. A check that ties the model to an adversarial entity is detected involvement.
    - the config's `architectures` and `model_type`
@@ -91,9 +106,10 @@ model; "build" (Quantization floor) is how the file the host would load was made
    plan; the run names it under "Proposed changes" and never takes it.
 
 Then judge the model, reading the policy's own limits on what counts. The policy separates the
-levels that exclude a model (its weights, its behavioral training signal, and the components in
-its inference path) from the levels it only records (narrow transformations, components outside
-the output path, and conventions):
+levels that exclude a model (its weights, a distillation teacher, and the components in its
+inference path) from the levels it only records (narrow transformations, components outside the
+output path, and conventions), and records adversary-generated data in a training mix under
+"dataset sources":
 
 - **Recorded levels**: involvement at a level the policy records excludes nothing. The row names
   the level, the adversary-origin model or family, and the source, cited inline, so the
@@ -103,9 +119,9 @@ the output path, and conventions):
   component outside the output path (a speculative-decoding drafter) is recorded, and the row
   says the preset must not load an excluded one. A preset that loads one is a host configuration
   fault (SKILL.md, step 5b), not an exclusion: the model stays eligible.
-- **Data**: only the data the policy's data rule names excludes. A dataset that holds such a
-  subset, used without saying which subsets, makes the model origin unclear. A dataset the rule
-  records goes in the row under "dataset sources".
+- **Dataset sources**: training data excludes only through a teacher. A dataset an
+  adversary-origin model generated, one among others in the mix, goes in the row under "dataset
+  sources", cited, and excludes nothing.
 - **Compliance**: a publisher or uploader that is itself an adversarial entity excludes the model,
   whatever its levels show.
 
@@ -120,7 +136,8 @@ the output path, and conventions):
   evidence that settled it.
 - **Origin unclear**: no involvement found at an excluding level, and even item 5's research
   can't bring the model to the pass bar (the publisher can't be identified, the lineage isn't
-  established, or the sources contradict each other). It goes in the "origin unclear" list
+  established, a teacher stays unnamed and unplaced in the publisher's own pipeline, or the
+  sources contradict each other). It goes in the "origin unclear" list
   beside "excluded on origin", with everything the run checked (each source, cited inline, and
   what it did or didn't establish). It never reaches a verdict or the model set, and it is not a
   pause.
@@ -140,31 +157,55 @@ and of every weight file the repository holds for it, from what the file is, nev
 an extension says what a file claims to be, and `.bin` names a pickle checkpoint, a GGML file, or
 raw bytes alike.
 
-1. **The Hugging Face record's file metadata.** Read each file's own record from the Hub's tree
-   listing, `https://huggingface.co/api/models/<id>/tree/main?expand=true`. The repository-level
-   record (`?expand[]=gguf`, `?expand[]=safetensors`) says what the repository holds, not what
-   each file is: a multi-quant repository holds many files under one record. Per file, the
-   listing's `securityFileStatus` carries the scanners' verdicts, among them a message naming the
-   format (its `jFrogScan` message, such as "Safe GGUF model", "Safe PyTorch model", or "Safe
-   model, does not support code execution on load."), and a `pickleImportScan` that lists the
-   imports a pickle would run, each with its module, name, and safety. Cite the file's entry in
-   the row. As read 2026-10-30, `unsloth/Qwen3-0.6B-GGUF` gives each `.gguf` file "Safe GGUF
-   model" with an unscanned pickle scan, and `openai-community/gpt2` gives `model.safetensors`
-   "Safe model, does not support code execution on load." and `pytorch_model.bin` "Safe PyTorch
-   model" with a pickle scan listing three imports (`collections.OrderedDict`,
-   `torch._utils._rebuild_tensor_v2`, `torch.FloatStorage`), each "innocuous".
-2. **The file's first bytes**, when the file's record doesn't settle its format: a ranged read of
-   the file's start through WebFetch (`https://huggingface.co/<id>/resolve/main/<file>`), asking
-   for its first bytes verbatim, in hex. WebFetch sets its own request headers, so when it can't
-   return the start of the file (a file past its size limit, say), the read is recorded as not
-   made. Read the magic:
+1. **A file stored on the host**: the probe's read of its first 4 bytes, under `== models ==`,
+   settles it. Cite the probe line in the row.
+2. **Any other file**: the Hub's per-file scan, where that names the format, or a ranged read of
+   its first 4 bytes.
+   - **The Hub's per-file scan.** Read each file's own record from the Hub's tree listing,
+     `https://huggingface.co/api/models/<id>/tree/main?expand=true`. The repository-level record
+     (`?expand[]=gguf`, `?expand[]=safetensors`) says what the repository holds, not what each
+     file is: a multi-quant repository holds many files under one record, so its GGUF header
+     settles no file. Per file, the listing's `securityFileStatus` carries the scanners'
+     verdicts, among them a message naming the format (its `jFrogScan` message, such as "Safe
+     GGUF model", "Safe PyTorch model", or "Safe model, does not support code execution on
+     load."), and a `pickleImportScan` that lists the imports a pickle would run, each with its
+     module, name, and safety. Cite the file's entry in the row. As read 2026-10-30,
+     `unsloth/Qwen3-0.6B-GGUF` gives each `.gguf` file "Safe GGUF model" with an unscanned pickle
+     scan, and `openai-community/gpt2` gives `model.safetensors` "Safe model, does not support
+     code execution on load." and `pytorch_model.bin` "Safe PyTorch model" with a pickle scan
+     listing three imports (`collections.OrderedDict`, `torch._utils._rebuild_tensor_v2`,
+     `torch.FloatStorage`), each "innocuous". A scan still "queued" names no format.
+   - **The first 4 bytes**, when the scan doesn't name the format: run the bundled script from
+     the project root, which builds the file's resolve URL itself and prints its first 4 bytes
+     from a ranged read:
+
+     ```sh
+     .claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"
+     ```
+
+     A first-bytes read through WebFetch can't be relied on: the Hub answers a file's resolve URL
+     with a 302 to the xet CDN, which defeats it. A WebFetch read that a xet 302 defeated is
+     recorded as "read not made", and magic.sh makes the read.
+
+   Read the magic:
    - `GGUF`: a GGUF file
-   - an 8-byte little-endian header length followed by `{"`: safetensors
+   - an 8-byte little-endian header length followed by `{"`: safetensors. Its first 4 bytes are
+     only the length's low bytes, so the Hub's scan settles a safetensors file, and the first 4
+     bytes settle GGUF, a pickle, or a zip
    - `0x80` followed by a protocol byte (`0x02` to `0x05`): a pickle
    - `PK`: a zip archive, which is how torch saves a checkpoint, with a pickle inside it
 
-   When neither read settles the format, the file fails as a pickle would, and the row says what
-   was read.
+   When no read settles the format, the file fails as a pickle would, and the row says what was
+   read.
+3. **Scanner messages under "safe".** Protect AI's "PAIT-GGUF-100" under an overall "safe"
+   status is recorded in the row and passes, by that name only. Any other scanner message under
+   "safe" is a rule's edge (SKILL.md, "When to pause"): the file fails until the architect
+   answers, and the row quotes the message.
+4. **The chat template**, for a GGUF: compare its embedded template, the Hub record's
+   `gguf.chat_template` (`https://huggingface.co/api/models/<id>?expand[]=gguf`), with the
+   `chat_template` in the publisher's `tokenizer_config.json`. Record any difference in the row,
+   with the differing lines quoted. A difference that adds text the model sees (a system prompt,
+   instructions) fails artifact integrity; one that doesn't is recorded and passes.
 
 GGUF and safetensors pass. A pickle, a zip-based torch checkpoint, a file the scanner marks as a
 pickle with imports (a `pickleImportScan` that lists any), or a model whose card or config needs
@@ -197,7 +238,9 @@ names the format, not how the weights were made. The build, not the label, is on
      path 2 or 3, not path 1.
 
    For example: `ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0` is a post-training Q4_0, path 3, and
-   fails; `google/gemma-4-26B-A4B-it-qat-q4_0-gguf` is QAT, path 1, and passes.
+   fails; `google/gemma-4-26B-A4B-it-qat-q4_0-gguf` is QAT, path 1, and passes. A quantization-aware
+   distillation (QAD) build is not trained-in: Liquid's QAD Q4_0 takes path 3 and fails, so the
+   row names the publisher's or a converter's Q8_0 or Q5_K_M file that meets the floor.
 3. **Path 1, trained-in formats**, pass by name at any size when the policy names them and the
    publisher releases them as its own format of the model. The row quotes the publisher's quality
    statement for the format, cited inline. No evals test applies.

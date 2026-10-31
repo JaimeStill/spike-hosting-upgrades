@@ -34,16 +34,25 @@ quantization calibration data, and a punctuation-restoring labeler. None of thes
 served output. It also excluded the publishers who disclose their data and passed the ones who
 stay silent.
 
+**The bar** (the architect's words, 2026-10-31):
+
+> the origin of the model, and any models it is directly trained on, are not adversarial and have
+> been deemed safe for use.
+
 **Excluding levels.** The model is excluded on any disclosed or detected involvement of an
 adversarial entity at any of these:
 
 1. **Weights.** The publisher, every ancestor in the base chain, and a model merged into it.
-2. **Behavioral training signal.** A distillation teacher, or a model that generated the
-   responses, reasoning traces, or preferences the model trained on, including a model the card
-   says it was "improved using" in that role.
+2. **A distillation teacher.** A model whose outputs or logits the model was trained to
+   reproduce. A teacher is read by its role, not by its label: when the publisher's own documents
+   present an adversary model's outputs as what the model was distilled from, or as its
+   principal post-training corpus, that model is a teacher, whatever the card calls it ("improved
+   using", say).
 3. **Components in the inference path.** A vision or audio encoder, a projector, or the
    tokenizer, judged as the publisher ships them: an excluded component excludes the model even
    when a flag would leave it out.
+
+An adversarial publisher or uploader also excludes the model, by the compliance gate below.
 
 **Recorded levels.** Involvement at these is recorded in the model's row, cited, and doesn't
 exclude:
@@ -64,27 +73,35 @@ exclude:
    that formats its tool calls like GLM-4.5, or places its image tokens like Qwen3-VL, is judged
    by its levels above, not by its format.
 
-**Data.** Data excludes a model only at level 2: responses, traces, or preferences an
-adversary-origin model generated, a subset inside a larger dataset included. A model that trained
-on a dataset holding such a subset, and that doesn't say which subsets it used, is "origin
-unclear". Its relevant subsets can't be told apart. The following go in the model's row under
-"dataset sources" and don't exclude:
+**Dataset sources.** Training data excludes a model only through a teacher (level 2). The
+following go in the model's row under "dataset sources", cited, and don't exclude:
 
+- adversary-generated data in a training mix: synthetic SFT data, reasoning traces, or
+  preferences an adversary-origin model generated, as one dataset among others
 - a human-made dataset from an adversary-origin institution
 - data an adversary-origin model only transformed (level 4)
 
-Excluding every adversary-authored dataset would punish disclosure. Nearly every model trains on
-public datasets and few cards list them, so such a rule would exclude the publishers who disclose
-their data and pass the ones who stay silent.
+Excluding them would limit the pool drastically: some adversary-origin research is nearly
+unavoidable in open weights, and nearly every model trains on public datasets that few cards
+list, so such a rule would exclude the publishers who disclose their data and pass the ones who
+stay silent. This supersedes the 2026-10-30 data clause, which excluded such data at level 2 and
+left a model that didn't say which subsets it used "origin unclear", and the 2026-10-31 granite
+exclusion (the architect's decision, 2026-10-31).
+
+**Finding the teachers.** A run reads a publisher's disclosure file when the card points to one,
+to find the model's teachers. A teacher the card doesn't name (a card that says "distillation" or
+"teacher" and names no model) passes only when the publisher's own documents say it is a
+checkpoint from their own pipeline; otherwise the model is "origin unclear" (the architect's
+decision, 2026-10-31).
 
 **Compliance, a gate of its own.** Apart from the threat above, the project deals with no
 adversarial entity. A publisher or an uploader that is an adversarial entity, by the lists above,
 excludes the model whatever its levels show.
 
 **The pass bar.** A model passes only when its publisher is an identified entity that is not an
-adversarial entity, the publisher's own documents establish its lineage, and no check finds
-involvement at an excluding level. A pass means "no disclosed or detected involvement at an
-excluding level", and no more: no public source certifies a model's training data, and
+adversarial entity, the publisher's own documents establish its lineage and its teachers, and no
+check finds involvement at an excluding level. A pass means "no disclosed or detected involvement
+at an excluding level", and no more: no public source certifies a model's training data, and
 undisclosed synthetic data is common.
 
 **Further research.** The architect decided on 2026-10-30 that an unestablished origin is not an
@@ -107,13 +124,14 @@ answer, citing each item:
 The model passes when that research meets the pass bar, and its row records the evidence that
 settled it.
 
-**Origin unclear.** Only when the further research can't settle it is the model held out as
-"origin unclear", without a pause. It never reaches a verdict or a model set. The report lists it
-beside "excluded on origin", with everything the run checked.
+**Origin unclear.** Only when the further research can't settle it, or a teacher stays unnamed
+("Finding the teachers"), is the model held out as "origin unclear", without a pause. It never
+reaches a verdict or a model set. The report lists it beside "excluded on origin", with
+everything the run checked.
 
 For example, `mrutkows/granite-embedding-english-r2-GGUF:BF16`, the embedding model on framework
-and gb10-1, has no card, and its converter isn't the publisher. framework's run of 2026-10-30 left
-it origin unclear. gb10-1's run of the same day researched further and passed it:
+and gb10-1, has no card, and its converter isn't the publisher. It stands as a pass after
+research, as gb10-1's run of 2026-10-30 found it:
 
 - the uploader is an IBM employee who contributes to IBM's own conversion repository, IBM/gguf
 - that repository lists this model and describes test releases to a personal account
@@ -129,13 +147,34 @@ The file the host loads must not be able to run code when loaded. GGUF and safet
 pickle-based checkpoint (a raw pickle, or a zip-based torch checkpoint with a pickle inside), a
 file Hugging Face's scanner marks as a pickle with imports, or a model that needs
 `trust_remote_code` or other code shipped with it, fails unless the code is on the "Accepted
-code" list below. The run reads the format from what the file is, never from its extension:
-first from the Hugging Face record's file metadata, the Hub's per-file tree listing
-(`https://huggingface.co/api/models/<id>/tree/main?expand=true`), whose security status names
-each file's format as the scanner read it ("Safe GGUF model", say) and lists the imports a pickle
-would run; then from the file's first bytes, where WebFetch can return them. A file that neither
-read settles fails as a pickle would. A `.bin` file may be a pickle or not, and only its contents
-say which. The run cites the file's security status in the row.
+code" list below. A `.bin` file may be a pickle or not, and only its contents say which, so the
+run reads the format from what the file is, never from its extension (the architect's decision,
+2026-10-31):
+
+- **A file stored on the host** is settled by the probe's read of its first 4 bytes, under
+  `== models ==`.
+- **Any other file** is settled by the Hub's per-file scan, where that names the format, in the
+  per-file tree listing (`https://huggingface.co/api/models/<id>/tree/main?expand=true`), whose
+  security status names each file's format as the scanner read it ("Safe GGUF model", say) and
+  lists the imports a pickle would run; or by a ranged read of its first 4 bytes with
+  `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"`. A scan still
+  "queued" settles nothing, so magic.sh reads the file. A first-bytes read through WebFetch that
+  a redirect to the xet CDN (a 302) defeats is recorded as "read not made", and magic.sh reads the
+  file instead.
+
+The repository-level GGUF header settles no file. A file that none of these reads settles fails
+as a pickle would. The run cites the file's security status in the row.
+
+**Scanner messages under "safe".** Protect AI's "PAIT-GGUF-100" message under an overall "safe"
+status is recorded in the row and passes, by that name only (the architect's decision,
+2026-10-30, confined to the name 2026-10-31). Any other scanner message under "safe" is a rule's
+edge: the run pauses, and the file fails until the architect answers.
+
+**The chat template.** The engine's template renderer executes a GGUF's embedded chat template,
+so the run compares it (the Hub record's `gguf.chat_template`) with the template in the
+publisher's `tokenizer_config.json`. The row records any difference, with the differing lines
+quoted. A difference that adds text the model sees, such as a system prompt or instructions,
+fails artifact integrity (the architect's decision, 2026-10-31).
 
 **Accepted code.** The code the architect has reviewed and accepts, which only the architect
 edits. Each entry names the repository, the exact revision (a commit, not a branch or tag), and
@@ -160,7 +199,9 @@ meets the floor by one of three paths, and the file's build decides which, not i
 1. **Trained-in formats** pass by name, at any size, when the publisher releases them as its own
    format of the model. These are native formats, such as gpt-oss's MXFP4, and quantization-aware
    training (QAT), such as Google's Gemma 4 QAT Q4_0. The report quotes the publisher's quality
-   statement for the format.
+   statement for the format. A quantization-aware distillation (QAD) build, such as Liquid's QAD
+   Q4_0, is not trained-in: it takes path 3, so a QAD Q4_0 fails the floor (the architect's
+   decision, 2026-10-30).
 2. **Post-training checkpoints from the publisher** (NVFP4, FP8, a GGUF the publisher made) pass
    only when every eval the checkpoint's card reports is within about 1% of its BF16 score,
    relative (|quantized - BF16| / BF16). A checkpoint with any eval outside it, or with no evals
@@ -249,5 +290,10 @@ slot count, or a unified cache that brings each session to the minimum.
 A model set must leave at least **10% of the host's GPU-reachable ceiling** free once every
 model in it is loaded at its configured context and slots: on a 112 GiB ceiling, 11.2 GiB. The
 ceiling is what the probe reports (the GTT total on AMD, the system memory on GB10).
+
+The headroom is held by sizing the model set, not by container memory limits: on GB10, memory a
+process takes with `cudaMalloc` isn't charged to its container's cgroup, so a container limit
+can't stop the set from taking it (a lead: NVIDIA developer forum topic 387182,
+<https://forums.developer.nvidia.com/t/gb10-cudamalloc-memory-is-not-charged-to-the-process-or-its-cgroup-so-the-oom-killer-and-container-limits-cant-stop-a-unified-memory-freeze-580-17/387182>).
 
 The value is the architect's to adjust; until then it is the session's starting figure.

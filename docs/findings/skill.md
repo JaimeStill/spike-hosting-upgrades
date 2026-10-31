@@ -547,3 +547,81 @@ Both exited 0.
   to 6), and the order of gb10-1's two `llama` mounts.
 - **Tailnet identifiers**: none in either output (no `100.64.0.0/10` address, `fd7a:115c:a1e0:`
   prefix, `.ts.net` name, or `tailscale`).
+
+## The origin bar by role, by hand, 2026-10-31
+
+Revision 4, slice 9. The policy's origin rule now excludes a distillation teacher, read by its
+role, and records adversary-generated data in a training mix under "dataset sources"; the
+2026-10-30 data clause and the 2026-10-31 granite exclusion are superseded (`docs/policy.md`,
+"Model origin"). The session checked three models by hand against the amended text, with no host
+involved. Nothing here is a run of the skill, and no report changes.
+
+### Sources, exactly as read
+
+The session read each source with WebFetch on 2026-10-31, asking for the training, teacher, and
+distillation passages verbatim:
+
+- IBM's Granite 4.1 30B disclosure file, both halves of it (the second from offset 100,000):
+  <https://raw.githubusercontent.com/ibm-granite/granite-4.1-language-models/main/disclosures/granite_4.1_30b_disclosure.json>
+- the Granite 4.1 30B card: <https://huggingface.co/ibm-granite/granite-4.1-30b>
+- the SYNTHETIC-1 dataset card: <https://huggingface.co/datasets/PrimeIntellect/SYNTHETIC-1>
+- the LFM2.5-24B-A2B card:
+  <https://huggingface.co/LiquidAI/LFM2.5-24B-A2B/raw/main/README.md>
+- Liquid's LFM2.5-24B-A2B blog post: <https://www.liquid.ai/blog/lfm2-5-24b-a2b>
+- the Nemotron 3 Nano Omni card:
+  <https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16/resolve/main/README.md>
+
+### What the checks found
+
+- **`ibm-granite/granite-4.1-30b`: passes origin.** SYNTHETIC-1 is a dataset source, not a
+  teacher.
+  - The disclosure file lists `"SYNTHETIC-1"` under post-training, `"source": "third party"`,
+    "Reasoning traces for a diverse range of tasks across math, coding and science, whose
+    correctness was confirmed with task-specific verifiers." It is one of about fifty
+    third-party post-training datasets the file lists (OpenThoughts3-1.2M, NuminaMath-1.5,
+    Llama-Nemotron-Post-Training-Dataset, and xlam_function_calling_60k among them). A second
+    entry, "DeepCoder-PrimeIntellect Synthetic", `"source": "IBM"`, takes "16K verified coding
+    problems from PrimeIntellect's SYNTHETIC-1" (disclosure file, read 2026-10-31).
+  - "SYNTHETIC-1 is a reasoning dataset obtained from Deepseek-R1" (dataset card, read
+    2026-10-31). So DeepSeek-R1, of adversary origin, generated one dataset in the mix.
+  - Nothing the file or the card says presents DeepSeek-R1's outputs as what the model was
+    distilled from or as its principal post-training corpus. The card says "our SFT data is
+    largely comprised of three key sources", names the base, Granite-4.1-30B-Base, and names no
+    teacher (card, read 2026-10-31). The models the disclosure file names in a generating role
+    are Phi-4 ("Using Phi-4 as a teacher model", for one synthetic science set), Phi-4-reasoning,
+    Mixtral-8x7B-Instruct-v0.1, and Nemotron4-340B-Instruct, none of adversary origin.
+  - So the row records SYNTHETIC-1 (DeepSeek-R1 traces) under "dataset sources", and no level
+    excludes. The card as read today links no disclosure file; the file is in the publisher's
+    own GitHub organization, where gb10-1's run of 2026-10-31 found it.
+- **`LiquidAI/LFM2.5-24B-A2B`: stays origin unclear.** Its teachers are unnamed.
+  - The card's post-training is "supervised fine-tuning, teacher specialization, two
+    multi-domain on-policy distillation stages (one non-agentic, one agentic), and agentic
+    reinforcement learning", and it names no teacher model and doesn't say where the teachers
+    come from (card, read 2026-10-31).
+  - The blog post gives the same five stages, "(2) Teacher Specialization, (3) non-agentic and
+    (4) agentic Multi-Domain On-Policy Distillation (MOPD)", and says "During teacher
+    specialization, LFM2.5-24B-A2B exhibited well-known reward-hacking behaviors". That hints the
+    teachers are specialized copies of the model, but neither document says they are checkpoints
+    from Liquid's own pipeline (blog, read 2026-10-31).
+  - So the unnamed-teacher rule holds it out as "origin unclear". What would settle it: Liquid
+    naming the teachers, or saying they are its own checkpoints.
+- **Nemotron 3 Nano Omni: its "improved using" Qwen models are recorded, not excluding.**
+  - The card says "This model was improved using Qwen3-VL-30B-A3B-Instruct, Qwen3.5-122B-A10B,
+    Qwen3.5-397B-A17B, Qwen2.5-VL-72B-Instruct, and gpt-oss-120b", and points to its training
+    dataset section for how (card, read 2026-10-31).
+  - That section lists them per dataset as generators or filters, for synthetic data generation
+    that "generate[s] reasoning traces", re-captions images and audio, and regenerates or refines
+    samples, beside model-based quality and safety judges. The MetaMathQA row, for example, names
+    "Qwen3.5-122B-A10B, Gemini 3 Flash Preview for filtering", and other rows name further
+    adversary-origin generators in the same way (Kimi-K2.5 for AgentNet, GLM-4.1V-9B-Thinking,
+    DeepSeek OCR) beside GPT-4o and NVIDIA's own Magpie TTS (card, read 2026-10-31).
+  - The card never says "teacher", "distill", or "distilled", and doesn't present any of these
+    models' outputs as its principal post-training corpus. Synthetic data is 41,502,625 of
+    354,587,705 training samples by the card's tables (about 12%, the session's arithmetic), and
+    that synthetic share is itself spread over several generators, NVIDIA's own and outside ones.
+    The base is NVIDIA's own Nemotron 3 Nano 30B-A3B (card, read 2026-10-31).
+  - So, read by role, the Qwen models, and the other generators, made datasets in a training mix:
+    they go in the row under "dataset sources", and teacher is not the level that excludes it.
+    The model is judged by its other levels (its components in the inference path among them),
+    which this check didn't read. gb10-1's run of 2026-10-31 excluded it at level 2 under the
+    superseded data clause.
