@@ -803,3 +803,43 @@ walkthrough.
 
 `mise run check` exits 0: shellcheck passes on every tracked script, and every relative Markdown
 link resolves, the new descriptor and `sources.md` lines included.
+
+## The standards review's checks of magic.sh and the probe's new reads, 2026-10-31
+
+Revision 4's standards review ran magic.sh with hostile arguments on this machine, from the
+repository root, over this machine's own internet connection; no host was involved. Before the
+fix, from a shell with `LANG=en_US.UTF-8`:
+
+```sh
+M=.claude/skills/hosting-upgrades/scripts/magic.sh
+t(){ printf '%s\n' "--- $*"; "$M" "$@"; echo "rc=$?"; }
+t "-o/x" "f"; t "a/b" "-o"; t "a/b" "--config"; t "a/b" "@file"; t "@a/b" "f"
+t "a/b" 'f;id'; t "a/b" 'f$(id)'; t "a/b" $'f\nx'; t $'a/b\n' 'f'; t "a/b" "f/"; t "a/b" "a//b"
+t "a/b" "./x"; t "a/b" "a/./b"; t "a/b" "x..y"; t "a/b" "é.bin"; t "a/b" "ﬁ"; t "a/b" "[1-9]"
+t "a/b" "{a,b}"; t "a/b" "%2e%2e"; t "a/b" "a\\b"; t "a/b" " "; t "a/b" ""; t "a/b" "x" "y"
+t "a/b@evil.com" "x"; t "a/b:443" "x"; t "a/b#" "x"
+```
+
+Every argument was refused with exit 2 before any request, except `é.bin` and `ﬁ`: in a UTF-8
+locale bash's `[A-Za-z]` matches such letters, so both reached
+`https://huggingface.co/a/b/resolve/main/<file>` (a 401, exit 1). Neither could leave
+huggingface.co, but the allowlist promised ASCII. magic.sh now sets `LC_ALL=C`, and passes `-q`
+first so no `~/.curlrc` adds options. After the fix:
+
+```sh
+M=.claude/skills/hosting-upgrades/scripts/magic.sh
+for f in "é.bin" "ﬁ" "İ" "a/é"; do "$M" a/b "$f"; echo "rc=$?"; done; "$M" "é/b" x; echo rc=$?
+"$M" "openai-community/gpt2" "pytorch_model.bin"; echo rc=$?; "$M" "ggml-org/gpt-oss-120b-GGUF" "gpt-oss-120b-MXFP4.gguf"; echo rc=$?
+```
+
+Each non-ASCII argument is refused with exit 2; `pytorch_model.bin` still reads `80 02 8a 0a`
+(pickle, protocol 2) and `gpt-oss-120b-MXFP4.gguf` `47 47 55 46` (GGUF).
+
+The review ran the probe's `first_bytes` function, extracted from `probe.sh`, on a scratch store
+named `odd [x] *store* with space`, holding a Hugging Face cache with a GGUF link, a pickle linked
+as `Q4/-evil $(id).gguf`, and a broken link. The slice's `find -path "$store/..."` printed
+`none`, since the store's name is read as a pattern; reading the snapshot path from find's
+relative output lists all three, with the broken link now `missing (a broken link)` rather than
+`unreadable without root`. Its channel read, run the same way on this machine (Omarchy stable),
+printed the mirror, the four repositories, both template lines, and `package omarchy 4.0.6-1`, as
+on framework. `mise run check` exits 0.
