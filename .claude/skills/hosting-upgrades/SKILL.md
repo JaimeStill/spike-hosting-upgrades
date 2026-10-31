@@ -763,12 +763,13 @@ other.
 - Its inputs: the probe's inventory, the host descriptor, and the policy.
 - The source tiers and the sources for its kind, from [sources.md](sources.md), and the
   blocklist ([blocklist.md](blocklist.md)).
-- The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`, and, for the
-  origin part only, the screening-list script and the first-bytes script, each run from the
+- The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`; for the
+  origin part, the screening-list script; and for the model parts (3 and 4), which check each
+  file's artifact integrity, and the origin part, the first-bytes script. Each runs from the
   project root by exactly the path its readiness rule names, with each argument quoted:
   `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin", item 1)
   and `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"` (models.md,
-  "Artifact integrity"). The screening list's "no match" is never "clean", and magic.sh can't tell
+  "Artifact integrity", item 2). The screening list's "no match" is never "clean", and magic.sh can't tell
   safetensors from 4 bytes ([sources.md](sources.md), "Origin and build checks").
 
 **What each part returns.** Cited claims, each with its source's URL, its read date, and its
