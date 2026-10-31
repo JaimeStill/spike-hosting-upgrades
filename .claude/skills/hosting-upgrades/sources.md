@@ -112,6 +112,7 @@ primary, and a user's reply under it is a lead.
 | Arch package search | `https://archlinux.org/packages/search/json/?name=<package>` | JSON, with WebFetch (`?name=mesa`): each of `results[]`'s `repo`, `pkgname`, `pkgver`-`pkgrel`, and `last_update`. A `*-testing` repo row is a package not yet released to the stable repos. |
 | Arch news | <https://archlinux.org/feeds/news/> | RSS; manual interventions that an upgrade needs. |
 | Omarchy releases | <https://api.github.com/repos/basecamp/omarchy/releases> | GitHub releases API, with WebFetch. A tag ending `-rcN` is a release candidate. |
+| omarchy-pkgs commits, linux-omarchy | <https://api.github.com/repos/omacom-io/omarchy-pkgs/commits?path=pkgbuilds/linux-omarchy> | GitHub commits API, with WebFetch: each commit's message names the kernel's version and pkgrel. The only machine-readable source for the Omarchy kernel's pkgrel. |
 | Omarchy pacman configuration, at a tag | `https://raw.githubusercontent.com/basecamp/omarchy/<tag>/default/pacman/mirrorlist-<channel>` and `.../default/pacman/pacman-<channel>.conf` | Raw with WebFetch, at the host's Omarchy tag and the channel the probe prints (`omarchy channel:`): the mirror and the repositories an Omarchy host updates from. On `stable` that is Omarchy's snapshot mirror, not Arch's. Primary. |
 | Omarchy stable mirror's snapshot date | <https://stable-mirror.omarchy.org/lastsync> | Text, with WebFetch: the time the snapshot was taken. What the host can install lags Arch by the snapshot's age, so a package newer in Arch than the snapshot is not yet on the host's channel. Primary. |
 
@@ -121,7 +122,6 @@ primary, and a user's reply under it is a lead.
 |---|---|---|
 | Launchpad publishing history | `https://launchpad.net/ubuntu/+source/<source package>/+publishinghistory`, such as `linux-nvidia-7.0`, `nvidia-graphics-drivers-580`, or `linux-firmware` | Page, with WebFetch: each version, the series and pocket it was published to, and when. It leads packages.ubuntu.com, which can lag it, so it settles what an Ubuntu-based host (DGX OS) can update to. Primary. |
 | packages.ubuntu.com | `https://packages.ubuntu.com/search?keywords=<package>&searchon=names&exact=1&suite=all&section=all` | Page, with WebFetch: the version of a package in each series and pocket. Read it for the Mesa (`mesa-vulkan-drivers`) an Ubuntu-based engine image installs, at the series the image's Dockerfile names. Primary. |
-| omarchy-pkgs commits, linux-omarchy | <https://api.github.com/repos/omacom-io/omarchy-pkgs/commits?path=pkgbuilds/linux-omarchy> | GitHub commits API, with WebFetch: each commit's message names the kernel's version and pkgrel. The only machine-readable source for the Omarchy kernel's pkgrel. |
 
 ## Engines
 

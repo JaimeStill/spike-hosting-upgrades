@@ -508,7 +508,7 @@ descriptor declares.
 4. **The engine watch items.** Answer each of the descriptor's watch items of this kind (an
    engine, a backend, a feature, or a regression) by name, under its own heading: what the
    sources say now, cited, and what changed since the last report if there is one. The hardware
-   and system watch items are steps 5's and 5b's.
+   and system watch items are step 5's and step 5b's.
 5. **The conclusion.** Name the most effective engine platform and configuration to date for the
    host: either an adjustment to the incumbent (a version, a backend, a flag) or a migration to
    another engine, with its verdict by the same rules; a newer build of the incumbent is never
@@ -583,21 +583,22 @@ their checks are in [models.md](models.md); this step says what the section hold
    Each entry names the level and cites, inline, the URL and read date of the source that shows
    it. A teacher is read by its role, not by its label. Involvement at a level the policy only
    records, and adversary-generated data that is one dataset in the training mix (under "dataset
-   sources"), go in the model's row, cited, and the model goes on to the next gate. A model the chain leaves short of the policy's pass bar, with no
-   involvement found at an excluding level, is researched further (the uploader's identity and
-   affiliation, the conversion against the publisher's weights, the publisher's own mentions of
-   it, the uploader's other work) until the answer is definitive; a model the research brings to
-   the pass bar passes, and its row records the evidence that settled it. Only a model the
-   research can't settle (an unidentified publisher, an unestablished lineage, a teacher the
-   card doesn't name and the publisher doesn't place in its own pipeline, or sources that
-   contradict each other) goes, without a pause, in the "origin unclear" list beside it, and
-   never reaches a verdict either. Each entry names what the run checked, each source cited
-   inline. A pass means "no disclosed or detected involvement at an excluding level", and the
-   section says so. A model that already fails a later gate (artifact integrity, the floor, fit, the
-   engine, the agent bar), shown by a read the run has made, may stop at "not settled" for origin
-   instead of being researched to the end: its row says origin is not settled, that the research
-   stopped because the model fails that gate, and names the gate and its source (models.md,
-   "Origin"). It is listed under the gate it fails, not under "origin unclear".
+   sources"), go in the model's row, cited, and the model goes on to the next gate. A model the
+   chain leaves short of the policy's pass bar, with no involvement found at an excluding level,
+   is researched further (the uploader's identity and affiliation, the conversion against the
+   publisher's weights, the publisher's own mentions of it, the uploader's other work) until the
+   answer is definitive; a model the research brings to the pass bar passes, and its row records
+   the evidence that settled it. Only a model the research can't settle (an unidentified
+   publisher, an unestablished lineage, a teacher the card doesn't name and the publisher doesn't
+   place in its own pipeline, or sources that contradict each other) goes, without a pause, in the
+   "origin unclear" list beside it, and never reaches a verdict either. Each entry names what the
+   run checked, each source cited inline. A pass means "no disclosed or detected involvement at
+   an excluding level", and the section says so. A model that already fails a later gate
+   (artifact integrity, the floor, fit, the engine, the agent bar), shown by a read the run has
+   made, may stop at "not settled" for origin instead of being researched to the end: its row
+   says origin is not settled, that the research stopped because the model fails that gate, and
+   names the gate and its source (models.md, "Origin"). It is listed under the gate it fails, not
+   under "origin unclear".
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
