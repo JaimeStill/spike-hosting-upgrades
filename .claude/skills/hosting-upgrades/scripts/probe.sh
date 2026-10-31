@@ -10,8 +10,8 @@
 # systemd units, each running engine's build and served models, the models in the host's local
 # stores (with each GGUF file's first 4 bytes), and what the host has fallen behind on: the
 # package channel and mirror, pending package and firmware updates, failed units, and docker's
-# disk. A probe whose command is absent prints "skipped:" and the run goes on;
-# the last section lists every skip.
+# disk. A probe whose command is absent prints "skipped:" and the run goes on; the last section
+# lists every skip.
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
 # it reads listening ports from ss -Hltn and docker port and drops the address from each, and
@@ -636,7 +636,9 @@ probe() {
     while IFS= read -r rel; do
       [[ -n $rel ]] || continue
       n=$((n + 1))
-      if [[ -r $store/$rel ]]; then
+      if [[ -L $store/$rel && ! -e $store/$rel ]]; then
+        printf '  magic missing (a broken link)  %s\n' "$rel"
+      elif [[ -r $store/$rel ]]; then
         hex=$(head -c 4 "$store/$rel" | od -An -tx1 -v | tr -s ' \n' ' ')
         hex=${hex# }
         printf '  magic %s  %s  %s\n' "${hex% }" \
@@ -660,9 +662,11 @@ probe() {
           "$(basename "$dir" | sed 's/^models--//; s/--/\//')"
       done
       # Each snapshot's GGUF files, in its top directory or a quant's subdirectory, by the link's
-      # path (models--<org>--<repo>/snapshots/<revision>/<file>), never the blob's.
-      find "$store" -mindepth 4 -maxdepth 5 -path "$store/models--*/snapshots/*" -name '*.gguf' \
-        -printf '%P\n' 2>/dev/null | sort | first_bytes "$store"
+      # path (models--<org>--<repo>/snapshots/<revision>/<file>), never the blob's. The path in
+      # the store is matched after find, so a store whose name holds a glob character still
+      # matches.
+      find "$store" -mindepth 4 -maxdepth 5 -name '*.gguf' -printf '%P\n' 2>/dev/null |
+        grep '^models--[^/]*/snapshots/' | sort | first_bytes "$store"
     elif [[ -n $(find "$store" -maxdepth 4 -name '*.gguf' -print -quit 2>/dev/null) ]]; then
       # A file's last-modified date is when it was written: a model can sit unused long after it.
       printf 'store %s (GGUF files; size, last modified):\n' "$store"
@@ -709,7 +713,7 @@ probe() {
     else
       skip "pacman.conf: /etc/pacman.conf unreadable"
     fi
-    local omarchy_dir="" channel file matched
+    local omarchy_dir="" channel file matched installed
     for omarchy_dir in "${OMARCHY_PATH:-}" /usr/share/omarchy "$HOME/.local/share/omarchy"; do
       [[ -n $omarchy_dir && -d $omarchy_dir/default/pacman ]] && break
       omarchy_dir=""
@@ -730,8 +734,8 @@ probe() {
           printf "omarchy channel: %s matches no channel's template (edited since)\n" "$file"
         fi
       done
-      printf 'omarchy channel: package %s\n' "$(pacman -Q omarchy omarchy-dev 2>/dev/null |
-        paste -sd, - | sed 's/,/, /g')"
+      installed=$(pacman -Q omarchy omarchy-dev 2>/dev/null | paste -sd, - | sed 's/,/, /g')
+      printf 'omarchy channel: package %s\n' "${installed:-none installed}"
     else
       skip "omarchy channel: no Omarchy pacman templates (default/pacman) found"
     fi

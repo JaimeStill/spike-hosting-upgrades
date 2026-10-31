@@ -179,6 +179,8 @@ date; step 5b reads them.
 hex and as text (a byte outside printable ASCII shows as `.`), and its path in the store (in a
 Hugging Face cache, `models--<org>--<repo>/snapshots/<revision>/<file>`, read through the cache's
 link to its blob). Those bytes settle a stored file's format (models.md, "Artifact integrity").
+A file the probe can't read shows `magic unreadable without root`, and a link whose blob is gone
+`magic missing (a broken link)`; neither settles the format.
 `== updates ==` opens with where the host's packages come from. On Arch, `mirror:` lines give the
 mirrorlist's servers and `repo <name>:` lines each repository pacman.conf names, with its server
 or included list. On Omarchy, `omarchy channel:` lines say which channel's template
