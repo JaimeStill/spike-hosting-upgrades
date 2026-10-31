@@ -625,3 +625,124 @@ distillation passages verbatim:
     The model is judged by its other levels (its components in the inference path among them),
     which this check didn't read. gb10-1's run of 2026-10-31 excluded it at level 2 under the
     superseded data clause.
+
+## The probe reads GGUF first bytes and the package channel; magic.sh, 2026-10-31
+
+Revision 4, slice 10. The probe gains two reads, both read-only and without sudo: under
+`== models ==`, a `magic` line per GGUF file in a store, giving its first 4 bytes as hex and as
+text and its path in the store (in a Hugging Face cache, through the snapshot's link to its blob);
+and at the head of `== updates ==`, where the host's packages come from. On Arch that is the
+mirrorlist's servers, each repository pacman.conf names, and the Omarchy channel; on apt, each
+source's URIs and suites, `.list` and deb822 `.sources` alike. Omarchy records no channel:
+`omarchy-channel-set` (basecamp/omarchy v4.0.6) runs `omarchy-refresh-pacman`, which copies the
+channel's templates (`default/pacman/mirrorlist-<channel>`, `pacman-<channel>.conf`) over
+`/etc/pacman.d/mirrorlist` and `/etc/pacman.conf`, so the probe names the channel whose template
+each file still matches byte for byte, and the `omarchy` or `omarchy-dev` package installed. The
+new `scripts/magic.sh` reads a Hub file's first 4 bytes from a ranged curl that follows the xet
+302, from a repository and a file it checks against an allowlist, never a URL.
+
+### Commands, exactly as run
+
+The session ran the probe on both hosts, read-only and without sudo, from the repository root,
+and kept each output in its scratchpad:
+
+```sh
+ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > <scratchpad>/framework.txt
+ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh > <scratchpad>/gb10-1.txt
+```
+
+Both exited 0. Then magic.sh, from the repository root:
+
+```sh
+.claude/skills/hosting-upgrades/scripts/magic.sh "ggml-org/gpt-oss-120b-GGUF" "gpt-oss-120b-MXFP4.gguf"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "pytorch_model.bin"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "model.safetensors"
+.claude/skills/hosting-upgrades/scripts/magic.sh "https://huggingface.co/openai-community/gpt2" "pytorch_model.bin"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "../x"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "/etc/passwd"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "a.bin?x=1"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "no-such-file.bin"
+```
+
+### What the probe found
+
+- **First bytes**: every stored GGUF reads `47 47 55 46` (`GGUF`). Each host holds the same
+  twelve GGUF files in `/srv/models`, with the same revisions, so both print the same `magic`
+  lines:
+
+  ```text
+    magic 47 47 55 46  GGUF  models--ggml-org--gemma-4-E4B-it-GGUF/snapshots/a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/gemma-4-E4B-it-Q8_0.gguf
+    magic 47 47 55 46  GGUF  models--ggml-org--gemma-4-E4B-it-GGUF/snapshots/a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/mmproj-gemma-4-E4B-it-Q8_0.gguf
+    magic 47 47 55 46  GGUF  models--ggml-org--gpt-oss-120b-GGUF/snapshots/7200b74bea78b0a2964ef9f3897eefa401e890ff/gpt-oss-120b-MXFP4.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-12B-it-qat-q4_0-gguf/snapshots/29d097773436b69ff9feafd636ab4cf873786537/gemma-4-12b-it-qat-q4_0.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-12B-it-qat-q4_0-gguf/snapshots/29d097773436b69ff9feafd636ab4cf873786537/mmproj-gemma-4-12b-it-qat-q4_0.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-26B-A4B-it-qat-q4_0-gguf/snapshots/d1c082be9cf3c8a514acf63b8761f4b41935842e/gemma-4-26B-it-mmproj.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-26B-A4B-it-qat-q4_0-gguf/snapshots/d1c082be9cf3c8a514acf63b8761f4b41935842e/gemma-4-26B_q4_0-it.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-31B-it-qat-q4_0-gguf/snapshots/59dde24573e7e61570dba08b18a2e1fe246955ed/gemma-4-31B-it-mmproj.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-31B-it-qat-q4_0-gguf/snapshots/59dde24573e7e61570dba08b18a2e1fe246955ed/gemma-4-31B_q4_0-it.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-E4B-it-qat-q4_0-gguf/snapshots/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/gemma-4-E4B-it-mmproj.gguf
+    magic 47 47 55 46  GGUF  models--google--gemma-4-E4B-it-qat-q4_0-gguf/snapshots/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/gemma-4-E4B_q4_0-it.gguf
+    magic 47 47 55 46  GGUF  models--mrutkows--granite-embedding-english-r2-GGUF/snapshots/f9cb7cf5dd1bf0e4f56cec624099d4000338c002/granite-embedding-english-r2-bf16.gguf
+  ```
+
+- **framework's channel and mirror**: Omarchy's stable channel. The mirrorlist is the stable
+  template as shipped; pacman.conf has been edited since its template was copied, and its
+  `omarchy` repository is the stable one. One update pending (`mise-bin`).
+
+  ```text
+  mirrorlist: 1 servers (/etc/pacman.d/mirrorlist)
+  mirror: Server = https://stable-mirror.omarchy.org/$repo/os/$arch
+  omarchy channel: /etc/pacman.d/mirrorlist matches the template of stable
+  omarchy channel: /etc/pacman.conf matches no channel's template (edited since)
+  omarchy channel: package omarchy 4.0.6-1
+  pending: 1 packages (checkupdates, a fresh sync of the databases)
+  ```
+
+- **gb10-1's channel and mirror**: Ubuntu 24.04 (noble) from `ports.ubuntu.com`, DGX OS's
+  `dgx` and `spark` repositories, CUDA and the HPC SDK from NVIDIA, Canonical's NVIDIA desktop
+  edge PPA (a snapshot URL), and ESM. The lists were refreshed today, with nothing pending.
+
+  ```text
+  apt source /etc/apt/sources.list.d/tailscale.list: deb https://pkgs.tailscale.com/stable/ubuntu suites noble components main
+  apt source /etc/apt/sources.list.d/ai-workbench-desktop.sources: deb https://workbench.download.nvidia.com/stable/linux/debian suites default components proprietary
+  apt source /etc/apt/sources.list.d/canonical-nvidia-ubuntu-nvidia-desktop-edge-noble.sources: deb https://snapshot.ppa.launchpadcontent.net/canonical-nvidia/nvidia-desktop-edge/ubuntu/ suites noble components main
+  apt source /etc/apt/sources.list.d/cuda-compute-repo.sources: deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa/ suites /
+  apt source /etc/apt/sources.list.d/dgx.sources: deb https://repo.download.nvidia.com/baseos/ubuntu/noble/arm64/ suites noble noble-updates components common dgx
+  apt source /etc/apt/sources.list.d/google-chrome.sources: deb https://dl.google.com/linux/chrome-stable/deb/ suites stable components main
+  apt source /etc/apt/sources.list.d/nv-vulkan-desktop-ppa.sources: deb https://snapshot.ppa.launchpadcontent.net/canonical-nvidia/vulkan-packages-nv-desktop/ubuntu/ suites noble components main
+  apt source /etc/apt/sources.list.d/nvhpc.sources: deb https://developer.download.nvidia.com/hpc-sdk/ubuntu/arm64/ suites /
+  apt source /etc/apt/sources.list.d/spark.sources: deb https://repo.download.nvidia.com/spark/ubuntu/arm64/ suites noble-updates components common
+  apt source /etc/apt/sources.list.d/ubuntu-esm-apps.sources: deb https://esm.ubuntu.com/apps/ubuntu suites noble-apps-security noble-apps-updates components main
+  apt source /etc/apt/sources.list.d/ubuntu-esm-infra.sources: deb https://esm.ubuntu.com/infra/ubuntu suites noble-infra-security noble-infra-updates components main
+  apt source /etc/apt/sources.list.d/ubuntu.sources: deb http://ports.ubuntu.com/ubuntu-ports/ suites noble noble-updates noble-backports components main restricted universe multiverse
+  apt source /etc/apt/sources.list.d/ubuntu.sources: deb http://ports.ubuntu.com/ubuntu-ports/ suites noble-security components main restricted universe multiverse
+  apt lists: last refreshed 2026-10-31 17:44:37 (0 days ago); the run never refreshes them
+  pending: 0 packages (apt, from the cached lists)
+  ```
+
+- **Tailnet identifiers**: none in either output. A grep for a `100.64.0.0/10` address, the
+  `fd7a:115c:a1e0:` prefix, or a `.ts.net` name finds 0 lines in each, and no line carries a
+  redaction marker (`[tailnet-ipv4]`, `[tailnet-ipv6]`, `[magicdns-name]`, `[ipv4]`), so the
+  guard had nothing to redact. The mirror and apt source lines pass through the guard as any
+  other line does.
+
+### What magic.sh found
+
+- `ggml-org/gpt-oss-120b-GGUF` `gpt-oss-120b-MXFP4.gguf`: `47 47 55 46`, GGUF.
+- `openai-community/gpt2` `pytorch_model.bin`: `80 02 8a 0a`, pickle, protocol 2.
+- `openai-community/gpt2` `model.safetensors`: `cb 37 00 00`, unknown, with the note that
+  safetensors can't be told from 4 bytes (they are its header length's low bytes) and the Hub's
+  per-file scan settles it.
+- A URL as the repository, `../x`, `/etc/passwd`, and `a.bin?x=1` as the file are each refused
+  before any request, with exit 2. A missing file fails with curl's 404 and exit 1:
+
+  ```text
+  magic.sh: refused repository "https://huggingface.co/openai-community/gpt2": give <org>/<repo>, letters, digits, ".", "_", "-" only
+  magic.sh: refused file "../x": give a path in the repository, letters, digits, ".", "_", "-", and "/" between parts only
+  curl: (22) The requested URL returned error: 404
+  magic.sh: request failed (curl exit 22): https://huggingface.co/openai-community/gpt2/resolve/main/no-such-file.bin
+  ```
+
+No permission prompt blocked magic.sh in this session. Its rule,
+`Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)`, is not yet in `.claude/settings.json`;
+the architect adds it at the walkthrough.

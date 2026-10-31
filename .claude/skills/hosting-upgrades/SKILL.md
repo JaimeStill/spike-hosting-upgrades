@@ -66,6 +66,10 @@ the whole run.
    - `Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)`, for the screening-list script
      the origin research runs (models.md, "Origin"); like the probe rule, it names the script's
      project-relative path, the one the run invokes it by
+   - `Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)`, for the first-bytes script the
+     artifact integrity check runs (models.md, "Artifact integrity"), named the same way; the
+     script takes a repository and a file, never a URL, so the rule can fetch nothing but a file
+     on the Hub
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -79,7 +83,7 @@ the whole run.
    or missing, then the JSON for the missing ones. For example:
 
    ```text
-   Readiness check: 8 rules missing from .claude/settings.json and .claude/settings.local.json.
+   Readiness check: 9 rules missing from .claude/settings.json and .claude/settings.local.json.
    Add them to .claude/settings.json, under permissions.allow:
 
      "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)",
@@ -89,7 +93,8 @@ the whole run.
      "WebSearch",
      "WebFetch",
      "Edit(docs/reports/**)",
-     "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)"
+     "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)",
+     "Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)"
    ```
 4. **Ask.** When a rule is missing, ask whether to continue with the prompts the missing rules
    bring, or wait while the architect adds them; the default is to wait. When none is missing,
@@ -166,6 +171,17 @@ read shows as `<key> (value unread)`, never as `none`. Each container also carri
 `== updates ==`, `== firmware-updates ==`, `== units ==`, and `== docker-disk ==` are what the
 host has fallen behind on, and `== models ==` gives each stored model's size and last-modified
 date; step 5b reads them.
+`== models ==` also carries a `magic` line for each GGUF file in a store: its first 4 bytes, as
+hex and as text (a byte outside printable ASCII shows as `.`), and its path in the store (in a
+Hugging Face cache, `models--<org>--<repo>/snapshots/<revision>/<file>`, read through the cache's
+link to its blob). Those bytes settle a stored file's format (models.md, "Artifact integrity").
+`== updates ==` opens with where the host's packages come from. On Arch, `mirror:` lines give the
+mirrorlist's servers and `repo <name>:` lines each repository pacman.conf names, with its server
+or included list. On Omarchy, `omarchy channel:` lines say which channel's template
+(`stable`, `rc`, `edge`) the mirrorlist and pacman.conf each still match and which of `omarchy`
+or `omarchy-dev` is installed: Omarchy records no channel of its own, so the templates are how
+it is read. On apt, an `apt source` line gives each source's URIs and suites, from one-line
+`.list` files and deb822 `.sources` files alike.
 Each engine container also carries a `published ports` line (what it publishes now, or `none`,
 and `none (no network)` when it is on no network) and a `configured binds` line (the bindings it
 was created with), each port named by its bind class: `tailnet4` (the tailnet IPv4 address),
@@ -325,8 +341,13 @@ boot-order failure, a stopped engine), then by disk freed.
    versions. On apt, give the lists' age from the `apt lists` line: the count is as of that date,
    and refreshing the lists is root's (`ssh -t <host> sudo apt-get update`, asked for as "Facts
    that need root" says, after which the run probes again). On Arch, the count is a fresh sync.
-   Read the distribution's notices for each (Arch news for a manual intervention, the release's
-   changelog or security notice), and give the verdict by them. A package step 5 weighs (the
+   Read the updates against the channel and mirror the probe prints at the section's head (the
+   `mirror:`, `repo`, and `omarchy channel:` lines, or the `apt source` lines): an update is
+   what that channel and mirror offer, and a mirror that serves a snapshot (Omarchy's stable
+   mirror) can lag the distribution's own. Read the distribution's notices for each (Arch news
+   for a manual intervention, the release's changelog or security notice), and give the verdict
+   by them. When a notice urges an upgrade of a package the probe doesn't list, ask for its
+   installed version as "Package versions a notice names" says. A package step 5 weighs (the
    kernel, firmware, Mesa, the driver) keeps its verdict there and is listed here by reference.
    Packages that share a verdict and a reason may share a row that names each.
 2. **Firmware updates** (`== firmware-updates ==`). Each device with an update, by name, from and
@@ -720,19 +741,23 @@ other.
 - The source tiers and the sources for its kind, from [sources.md](sources.md), and the
   blocklist ([blocklist.md](blocklist.md)).
 - The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`, and, for the
-  origin part only, the screening-list script, run from the project root by exactly the path its
-  readiness rule names, with each name quoted:
-  `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin", item 1).
-  Its "no match" is never "clean" ([sources.md](sources.md), "Origin and build checks").
+  origin part only, the screening-list script and the first-bytes script, each run from the
+  project root by exactly the path its readiness rule names, with each argument quoted:
+  `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin", item 1)
+  and `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"` (models.md,
+  "Artifact integrity"). The screening list's "no match" is never "clean", and magic.sh can't tell
+  safetensors from 4 bytes ([sources.md](sources.md), "Origin and build checks").
 
 **What each part returns.** Cited claims, each with its source's URL, its read date, and its
 tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts.
 
 **No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for
 them, so they would run outside the rules the architect granted. Data too large for WebFetch, or
-behind a header WebFetch can't send, goes through a narrow script bundled with the skill, which
-reads one source and is granted by its own rule, naming its path: `scripts/screen.sh` is the one
-such script today, and with the probe it holds the skill's only curl.
+behind a header or a redirect WebFetch can't handle, goes through a narrow script bundled with the
+skill, which reads one source and is granted by its own rule, naming its path:
+`scripts/screen.sh` (the screening list) and `scripts/magic.sh` (a Hub file's first 4 bytes, past
+the xet CDN's 302) are the two such scripts today, and with the probe they hold the skill's only
+curl.
 
 ## When to pause
 
@@ -800,6 +825,23 @@ this machine and paste the output (N = 1, from the probe's /sys/class/drm/card1)
 
 If the architect declines, the run goes on without the fact and the report says which fact is
 missing and what it would have decided.
+
+### Package versions a notice names
+
+When Arch news, or another distribution's notice, urges an upgrade of a package the probe's
+output doesn't list, the run asks for its installed version the same way, though no root is
+needed: it prints the command (`ssh <host> pacman -Q <package>` on Arch, and
+`ssh <host> dpkg-query -W <package>` on apt), says which notice names the package and why, asks
+the architect to run it and paste the output, and continues from it, citing it as the
+architect's read-out. The run doesn't run it itself: the readiness check grants ssh only for the
+probe. For example:
+
+```text
+Arch news of <date> urges upgrading <package> before the next update. The probe doesn't list it.
+Run this from this machine and paste the output:
+
+  ssh framework pacman -Q <package>
+```
 
 ## What a run writes
 

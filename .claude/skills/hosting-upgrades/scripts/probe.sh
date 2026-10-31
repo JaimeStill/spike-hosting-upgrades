@@ -8,8 +8,9 @@
 # and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
 # engine containers (with their presets' serving keys and the drafters each section loads) and
 # systemd units, each running engine's build and served models, the models in the host's local
-# stores, and what the host has fallen behind on: pending package and firmware updates, failed
-# units, and docker's disk. A probe whose command is absent prints "skipped:" and the run goes on;
+# stores (with each GGUF file's first 4 bytes), and what the host has fallen behind on: the
+# package channel and mirror, pending package and firmware updates, failed units, and docker's
+# disk. A probe whose command is absent prints "skipped:" and the run goes on;
 # the last section lists every skip.
 #
 # It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
@@ -625,6 +626,27 @@ probe() {
       done < <(docker inspect --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' "$name")
     done
   fi
+  # Prints the first 4 bytes of each GGUF file named on stdin (paths under the store, one a line),
+  # as hex and as text with every byte outside printable ASCII shown as ".", so a pickle's 80 02
+  # can't garble the output. The bytes say what a file is, whatever its name claims: GGUF is
+  # 47 47 55 46. The read follows a Hugging Face cache's snapshot links to their blobs.
+  first_bytes() {
+    local store=$1 rel hex n=0
+    printf 'first 4 bytes of each GGUF in %s (hex, as text, path in the store):\n' "$store"
+    while IFS= read -r rel; do
+      [[ -n $rel ]] || continue
+      n=$((n + 1))
+      if [[ -r $store/$rel ]]; then
+        hex=$(head -c 4 "$store/$rel" | od -An -tx1 -v | tr -s ' \n' ' ')
+        hex=${hex# }
+        printf '  magic %s  %s  %s\n' "${hex% }" \
+          "$(head -c 4 "$store/$rel" | LC_ALL=C tr -c '[:print:]' '.')" "$rel"
+      else
+        printf '  magic unreadable without root  %s\n' "$rel"
+      fi
+    done
+    ((n)) || echo "  none"
+  }
   local listed=" "
   for store in "${stores[@]}"; do
     [[ -d $store && $listed != *" $store "* ]] || continue
@@ -637,11 +659,17 @@ probe() {
           "$(find "$dir" -printf '%TF\n' 2>/dev/null | sort | tail -n 1)" \
           "$(basename "$dir" | sed 's/^models--//; s/--/\//')"
       done
+      # Each snapshot's GGUF files, in its top directory or a quant's subdirectory, by the link's
+      # path (models--<org>--<repo>/snapshots/<revision>/<file>), never the blob's.
+      find "$store" -mindepth 4 -maxdepth 5 -path "$store/models--*/snapshots/*" -name '*.gguf' \
+        -printf '%P\n' 2>/dev/null | sort | first_bytes "$store"
     elif [[ -n $(find "$store" -maxdepth 4 -name '*.gguf' -print -quit 2>/dev/null) ]]; then
       # A file's last-modified date is when it was written: a model can sit unused long after it.
       printf 'store %s (GGUF files; size, last modified):\n' "$store"
       find "$store" -maxdepth 4 -name '*.gguf' -printf '%s %TF %P\n' 2>/dev/null | sort -k3 |
         awk '{ printf "  %.1fG  %s  %s\n", $1 / 1073741824, $2, $3 }'
+      find "$store" -maxdepth 4 -name '*.gguf' -printf '%P\n' 2>/dev/null | sort |
+        first_bytes "$store"
     fi
   done
   [[ $listed == " " ]] && echo "no model store found"
@@ -652,11 +680,103 @@ probe() {
   fi
 
   section updates
+  # Where the host's packages come from, so pending updates are read against the channel and
+  # mirror that offer them. On Arch: the mirrorlist's servers, and each repository pacman.conf
+  # names with its own servers or included lists. Omarchy records no channel: omarchy-channel-set
+  # (basecamp/omarchy v4.0.6) runs omarchy-refresh-pacman, which copies the channel's templates
+  # (default/pacman/mirrorlist-<channel> and pacman-<channel>.conf) over /etc/pacman.d/mirrorlist
+  # and /etc/pacman.conf, and installs omarchy for stable and rc, omarchy-dev for edge and dev. So
+  # the channel is read from which template each file still matches byte for byte, and from the
+  # package installed. On apt: each source's URIs and suites, from one-line .list files and
+  # deb822 .sources files alike; options in brackets ([signed-by=...]) are dropped. These lines
+  # take the guard as any other: a mirror is a public name, but an address in one is redacted.
+  local lines=() now
+  if have pacman; then
+    if [[ -r /etc/pacman.d/mirrorlist ]]; then
+      mapfile -t lines < <(grep -E '^[[:space:]]*Server[[:space:]]*=' /etc/pacman.d/mirrorlist |
+        sed -E 's/^[[:space:]]+//')
+      printf 'mirrorlist: %d servers (/etc/pacman.d/mirrorlist)\n' "${#lines[@]}"
+      ((${#lines[@]})) && printf 'mirror: %s\n' "${lines[@]}"
+    else
+      skip "mirrorlist: /etc/pacman.d/mirrorlist unreadable"
+    fi
+    if [[ -r /etc/pacman.conf ]]; then
+      awk '
+        /^[[:space:]]*\[/ { r = $0; gsub(/[][[:space:]]/, "", r); next }
+        r != "" && r != "options" && /^[[:space:]]*(Server|Include)[[:space:]]*=/ {
+          l = $0; sub(/^[[:space:]]+/, "", l); print "repo " r ": " l
+        }' /etc/pacman.conf
+    else
+      skip "pacman.conf: /etc/pacman.conf unreadable"
+    fi
+    local omarchy_dir="" channel file matched
+    for omarchy_dir in "${OMARCHY_PATH:-}" /usr/share/omarchy "$HOME/.local/share/omarchy"; do
+      [[ -n $omarchy_dir && -d $omarchy_dir/default/pacman ]] && break
+      omarchy_dir=""
+    done
+    if [[ -n $omarchy_dir ]]; then
+      for file in /etc/pacman.d/mirrorlist /etc/pacman.conf; do
+        matched=""
+        for channel in stable rc edge; do
+          if [[ $file == */mirrorlist ]]; then
+            cmp -s "$file" "$omarchy_dir/default/pacman/mirrorlist-$channel" && matched+=" $channel"
+          else
+            cmp -s "$file" "$omarchy_dir/default/pacman/pacman-$channel.conf" && matched+=" $channel"
+          fi
+        done
+        if [[ -n $matched ]]; then
+          printf 'omarchy channel: %s matches the template of%s\n' "$file" "$matched"
+        else
+          printf "omarchy channel: %s matches no channel's template (edited since)\n" "$file"
+        fi
+      done
+      printf 'omarchy channel: package %s\n' "$(pacman -Q omarchy omarchy-dev 2>/dev/null |
+        paste -sd, - | sed 's/,/, /g')"
+    else
+      skip "omarchy channel: no Omarchy pacman templates (default/pacman) found"
+    fi
+  elif have apt; then
+    local src
+    for src in /etc/apt/sources.list /etc/apt/sources.list.d/*.list \
+      /etc/apt/sources.list.d/*.sources; do
+      [[ -e $src ]] || continue
+      if [[ ! -r $src ]]; then
+        skip "apt source $src: unreadable"
+        continue
+      fi
+      if [[ $src == *.sources ]]; then
+        # deb822: stanzas split by blank lines; a stanza with Enabled: no is listed as disabled.
+        awk -v f="$src" '
+          function flush() {
+            if (u != "") print "apt source " f ": " (t == "" ? "deb" : t) " " u " suites " s \
+              (c == "" ? "" : " components " c) (e ~ /^[Nn]o$/ ? " (disabled)" : "")
+            t = u = s = c = e = ""
+          }
+          /^[[:space:]]*$/ { flush(); next }
+          /^[[:space:]]*#/ { next }
+          { k = tolower($1); v = $0; sub(/^[^:]*:[[:space:]]*/, "", v) }
+          k == "types:" { t = v } k == "uris:" { u = v } k == "suites:" { s = v }
+          k == "components:" { c = v } k == "enabled:" { e = v }
+          END { flush() }' "$src"
+      else
+        awk -v f="$src" '
+          /^[[:space:]]*deb(-src)?[[:space:]]/ {
+            l = $0; gsub(/\[[^]]*\]/, "", l); sub(/[[:space:]]*#.*$/, "", l)
+            sub(/[[:space:]]+$/, "", l); n = split(l, w, /[[:space:]]+/)
+            i = (w[1] == "" ? 2 : 1)
+            out = "apt source " f ": " w[i] " " w[i + 1] " suites " w[i + 2]
+            if (n >= i + 3) { out = out " components"; for (j = i + 3; j <= n; j++) out = out " " w[j] }
+            print out
+          }' "$src"
+      fi
+    done
+  else
+    skip "package channel: no pacman or apt"
+  fi
   # Pending package updates, read without root and without refreshing anything root keeps: apt's
   # cached lists (apt-get update is root's, and never run), or Arch's checkupdates, which syncs a
   # temporary copy of the databases as this user. Each update is an "update:" line, whose versions
   # the guard keeps, as it keeps a "package:" line's.
-  local lines=() now
   now=$(date +%s)
   if have apt; then
     if [[ -d /var/lib/apt/lists ]]; then
