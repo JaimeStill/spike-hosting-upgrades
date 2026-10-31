@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
+- **State:** building
 - **Task:** skill
 - **Branch:** skill
 
@@ -351,9 +351,134 @@ Slices
      reports.
 ```
 
+### Revision 4 · adopt the fresh runs' proposals, approved 2026-10-31
+
+```
+Problem, Test seams, Out of scope, and Door are unchanged. Out of scope still holds the
+verification step (verify-framework) and new fresh runs (answer's second report).
+
+Amended
+  2.  A host descriptor's watch items are named things of any kind (hardware, system,
+      engine), each answered in the report section of its kind.
+  3.  Policy, origin. The architect's bar, of 2026-10-31: "the origin of the model, and any
+      models it is directly trained on, are not adversarial and have been deemed safe for
+      use."
+      Excluding levels:
+      - an adversarial publisher or uploader (compliance)
+      - the weights chain: base models and merges
+      - a distillation teacher: a model whose outputs or logits the model was trained to
+        reproduce
+      - components in the inference path, as shipped
+      Read by role, not by label. When the publisher's own documents present an adversary
+      model's outputs as what the model was distilled from, or as its principal
+      post-training corpus, that model is a teacher.
+      Recorded, not excluding, as "dataset sources":
+      - adversary-generated data in a training mix (synthetic SFT data, reasoning traces,
+        preferences)
+      - the existing recorded levels (narrow transformations, drafters, conventions)
+      Unchanged:
+      - A run reads a publisher's disclosure file when the card points to one, now to find
+        teachers.
+      - A teacher the card doesn't name passes only when the publisher's own documents say
+        it is a checkpoint from their own pipeline.
+      Superseded:
+      - the 2026-10-31 granite exclusion
+      - the data rule's "origin unclear" for unspecified subsets
+  3.  Policy, artifact integrity and floor:
+      - A file stored on the host is settled by the probe's read of its first 4 bytes.
+      - Any other file is settled by magic.sh's ranged read of its first 4 bytes, or by the
+        Hub's per-file scan where that names the format. The repository-level header
+        fallback is dropped.
+      - Protect AI's PAIT-GGUF-100 under an overall "safe" status is recorded and passes,
+        by name only. Any other scanner message under "safe" is a rule's edge (pause; the
+        file fails until the architect answers).
+      - A GGUF's embedded chat template is compared with the publisher's
+        tokenizer_config.json template. Differences are recorded with the lines quoted. One
+        that adds text the model sees (a system prompt, instructions) fails integrity.
+      - A QAD build is not trained-in: it takes path 3.
+      - Memory headroom is held by sizing the model set, not by container limits (GB10
+        cudaMalloc isn't charged to the cgroup).
+      - The granite example stands as a pass after research, without framework's stale
+        clause.
+  4.  The probe adds two reads:
+      - each stored GGUF's first 4 bytes under the model store, following the Hugging
+        Face cache's links
+      - the host's package channel and mirror (the pacman mirrorlist's servers, the Omarchy
+        channel)
+  8.  Sources:
+      - IBM's Granite disclosure files
+      - Omarchy's pacman configuration at a tag, and the stable mirror's lastsync
+      - the gregkh/linux commits API (primary)
+      - packages.ubuntu.com
+      - Ollama's pinned llama.cpp build
+      - ggml-org's DGX Spark benches (attributed, as ruled 2026-10-30)
+      - NVIDIA's DGX Spark playbooks, the Launchpad publishing history, the DGX Spark
+        Porting Guide, and Dell KB 000379162
+      - Known leads gains the architect's four tier rulings, each dated
+  12. The engine seed list matches the built skill's five engines (llama.cpp, vLLM, SGLang,
+      TensorRT-LLM, ggml-hrx).
+  13. The origin chain:
+      - names the publisher's own GitHub organization, linked from its domain, as the
+        second identity link when its Hugging Face organization isn't verified
+      - records a WebFetch first-bytes read that a xet 302 defeats as "read not made",
+        then uses magic.sh
+  18. The readiness check prints nine rules. The ninth is magic.sh's exact rule.
+
+Added
+  25. When Arch news urges an upgrade of a package, the run prints
+      `ssh <host> pacman -Q <package>`, asks the architect for its output, and continues
+      from it, as it does for facts that need root.
+  26. scripts/magic.sh takes a Hugging Face repository and a file name and builds the
+      huggingface.co resolve URL itself. It prints the file's first 4 bytes from a ranged
+      curl, and accepts no URL, so its rule can fetch nothing else. With screen.sh and the
+      probe, it holds the skill's only curl.
+
+Slices
+  1-8. (done)
+  9.  Policy and the model gates (behaviors 3, 13): docs/policy.md, its template, and
+      models.md.
+      Demo: by hand against the amended text, recorded in the finding:
+      - granite-4.1-30b passes origin, with SYNTHETIC-1 recorded as a dataset source
+      - LFM2.5-24B-A2B stays origin unclear (unnamed teacher)
+      - Nemotron 3 Nano Omni's "improved using" Qwen models are read by role
+  10. The probe, magic.sh, and the run's steps (behaviors 4, 18, 25, 26):
+      - the two probe reads
+      - magic.sh and its readiness rule
+      - the no-root package ask
+      - SKILL.md's probe sections, step 5b, the Research tools, and the curl note
+      Demo:
+      - the probe runs read-only on framework and gb10-1, with a first-4-bytes line per
+        stored GGUF and no tailnet identifier
+      - magic.sh prints GGUF for ggml-org/gpt-oss-120b-GGUF gpt-oss-120b-MXFP4.gguf, and
+        80 02 for openai-community/gpt2 pytorch_model.bin
+      - the project check passes, shellcheck included
+  11. Sources and descriptors (behaviors 2, 8, 12):
+      - sources.md
+      - framework's watch items: #28495/#29510, and the Omarchy snapshot date
+      - gb10-1's watch items: #30781, #27148/#27624, #29510 on CUDA, the kernel reset
+        reports, and Dell display reserved memory
+      - the wider watch items in SKILL.md and the host template
+      Demo: setup prints nine rules; the project check resolves every link.
+  12. Walkthrough (the architect):
+      - /hosting-upgrades setup prints nine rules
+      - both probe outputs' magic lines
+      - the magic.sh pair
+      - the by-hand origin checks
+      Then SHIP. Twelve slices: a fourth exception, approved with this revision.
+
+Pending edits (coordinator)
+  - screen's summary gains "BFCL samples (100 single-turn, 20 multi-turn) and the
+    tool-reliability check on the agent candidates no card can place, Gemma 4 26B-A4B QAT
+    first".
+  - verify-gb10's summary gains "and the run's decided removals" (the vLLM container and
+    image, both bare-metal units).
+Deferred: the project's own conversion of granite-embedding-english-r2. Revisit if IBM's
+disclosure file shows a teacher.
+```
+
 ## Progress
 
-slices 8/8 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) ✓ 2c392b5 · standards ✓ (3 fixes) · spec ✓ (no gaps in R1-R12) · editor ✓ · fresh runs (architect, slice 8) ✓ framework 5560087, gb10-1 26b6c37
+slices 8/12 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) ✓ 2c392b5 · standards ✓ (3 fixes) · spec ✓ (no gaps in R1-R12) · editor ✓ · fresh runs (architect, slice 8) ✓ framework 5560087, gb10-1 26b6c37 · revision 4 approved 2026-10-31: slices 9-12 —
 
 ## Decisions
 
@@ -632,8 +757,37 @@ slices 8/8 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, revi
   `ibm-granite/granite-embedding-english-r2`, the embedding incumbent on both hosts, which both
   fresh runs pass on IBM's paper alone.
 
+- skill: Revision 4, round 1 (architect, 2026-10-31). Accepted:
+  - the chat-template check (a template adding text the model sees fails integrity)
+  - PAIT-GGUF-100 passing by name only
+  - the two policy items (granite clause, headroom held by sizing)
+  - the two models.md items (second identity link, xet 302 "read not made")
+  - sources a-h
+  - the probe's channel and mirror, and the no-root package ask
+  - framework's and gb10-1's watch items
+  - screen's BFCL pending edit
+  - the gb10-1 removals going to verify-gb10
+  Rejected: sources i (SiliconBench and forum posts as Known-leads rows), since no ruling made
+  them leads. Deferred: the project's granite-embedding conversion.
+- skill: the origin bar, in the architect's words (2026-10-31): "the origin of the model, and any
+  models it is directly trained on, are not adversarial and have been deemed safe for use."
+  - Excluding: the publisher or uploader, the weights chain, distillation teachers (read by role,
+    including an adversary model whose outputs are the principal post-training corpus), and
+    inference-path components.
+  - Recorded as dataset sources: adversary-generated data in a training mix.
+  - Rejected: the 2026-10-30 level-2 data clause, and the silent-publisher tightening. They would
+    limit the pool drastically, and some adversary-origin research is nearly unavoidable in open
+    weights. This supersedes the 2026-10-31 granite exclusion.
+- skill: watch items are of any kind (hardware, system, engine), answered in their kind's section
+  (architect, 2026-10-31).
+- skill: scripts/magic.sh reads a Hugging Face file's first 4 bytes by ranged curl, from a
+  repository and file name, never a URL, under its own exact rule; setup prints nine rules. It
+  replaces the repository-level GGUF header fallback (architect, 2026-10-31).
+
 ## Pending edits
 
 - coordinator · roadmap: task `skill`'s summary, "with no host step" becomes "with read-only, no-root host probes".
 - coordinator · roadmap: verify-framework's and verify-gb10's summaries gain "applies the run's take and verify items, with rollbacks".
 - coordinator · roadmap: experiment.hosting.spike-model-layout's summary gains the architect's idea of 2026-10-30: split hosts by role, with one GB10 for the agent model alone (about 49 GiB of KV after weights and headroom, roughly 10 concurrent 128K sessions by estimate), the second GB10 or the Framework for the capability models (vision, audio, embedding), and the remaining workstation routing overflow. Open points: gb10-2 is reserved for spike-ai-pipeline and becomes available to the layout spike once that goal completes; the routing layer, and whether the capability host's backend changes which builds pass the floor.
+- coordinator · roadmap: task `screen`'s summary gains "BFCL samples (100 single-turn, 20 multi-turn) and the tool-reliability check on the agent candidates no card can place, Gemma 4 26B-A4B QAT first".
+- coordinator · roadmap: verify-gb10's summary gains "and the run's decided removals" (the vLLM container and image, and both bare-metal units).
