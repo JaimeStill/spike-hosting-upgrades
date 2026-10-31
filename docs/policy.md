@@ -85,8 +85,8 @@ Excluding them would limit the pool drastically: some adversary-origin research 
 unavoidable in open weights, and nearly every model trains on public datasets that few cards
 list, so such a rule would exclude the publishers who disclose their data and pass the ones who
 stay silent. This supersedes the 2026-10-30 data clause, which excluded such data at level 2 and
-left a model that didn't say which subsets it used "origin unclear", and the 2026-10-31 granite
-exclusion (the architect's decision, 2026-10-31).
+left a model that didn't say which subsets it used "origin unclear", and the exclusion of Granite
+4.1 30B that applied that clause on 2026-10-31 (the architect's decision, 2026-10-31).
 
 **Finding the teachers.** A run reads a publisher's disclosure file when the card points to one,
 to find the model's teachers. A teacher the card doesn't name (a card that says "distillation" or

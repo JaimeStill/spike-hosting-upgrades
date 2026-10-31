@@ -551,10 +551,10 @@ Both exited 0.
 ## The origin bar by role, by hand, 2026-10-31
 
 Revision 4, slice 9. The policy's origin rule now excludes a distillation teacher, read by its
-role, and records adversary-generated data in a training mix under "dataset sources"; the
-2026-10-30 data clause and the 2026-10-31 granite exclusion are superseded (`docs/policy.md`,
-"Model origin"). The session checked three models by hand against the amended text, with no host
-involved. Nothing here is a run of the skill, and no report changes.
+role, and records adversary-generated data in a training mix under "dataset sources". It
+supersedes the 2026-10-30 data clause and the exclusion of Granite 4.1 30B under it on 2026-10-31
+(`docs/policy.md`, "Model origin"). The session checked three models by hand against the
+amended text, with no host involved. Nothing here is a run of the skill, and no report changes.
 
 ### Sources, exactly as read
 
@@ -591,7 +591,7 @@ distillation passages verbatim:
     are Phi-4 ("Using Phi-4 as a teacher model", for one synthetic science set), Phi-4-reasoning,
     Mixtral-8x7B-Instruct-v0.1, and Nemotron4-340B-Instruct, none of adversary origin.
   - So the row records SYNTHETIC-1 (DeepSeek-R1 traces) under "dataset sources", and no level
-    excludes. The card as read today links no disclosure file; the file is in the publisher's
+    excludes. The card as read 2026-10-31 links no disclosure file; the file is in the publisher's
     own GitHub organization, where gb10-1's run of 2026-10-31 found it.
 - **`LiquidAI/LFM2.5-24B-A2B`: stays origin unclear.** Its teachers are unnamed.
   - The card's post-training is "supervised fine-tuning, teacher specialization, two

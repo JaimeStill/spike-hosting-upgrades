@@ -763,14 +763,15 @@ other.
 - Its inputs: the probe's inventory, the host descriptor, and the policy.
 - The source tiers and the sources for its kind, from [sources.md](sources.md), and the
   blocklist ([blocklist.md](blocklist.md)).
-- The tools it may use: WebSearch, WebFetch, `gh search issues` and `gh search prs`; for the
-  origin part, the screening-list script; and for the model parts (3 and 4), which check each
-  file's artifact integrity, and the origin part, the first-bytes script. Each runs from the
-  project root by exactly the path its readiness rule names, with each argument quoted:
-  `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin", item 1)
-  and `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"` (models.md,
-  "Artifact integrity", item 2). The screening list's "no match" is never "clean", and magic.sh can't tell
-  safetensors from 4 bytes ([sources.md](sources.md), "Origin and build checks").
+- The tools it may use: WebSearch, WebFetch, `gh search issues`, and `gh search prs`. The origin
+  part may also run the screening-list script. The origin part and the model parts (3 and 4),
+  which check each file's artifact integrity, may also run the first-bytes script. Each script
+  runs from the project root by exactly the path its readiness rule names, with each argument
+  quoted: `.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...` (models.md, "Origin",
+  item 1) and `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"`
+  (models.md, "Artifact integrity", item 2). The screening list's "no match" is never "clean",
+  and magic.sh can't tell safetensors from 4 bytes ([sources.md](sources.md), "Origin and build
+  checks").
 
 **What each part returns.** Cited claims, each with its source's URL, its read date, and its
 tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts.
@@ -778,10 +779,9 @@ tier, in the form "Citing" (step 4) gives. The run, not the part, gives verdicts
 **No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for
 them, so they would run outside the rules the architect granted. Data too large for WebFetch, or
 behind a header or a redirect WebFetch can't handle, goes through a narrow script bundled with the
-skill, which reads one source and is granted by its own rule, naming its path:
-`scripts/screen.sh` (the screening list) and `scripts/magic.sh` (a Hub file's first 4 bytes, past
-the xet CDN's 302) are the two such scripts today, and with the probe they hold the skill's only
-curl.
+skill, which reads one source and is granted by its own rule, naming its path. There are two:
+`scripts/screen.sh` reads the screening list, and `scripts/magic.sh` reads a Hub file's first 4
+bytes past the xet CDN's 302. With the probe, they hold the skill's only curl.
 
 ## When to pause
 

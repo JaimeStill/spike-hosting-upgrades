@@ -478,7 +478,7 @@ disclosure file shows a teacher.
 
 ## Progress
 
-slices 8/12 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) ✓ 2c392b5 · standards ✓ (3 fixes) · spec ✓ (no gaps in R1-R12) · editor ✓ · fresh runs (architect, slice 8) ✓ framework 5560087, gb10-1 26b6c37 · revision 4 approved 2026-10-31: slices 9-12 —
+slices 11/12 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, review 8129462) · slice 7 (backlog) ✓ 2c392b5 · standards ✓ (3 fixes) · spec ✓ (no gaps in R1-R12) · editor ✓ · fresh runs (architect, slice 8) ✓ framework 5560087, gb10-1 26b6c37 · revision 4 approved 2026-10-31: slice 9 ✓ 7fbdcd2 · slice 10 ✓ 0aea366 · slice 11 ✓ c52aa64 · standards ✓ (4 fixes) · spec ✓ (1 gap, closed in 476299e) · editor ✓ · slice 12 (walkthrough, architect) —
 
 ## Decisions
 
@@ -783,6 +783,36 @@ slices 8/12 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, rev
 - skill: scripts/magic.sh reads a Hugging Face file's first 4 bytes by ranged curl, from a
   repository and file name, never a URL, under its own exact rule; setup prints nine rules. It
   replaces the repository-level GGUF header fallback (architect, 2026-10-31).
+- skill: the Hub's per-file scan settles a safetensors file, since its format marker sits past
+  the first 4 bytes, which hold only its header length's low bytes; the first 4 bytes settle GGUF,
+  a pickle, or a zip (revision 4, slice 9).
+- skill: a Hub scan still "queued" names no format and settles nothing, so magic.sh reads the file
+  (revision 4, slice 9).
+- skill: the probe works out the Omarchy channel from which channel's template each pacman file
+  still matches, since omarchy-channel-set copies the templates and stores no channel; it prints
+  each pacman.conf repository's Server or Include line (revision 4, slice 10).
+- skill: the probe prints `magic` lines for GGUF files in a plain store as well as in a Hugging
+  Face cache (revision 4, slice 10).
+- skill: magic.sh is hardened beyond the brief: curl's `-f`, https only for the request and its
+  redirects, `--max-filesize 64` against a server that ignores the range, `LC_ALL=C` so the
+  allowlist is ASCII only, and `-q` so no `~/.curlrc` adds options (revision 4, slice 10 and the
+  standards review).
+- skill: the no-root package ask covers apt hosts too, with `ssh <host> dpkg-query -W <package>`
+  (revision 4, slice 10).
+- skill: sources.md gains an Ubuntu table (the Launchpad publishing history and
+  packages.ubuntu.com), and its Known leads table gains a "Ruled" column with each ruling's date
+  (revision 4, slice 11).
+- skill: the model parts (3 and 4), not only the origin part, may run magic.sh, since they check
+  each file's artifact integrity (revision 4, the spec review's one gap, closed in 476299e).
+- skill: open, for the architect at the walkthrough: does a card "point to" a disclosure file when
+  it links only the publisher's GitHub repository that holds it? The Granite 4.1 30B card links
+  only `ibm-granite/granite-4.1-language-models`.
+- skill: open, for the architect at the walkthrough: a stored file that isn't GGUF (the
+  safetensors snapshots on framework) gets no `magic` line. Does it fall to "any other file",
+  settled by the Hub's scan or magic.sh?
+- skill: open, for the architect at the walkthrough: the probe's older
+  `compgen -G "$store/models--*"` check reads glob characters in a store's name as a pattern. It
+  is outside revision 4's diff and is left for a later pass.
 
 ## Pending edits
 
