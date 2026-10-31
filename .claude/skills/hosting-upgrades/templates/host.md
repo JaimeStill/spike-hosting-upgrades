@@ -18,11 +18,14 @@
 
 ## Watch items
 
-<!-- Optional. Named things every run must check, beside its own scan: an engine feature, a
-     backend's support for this hardware, a known regression. Delete the section if there are
-     none. -->
+<!-- Optional. Named things every run must check, beside its own scan, of any kind: hardware
+     (a kernel's known faults on this system, a firmware or BIOS setting), system (the package
+     channel's snapshot, a unit), or engine (an engine feature, a backend's support for this
+     hardware, a known regression). A run answers each by name in the report section of its
+     kind. Delete the section if there are none. -->
 
 - <engine> support for <backend> on <hardware>
+- <a known fault> on <hardware> with the running <component>
 
 ## Measurements
 

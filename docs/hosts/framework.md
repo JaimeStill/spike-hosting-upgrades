@@ -30,6 +30,10 @@ Named things every run checks, beside its own scan.
   ([#31266](https://github.com/ggml-org/llama.cpp/pull/31266))
 - AMD's HRX backend for llama.cpp (ggml-hrx): a published container image
 - Mesa in the llama.cpp Vulkan image, which the router runs instead of the host's
+- llama.cpp unified-KV prompt-processing drop with several slots
+  ([#28495](https://github.com/ggml-org/llama.cpp/issues/28495)) and its fix
+  ([#29510](https://github.com/ggml-org/llama.cpp/pull/29510))
+- The Omarchy stable mirror's snapshot date (what the host can update to)
 
 ## Measurements
 

@@ -746,3 +746,60 @@ Both exited 0. Then magic.sh, from the repository root:
 No permission prompt blocked magic.sh in this session. Its rule,
 `Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)`, is not yet in `.claude/settings.json`;
 the architect adds it at the walkthrough.
+
+## Sources, watch items of any kind, and the descriptors' new watch items, 2026-10-31
+
+Revision 4, slice 11. `sources.md` takes the fresh runs' proposed sources and the architect's
+tier rulings: IBM's Granite disclosure files; Omarchy's pacman configuration at a tag and the
+stable mirror's `lastsync`; the gregkh/linux commits API, which stands in where WebFetch
+truncates the kernel.org ChangeLogs; a new Ubuntu table with the Launchpad publishing history and
+packages.ubuntu.com; Ollama's `LLAMA_CPP_VERSION` pin, folded into its row; ggml-org's DGX Spark
+benches as an attributed benchmark; NVIDIA's DGX Spark playbooks, the DGX Spark Porting Guide,
+and Dell KB 000379162; and four Known leads, each with its ruling's date. SiliconBench and the
+forum's Memory Saver and SparkFlash posts aren't listed, since no ruling made them leads. The
+tree listing's row now points to models.md, "Artifact integrity", item 2, the per-file scan
+since slice 9; the other models.md item references in `sources.md` and `SKILL.md` match the
+current numbering.
+
+Watch items are now of any kind (hardware, system, engine). `SKILL.md` answers each by name in
+its kind's step (5, 5b, or 6) and report section, and the host template says so. framework's
+descriptor gains the unified-KV drop with several slots (#28495, fix #29510) and the Omarchy
+stable mirror's snapshot date; gb10-1's gains #30781, #27148 with its fix #27624, #29510 on
+CUDA, the reboot and reset reports on the running NVIDIA kernel (forum 387397), and display
+reserved memory (UEFI) on the Dell GB10. The skill lists the engine seed list once, in step 6
+item 2, with its five engines.
+
+### Commands, exactly as run
+
+The session ran `/hosting-upgrades setup`'s logic by hand: it read `SKILL.md`, "Readiness
+check", listed `docs/hosts/` (`framework.md`, `gb10-1.md`), and compared each rule with
+`.claude/settings.json`'s `permissions.allow`. `.claude/settings.local.json` doesn't exist. Then,
+from the repository root:
+
+```sh
+mise run check
+```
+
+### What setup would print
+
+Nine rules, eight present and one missing:
+
+```text
+present  "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)"
+present  "Bash(ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)"
+present  "Bash(gh search issues *)"
+present  "Bash(gh search prs *)"
+present  "WebSearch"
+present  "WebFetch"
+present  "Edit(docs/reports/**)"
+present  "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)"
+missing  "Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)"
+```
+
+magic.sh's rule is missing, as expected: the architect adds it to `.claude/settings.json` at the
+walkthrough.
+
+### What the check found
+
+`mise run check` exits 0: shellcheck passes on every tracked script, and every relative Markdown
+link resolves, the new descriptor and `sources.md` lines included.

@@ -30,7 +30,11 @@ writes neither.
   - the SSH short name the run reaches the host by
   - the declared model purposes: what the host serves or is meant to serve (agent, vision, audio,
     embedding, or whatever it serves), naming no model
-  - optional engine watch items: named things the run must check, beside its own scan
+  - optional watch items: named things the run must check, beside its own scan, of any kind:
+    hardware (a component step 5 weighs, such as the kernel, the firmware or BIOS, or the memory
+    ceiling), system (what step 5b reads, such as the package channel, units, or containers), or
+    engine (an engine, a backend, a feature, or a regression, step 6). Each is answered by name in
+    the report section of its kind
   - optional measurements: the workspace's own dated findings on this host, each a reference
     name plus a path, which the run counts as attributed benchmarks ([sources.md](sources.md),
     "Tiers")
@@ -210,8 +214,9 @@ Compare what the probe found with what the descriptor declares, and pause on eve
   nothing serves at all. When nothing serves, the inventory says so, and the later steps judge
   against the installed engines (`== engines ==`) and the stored models (`== models ==`), once
   the architect confirms that is what the run should do.
-- **A watch item the probe can't reach**: a watch item naming an engine or backend the host
-  doesn't have is kept, not dropped; note it for "Proposed changes".
+- **A watch item the probe can't reach**: a watch item naming something the host doesn't have
+  (an engine or backend it doesn't run, a component or device it lacks) is kept, not dropped;
+  note it for "Proposed changes".
 
 Record each answer the architect gives; the report cites it as the architect's.
 
@@ -236,7 +241,8 @@ moves:
 - each component's and engine's newer releases, and what is newly known to break (steps 5 and 6)
 - the newest models of the publishers and the scan for new candidates (step 7), with their origin
   chains (models.md, "Origin")
-- the descriptor's watch items, each answered by name (step 6)
+- the descriptor's watch items, of every kind, each answered by name in its kind's step (5, 5b,
+  or 6)
 
 A row the run carries from the last report says so, with that report's citation, and keeps its
 verdict unless something researched in this run changes it. When any of the three differs, the
@@ -308,6 +314,12 @@ Each adjustment gives:
 
 Order the adjustments verify, take, hold, skip. A fact the probe can't read without
 root (loaded GPU firmware, BIOS settings) is asked for as "Facts that need root" says.
+
+**The hardware watch items.** Answer each of the descriptor's watch items of this kind (a
+component this step weighs, such as a kernel's known faults, a firmware or BIOS setting, or the
+memory the firmware reserves) by name, under its own heading: what the sources say now, cited,
+and what changed since the last report if there is one. An item that bears on a component's
+verdict is cited in that component's row.
 
 This step judges each component's version. Whether the host has caught up with what it already
 installed (a newer kernel installed but not running, a reboot pending) and the boot-order check
@@ -405,6 +417,11 @@ boot-order failure, a stopped engine), then by disk freed.
     (`docs/policy.md`, "Agent session context") is hold, listed here by reference to step 6, with
     the fix stated there.
 
+**The system watch items.** Answer each of the descriptor's watch items of this kind (what this
+step reads, such as the package channel's snapshot date, a unit, or a container) by name, under
+its own heading: what the probe and the sources say now, cited, and what changed since the last
+report if there is one. An item that bears on one of the items above is cited in that item.
+
 #### Boot-order check
 
 Item 5 of this step.
@@ -486,9 +503,10 @@ descriptor declares.
    concurrent-session throughput, a new engine built for the hardware. A newly found engine is
    weighed in this run like a seed-list engine, and proposed for the seed list under "Proposed
    changes".
-4. **The watch items.** Answer each of the descriptor's watch items by name, under its own
-   heading: what the sources say now, cited, and what changed since the last report if there is
-   one.
+4. **The engine watch items.** Answer each of the descriptor's watch items of this kind (an
+   engine, a backend, a feature, or a regression) by name, under its own heading: what the
+   sources say now, cited, and what changed since the last report if there is one. The hardware
+   and system watch items are steps 5's and 5b's.
 5. **The conclusion.** Name the most effective engine platform and configuration to date for the
    host: either an adjustment to the incumbent (a version, a backend, a flag) or a migration to
    another engine, with its verdict by the same rules; a newer build of the incumbent is never
@@ -676,17 +694,19 @@ the inventory matched the last report's, and so whether the run researched in fu
 moved, citing that report (step 4).
 
 ## Hardware configuration
-Step 5's adjustments, verify, take, hold, skip.
+Step 5's adjustments, verify, take, hold, skip, then each hardware watch item by name.
 
 ## System updates and debt
 Step 5b's items: pending package updates (with the lists' age), firmware updates, the kernel and a
 pending reboot, failed units and services meant to run, the boot-order check, container images
 behind their tag, unused images and models taking disk, configuration that differs from the
 descriptor, a drafter of adversary origin a preset loads, and agent sessions under the minimum
-context, each with its verdict and sources, verify, take, hold, skip.
+context, each with its verdict and sources, verify, take, hold, skip; then each system watch item
+by name.
 
 ## Engines
-Step 6: the incumbent, the seed list, the scan, each watch item by name, and the conclusion.
+Step 6: the incumbent, the seed list, the scan, each engine watch item by name, and the
+conclusion.
 
 ## Models
 Step 7: per declared purpose, the incumbent and its candidates, each with its exact repository
@@ -718,7 +738,7 @@ splits it into these five parts, so that runs are repeatable:
 
 1. **Hardware and system**: the OS image, kernel, firmware, BIOS, driver or Mesa, and memory
    ceiling (step 5), and the system's pending updates, firmware updates, and container images'
-   newest tags (step 5b).
+   newest tags (step 5b), with the hardware and system watch items.
 2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items
    (step 6).
 3. **Agent models**: the agent purpose's candidates, their speed on the class, and their cards'
