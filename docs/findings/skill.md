@@ -843,3 +843,47 @@ relative output lists all three, with the broken link now `missing (a broken lin
 `unreadable without root`. Its channel read, run the same way on this machine (Omarchy stable),
 printed the mirror, the four repositories, both template lines, and `package omarchy 4.0.6-1`, as
 on framework. `mise run check` exits 0.
+
+## The walkthrough of revision 4, 2026-10-31
+
+The architect had the session run slice 12's steps. It first added the ninth rule to
+`.claude/settings.json` under `permissions.allow`:
+`"Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)"`. With it, all nine rules the readiness
+check names are present.
+
+### Commands, exactly as run
+
+```sh
+.claude/skills/hosting-upgrades/scripts/magic.sh "ggml-org/gpt-oss-120b-GGUF" "gpt-oss-120b-MXFP4.gguf"
+.claude/skills/hosting-upgrades/scripts/magic.sh "openai-community/gpt2" "pytorch_model.bin"
+.claude/skills/hosting-upgrades/scripts/magic.sh "https://evil.example/x" "y"
+ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
+ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
+```
+
+### What they found
+
+- **magic.sh:**
+  - `gpt-oss-120b-MXFP4.gguf` reads `47 47 55 46`, GGUF, with exit 0.
+  - `pytorch_model.bin` reads `80 02 8a 0a`, pickle protocol 2, with exit 0.
+  - The URL was refused ("refused repository ... give <org>/<repo>"), with exit 2.
+  - No permission prompt appeared for any of them.
+- **framework:**
+  - `== models ==` has 12 `magic 47 47 55 46  GGUF` lines, one per stored GGUF. The four
+    safetensors snapshots get none, as the walkthrough decided (models.md, "Artifact integrity",
+    item 1).
+  - `== updates ==` prints the Omarchy stable mirror, `repo omarchy: Server =
+    https://pkgs.omarchy.org/stable/$arch`, the stable mirrorlist template match, and
+    `pending: 1 packages`: mise-bin 2026.10.23-1 -> 2026.10.24-1.
+- **gb10-1:**
+  - `== models ==` has 12 `magic 47 47 55 46  GGUF` lines.
+  - `== updates ==` prints 13 `apt source` lines, from ports.ubuntu.com noble to the DGX, Spark,
+    CUDA and HPC SDK repositories, the canonical-nvidia PPAs, and ESM. The lists were refreshed
+    2026-10-31, with 0 pending.
+- **No tailnet identifiers:** neither probe output holds a tailnet address or a MagicDNS name.
+
+The walkthrough also settled two questions (goal record, Decisions, 2026-10-31):
+
+- A card points to a disclosure file when it links the publisher's repository or organization that
+  holds it.
+- A stored non-GGUF file is settled by the Hub scan or magic.sh.

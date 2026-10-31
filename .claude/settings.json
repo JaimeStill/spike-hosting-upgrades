@@ -2,6 +2,7 @@
   "plansDirectory": "./.claude/plans",
   "permissions": {
     "allow": [
+      "Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)",
       "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)",
       "Bash(gh search issues *)",
       "Bash(gh search prs *)",
