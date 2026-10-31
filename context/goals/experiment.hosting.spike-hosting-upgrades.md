@@ -804,15 +804,14 @@ slices 11/12 done (1-5 built, 6 validated: framework 12067db, gb10-1 d849879, re
   (revision 4, slice 11).
 - skill: the model parts (3 and 4), not only the origin part, may run magic.sh, since they check
   each file's artifact integrity (revision 4, the spec review's one gap, closed in 476299e).
-- skill: open, for the architect at the walkthrough: does a card "point to" a disclosure file when
-  it links only the publisher's GitHub repository that holds it? The Granite 4.1 30B card links
-  only `ibm-granite/granite-4.1-language-models`.
-- skill: open, for the architect at the walkthrough: a stored file that isn't GGUF (the
-  safetensors snapshots on framework) gets no `magic` line. Does it fall to "any other file",
-  settled by the Hub's scan or magic.sh?
-- skill: open, for the architect at the walkthrough: the probe's older
-  `compgen -G "$store/models--*"` check reads glob characters in a store's name as a pattern. It
-  is outside revision 4's diff and is left for a later pass.
+- skill: a card points to a disclosure file when it links the file, or the publisher's repository
+  or GitHub organization that holds it; the run looks for a `disclosures/` path there (architect,
+  2026-10-31, walkthrough).
+- skill: a stored file that isn't GGUF (a safetensors snapshot) gets no probe `magic` line and is
+  settled as any other file, by the Hub's per-file scan or magic.sh (architect, 2026-10-31,
+  walkthrough).
+- skill: left for a later pass: the probe's older `compgen -G "$store/models--*"` check reads glob
+  characters in a store's name as a pattern. It is outside revision 4's diff.
 
 ## Pending edits
 

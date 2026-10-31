@@ -50,7 +50,9 @@ model; "build" (Quantization floor) is how the file the host would load was made
    model was "improved using"; a model that only transformed data (a labeler, a translator, a
    filtering judge) and the quantization's calibration data; and each component the publisher
    ships (a vision or audio encoder, the tokenizer, a projector, a drafter). When the card points
-   to a disclosure file (IBM's Granite disclosures, say), read it too, to find the teachers.
+   to a disclosure file (IBM's Granite disclosures, say), read it too, to find the teachers. A
+   card points to one when it links the file, or the publisher's repository or GitHub
+   organization that holds it: look for a `disclosures/` path there.
    These documents are authoritative for what they disclose, and only for that.
 
    Note the role each named model played, since the policy's levels turn on the role, and read it
@@ -158,7 +160,8 @@ an extension says what a file claims to be, and `.bin` names a pickle checkpoint
 raw bytes alike.
 
 1. **A file stored on the host**: the probe's read of its first 4 bytes, under `== models ==`,
-   settles it. Cite the probe line in the row.
+   settles it. Cite the probe line in the row. The probe reads only GGUF files; a stored file of
+   another format (a safetensors snapshot, say) is settled as any other file is, by item 2.
 2. **Any other file**: the Hub's per-file scan, where that names the format, or a ranged read of
    its first 4 bytes.
    - **The Hub's per-file scan.** Read each file's own record from the Hub's tree listing,

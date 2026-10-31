@@ -67,7 +67,8 @@ these:
 **Dataset sources.** <Which data excludes a model, and which the run records instead.>
 
 <!-- Optional. How the run finds a model's teachers: the publisher documents it reads (a
-     disclosure file the card points to, say), and how it reads a teacher the card doesn't name.
+     disclosure file the card points to, directly or through the publisher's repository that
+     holds it, say), and how it reads a teacher the card doesn't name.
      The skill passes an unnamed teacher only when the publisher's own documents say it is a
      checkpoint from their own pipeline, and otherwise holds the model out as "origin unclear",
      unless this says otherwise. -->
