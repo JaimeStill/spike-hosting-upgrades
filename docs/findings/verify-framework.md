@@ -147,7 +147,15 @@ tailnet IPv6 bind couldn't win the lookup. The fix keeps the LAN from answering 
    /etc/init.d/dnsmasq start
    ```
 
-**The routing check**, from this machine, before each pass and the walkthrough: `framework.lan`
+**The routing check**, from this machine, before run 3, as run (the first 50 connects had one
+over 50 ms as the tailnet path settled after the router's reboot, so the 50 connects were run again
+and read 0 over 50 ms, at most 7.9 ms):
+
+```sh
+resolvectl flush-caches; echo "framework.lan A:    $(resolvectl query -t A framework.lan 2>&1 | grep -q 'does not have\|not found\|NXDOMAIN\|failed' && echo none || echo PRESENT)"; echo "framework.lan AAAA: $(resolvectl query -t AAAA framework.lan 2>&1 | grep -q 'does not have\|not found\|NXDOMAIN\|failed' && echo none || echo PRESENT)"; echo "bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E 's/^100\..*/tailnet4/; s/^192\.168\..*/lan4/; s/^fda0.*/lan6/' | paste -sd' ')"; n=0; slow=0; for i in $(seq 1 50); do t=$(curl -s -o /dev/null -w '%{time_connect}' --connect-timeout 5 http://framework:8080/health) || t=fail; [ "$t" = fail ] && n=$((n+1)); [ "$t" != fail ] && awk -v t="$t" 'BEGIN{exit !(t > 0.05)}' && slow=$((slow+1)); done; echo "50 connects: $n failed, $slow over 50 ms"
+```
+
+The routing check in general, before each pass and the walkthrough: `framework.lan`
 has no A record and no AAAA record; `framework` resolves to the tailnet IPv4 only; and 50 connects
 to `http://framework:8080/health` with none failed and none over 50 ms (they read 2 to 10 ms, where
 the IPv6 fallback had read 205 ms). As run before the walkthrough (the earlier checks also ran
@@ -380,7 +388,13 @@ echo "framework.lan: no A, no AAAA; bare name: $(getent ahosts framework | awk '
 That is, the ASR cells swapped for
 `bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml` (each request sends
 `reasoning_budget_tokens: 0`) for both models; the shape cells unchanged, since they ask for
-thinking by design. The routing check passed first (`framework.lan`: no A, no AAAA). Results under
+thinking by design (the session's decision, told to the architect before the run: both models
+still ran the same settings in every cell). The script's routing check passed first
+(`framework.lan`: no A, no AAAA; the bare name the tailnet IPv4); it ran no connect test, the one
+part of the check run 4 skipped, and every cell held its full count. The pass ran on the same
+build and kernel as run 3 (b11960-8642541b2, 7.2.15-1-omarchy; the router's `/models` and the
+probe read nothing changed between them), and `tailscale ping -c 1 framework` read "via <LAN
+private address>:41641" in 3 ms at the start and 2 ms before the anchors after. Results under
 `.state/verify/framework/pass4/`. Every cell held its full count with no error.
 
 | Cell | Q8_0 | QAT | QAT vs Q8_0 |
@@ -394,6 +408,17 @@ thinking by design. The routing check passed first (`framework.lan`: no A, no AA
 | ASR B word differences (of 568) | 43 | 49 | bound 50.95 |
 | Replies in a thought block (of 40) | 0 | 0 | |
 | Replies with reasoning in the text (of 40) | 0 | 2 | |
+
+The transcripts and the reasoning counts, as run (`wer.jq` as in "Transcripts"):
+
+```sh
+S=.state/verify/framework/pass4; for m in q8 qat; do echo "== $m"; jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq $S/$m-audio-b-budget0.json; for c in audio-a-budget0 audio-b-budget0; do jq -r --arg c $c '"\($c): reasoned \([.benchmarks[0].requests.successful[] | select((.reasoning_output // "") | length > 0)] | length) of \(.benchmarks[0].requests.successful|length); empty \([.benchmarks[0].requests.successful[] | select((.output // "") | length == 0)] | length); at cap \([.benchmarks[0].requests.successful[] | select(.output_metrics.text_tokens >= 256)] | length); output tokens \([.benchmarks[0].requests.successful[].output_metrics.text_tokens]|add)"' $S/$m-$c.json; done; done
+cd .state/verify/framework && for f in pass4/qat-audio-a-budget0 pass4/qat-audio-b-budget0 pass4/q8-audio-b-budget0 pass3/qat-audio-b pass3/q8-audio-b; do jq -r --arg f $f '[.benchmarks[0].requests.successful[] | (.output // "") | select(test("(?i)the user wants|transcri(be|ption)|speech segment|thinking process"))] | "\($f): \(length) replies carry text about the task in the transcript"' $f.json; done
+```
+
+Per pair, ASR B: Q8_0 1,1,1,1,11,1,2,0,0,3,2,3,0,2,0,2,0,0,0,3,0,0,0,1,0,4,2,0,0,0,2,1 (43); QAT
+2,1,1,0,10,0,2,0,1,4,2,5,0,2,3,2,0,0,0,3,0,0,0,1,0,4,3,0,0,0,2,1 (49). The pairs that differ by more
+than a word: #11 (Q8_0 3, QAT 5) and #14 (Q8_0 0, QAT 3).
 
 **What budget 0 did.** It closed every thought block: no reply reasoned in the channel, none came
 back empty, none hit the cap. But on 2 of ASR A's 8 requests (#1, #2), QAT wrote its reasoning into
