@@ -175,8 +175,8 @@ Door          two-way:
 
 ## Progress
 
-slices 2/4 committed (204d418; slice 2 below) · standards — · spec — · editor —
-Next: slice 3 (the model pass: anchors A+B before, eight E4B cells, transcripts, verdict, anchors after, removals). Slice 1 demo ran 2026-11-02; framework now on 7.2.15-1, sysctl set, no firmware offered.
+slices 3/4 committed (204d418, 0bc44f4, slice 3 below) · standards — · spec — · editor —
+Next: slice 4, the architect's walkthrough. E4B QAT rolled back by the verdict rule (ASR −38%/−26%, 85 vs 42 word differences, from unprompted reasoning); Q8_0 stays, so no Q8_0 retirement or removal. Removals done; space held by snapper snapshots of @. Spec review: add the two cell rules (full count; one run per fresh load) and the chat_template.jinja reading to the verify mode (architect, escalation 2026-11-02).
 
 ## Decisions
 
