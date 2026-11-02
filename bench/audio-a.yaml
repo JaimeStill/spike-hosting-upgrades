@@ -1,9 +1,10 @@
 # ASR cell A: gemma-4-E4B's audio through chat, 1 stream sending 8 requests back to back. Each
 # request is one LibriSpeech clip with the model card's transcription prompt, and the reply ends
-# when the model stops, at most 256 tokens. It needs GuideLLM's audio extra (spike-model-engines, context/README.md,
-# "GuideLLM's extras"). Engine-neutral: the model, its tokenizer, and the JSON's path are given on
-# the command line, and the target in GUIDELLM__SPEC__BACKEND__TARGET
-# (spike-model-engines, docs/findings/bench-gb10-container.md, "Method"). Run from the repository root.
+# when the model stops, at most 256 tokens. It needs GuideLLM's audio extra, which
+# mise.bench.toml installs. Engine-neutral: the model, its tokenizer, and the JSON's path are
+# given on the command line, and the target in GUIDELLM__SPEC__BACKEND__TARGET
+# (spike-model-engines, docs/findings/bench-gb10-container.md, "Method"). Run from the
+# repository root.
 spec:
   backend:
     kind: openai_http

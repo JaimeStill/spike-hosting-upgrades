@@ -2,9 +2,9 @@
 # 512 synthetic prompt tokens and exactly 256 output tokens: anchor cell B's load, one stream per
 # slot of the preset's 4 (vLLM: per sequence of its 4). Engine-neutral, like shape-a.yaml: the
 # model, its tokenizer, and the JSON's path are given on the command line, and the target in
-# GUIDELLM__SPEC__BACKEND__TARGET (spike-model-engines, docs/findings/bench-gb10-container.md, "Method"). GuideLLM
-# sends max_completion_tokens with ignore_eos whenever output_tokens is set, so every request
-# generates its full 256. Run from the repository root.
+# GUIDELLM__SPEC__BACKEND__TARGET (spike-model-engines, docs/findings/bench-gb10-container.md,
+# "Method"). GuideLLM sends max_completion_tokens with ignore_eos whenever output_tokens is set,
+# so every request generates its full 256. Run from the repository root.
 spec:
   backend:
     kind: openai_http

@@ -2,14 +2,14 @@
 # request sends, `reasoning_budget_tokens: 0`. llama.cpp (b11960 and later) then forces the end of
 # any thought block the model opens, at once, so a reply is the transcript alone. It tests whether
 # that keeps Gemma 4 E4B QAT from reasoning unprompted on a transcription (verify-framework,
-# docs/findings/verify-framework.md, "Cells", run 4). The rest of this file is audio-b.yaml's.
+# docs/findings/verify-framework.md, "Verdict", "Run 4"). The rest of this file is audio-b.yaml's.
 # ASR cell B: gemma-4-E4B's audio through chat, 4 streams sending 32 requests in all, 8 each back
 # to back, one stream per slot of the preset's 4. Each request is one LibriSpeech clip with the
 # model card's transcription prompt, and the reply ends when the model stops, at most 256 tokens.
-# It needs GuideLLM's audio extra (spike-model-engines, context/README.md, "GuideLLM's extras"). Engine-neutral: the
-# model, its tokenizer, and the JSON's path are given on the command line, and the target in
-# GUIDELLM__SPEC__BACKEND__TARGET (spike-model-engines, docs/findings/bench-gb10-container.md, "Method"). Run from the
-# repository root.
+# It needs GuideLLM's audio extra, which mise.bench.toml installs. Engine-neutral: the model, its
+# tokenizer, and the JSON's path are given on the command line, and the target in
+# GUIDELLM__SPEC__BACKEND__TARGET (spike-model-engines, docs/findings/bench-gb10-container.md,
+# "Method"). Run from the repository root.
 spec:
   backend:
     kind: openai_http

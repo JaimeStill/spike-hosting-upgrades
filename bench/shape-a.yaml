@@ -2,9 +2,9 @@
 # prompt tokens and exactly 256 output tokens: anchor cell A's load. Engine-neutral: the model,
 # its tokenizer, and the JSON's path are given on the command line, and the target in
 # GUIDELLM__SPEC__BACKEND__TARGET, so one file serves both engines and every Gemma 4 shape, and
-# the quantization pairs (spike-model-engines, docs/findings/bench-gb10-container.md, "Method"). GuideLLM sends
-# max_completion_tokens with ignore_eos whenever output_tokens is set, so every request generates
-# its full 256. Run from the repository root.
+# the quantization pairs (spike-model-engines, docs/findings/bench-gb10-container.md,
+# "Method"). GuideLLM sends max_completion_tokens with ignore_eos whenever output_tokens is set,
+# so every request generates its full 256. Run from the repository root.
 spec:
   backend:
     kind: openai_http
