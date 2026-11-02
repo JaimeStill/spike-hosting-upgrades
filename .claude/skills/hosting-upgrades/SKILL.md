@@ -1,7 +1,7 @@
 ---
 name: hosting-upgrades
-description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish, and finds and ranks everything the workstation has fallen behind on (pending package and firmware updates, failed or stopped units, container images behind their tag, unused images and models taking disk, and configuration that differs from its descriptor). Probes the host live over SSH, read-only and without root, reconciles the probe with the project's host descriptor and policy, and writes a dated, cited report that gives each item a verdict (verify, take, hold, or skip); it applies nothing. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, find what a host has fallen behind on or what debt it carries, or plan a host's next upgrade.
-argument-hint: <host> | setup
+description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish, and finds and ranks everything the workstation has fallen behind on (pending package and firmware updates, failed or stopped units, container images behind their tag, unused images and models taking disk, and configuration that differs from its descriptor). Probes the host live over SSH, read-only and without root, and writes a dated, cited report that gives each item a verdict (verify, take, hold, or skip); it applies nothing. Its verify mode takes a host's last report to a decision on each item: it re-checks the gates, prints the commands, rollbacks, and anchor cells, and writes a verification finding, changing nothing on the host itself. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, find what a host has fallen behind on, plan a host's next upgrade, or verify, apply, or settle a report's items.
+argument-hint: <host> | setup | verify <host>
 ---
 
 # hosting-upgrades
@@ -16,6 +16,11 @@ The run is interactive. It pauses and asks the architect rather than guessing or
 
 `/hosting-upgrades setup` starts no run: it runs the readiness check alone and prints the full
 rule set the workspace needs, for a new workspace or a new host (see "Readiness check").
+
+`/hosting-upgrades verify <host>` starts no run either: it takes the host's last report to a
+decision on each of its verify, take, and hold items, prints what applying each would take, and
+writes the host's verification finding (see "The verify mode"). Like a run, it changes nothing
+on the host itself.
 
 The skill's frontmatter grants no tools. A skill's grant clears when the user sends their next
 message, so an interactive run would lose it at its first pause; the durable grants are the
@@ -54,8 +59,9 @@ the answer in the report as the architect's, never inventing one.
 
 A run's tools need permission rules in the project's settings, or each use asks. The check works
 out the rules this workspace needs, finds the ones missing, and prints them for the architect to
-add. It never writes a settings file. A run makes it the last part of step 1; `setup` makes it
-the whole run.
+add. It never writes a settings file. A run makes it the last part of step 1; the verify mode
+makes it its first step, with the verify mode's rules; `setup` makes it the whole run, with both
+sets.
 
 1. **Work out the rules.** The probe path is the project-relative one step 2 runs
    (`.claude/skills/hosting-upgrades/scripts/probe.sh` here), and the reports directory is
@@ -74,6 +80,13 @@ the whole run.
      artifact integrity check runs (models.md, "Artifact integrity"), named the same way; the
      script takes a repository and a file, never a URL, so the rule can fetch nothing but a file
      on the Hub
+
+   The verify mode needs every one of the run's rules (its probe, and its gate re-checks' reads
+   and scripts, models.md), and these beside them:
+   - one exact rule per host with a descriptor, named by its SSH short name:
+     `Bash(tailscale ping -c 1 <host>)`, for the network path each pass records ("The verify
+     mode", step 6)
+   - `Edit(docs/findings/verify-*.md)`, for the verification finding, the mode's only write
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -100,11 +113,31 @@ the whole run.
      "Bash(.claude/skills/hosting-upgrades/scripts/screen.sh *)",
      "Bash(.claude/skills/hosting-upgrades/scripts/magic.sh *)"
    ```
+
+   `setup` prints the verify mode's rules beside the run's: the run's set first, then the verify
+   mode's own rules, each marked present or missing, then the JSON for every rule missing from
+   either set. The verify mode works out the same two sets, and asks about any rule missing from
+   either. For example, in a workspace that holds the run's rules:
+
+   ```text
+   Readiness check, the run's rules: 9 of 9 present.
+     present  "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)"
+     ...
+   Readiness check, the verify mode's rules (the run's 9, and these): 3 missing.
+     missing  "Bash(tailscale ping -c 1 framework)"
+     missing  "Bash(tailscale ping -c 1 gb10-1)"
+     missing  "Edit(docs/findings/verify-*.md)"
+   Add them to .claude/settings.json, under permissions.allow:
+
+     "Bash(tailscale ping -c 1 framework)",
+     "Bash(tailscale ping -c 1 gb10-1)",
+     "Edit(docs/findings/verify-*.md)"
+   ```
 4. **Ask.** When a rule is missing, ask whether to continue with the prompts the missing rules
    bring, or wait while the architect adds them; the default is to wait. When none is missing,
    say so and go on. `setup` asks nothing: it stops once it has printed.
 
-Two rules the check never prints:
+Three rules the check never prints:
 
 - **No rule for `gh api`.** Settings rules apply to every agent in the workspace, not only to this
   skill, and `gh api` writes as readily as it reads (`-X POST`, `-f`), with the architect's
@@ -115,6 +148,10 @@ Two rules the check never prints:
   machine), so each host gets its own exact rule, and a new host's descriptor brings a new rule
   through `setup`. The rule names the probe path literally, because settings rules don't expand
   `${CLAUDE_SKILL_DIR}`.
+- **No rule for a command the verify mode prints.** The commands that apply or remove an item,
+  load or unload a model, or run a cell (`sudo`, `docker`, `hf`, `curl`, `guidellm`, any ssh
+  beyond the probe) change the host or load it. Each is run in the architect's view, by the
+  architect or the session as the verify mode assigns it, and asks each time.
 
 ## The run
 
@@ -122,7 +159,8 @@ Two rules the check never prints:
 
 1. Take the host from the argument, `$0`. With no argument, list the descriptors in `docs/hosts/`
    by their short names, ask which host to run on, and run on one host only. With `setup`, run
-   the readiness check alone, as "Readiness check" says, and stop there.
+   the readiness check alone, as "Readiness check" says, and stop there. With `verify` and a
+   host, `$1`, follow "The verify mode" instead of these steps.
 2. Read `docs/hosts/<host>.md`. If it is absent, stop and say so: "No descriptor for `<host>` in
    `docs/hosts/`, so the run has no declared purposes to judge against; write one from the
    skill's `templates/host.md` and run again." Name the descriptors that do exist.
@@ -867,7 +905,358 @@ Run this from this machine and paste the output:
   ssh framework pacman -Q <package>
 ```
 
+## The verify mode
+
+`/hosting-upgrades verify <host>` takes the host's last report to a decision on each of its items,
+and leaves the record a verification needs: what was measured, against what claim, and what each
+item came to. A report run finds and ranks; the verify mode settles. It is interactive, as a run
+is, and pauses as "When to pause" says.
+
+The mode changes nothing on the host. It prints every command that would (an update, a reboot, a
+removal, a model load, a cell), says who runs it, and records each as it was run: a step that
+needs root is the architect's, printed as "Facts that need root" prints one (`ssh -t <host> sudo
+<command>`), and a step that needs no root is one the session may run itself, over SSH or from
+this machine, in the architect's view, once the architect has agreed it. The skill bundles no
+script that changes a host: the commands are the host's own tools (the package manager,
+`docker`, `hf`, the engine's API), and an engine change goes through spike-model-engines'
+`engines` suite, as "Verdicts" (step 6) says.
+
+### 1. Load the inputs
+
+1. Take the host from `$1`. With none, list the descriptors in `docs/hosts/` by their short names,
+   ask which host to verify, and verify one host only.
+2. Read `docs/hosts/<host>.md` and `docs/policy.md`. If either is absent, stop and say so, in the
+   words step 1 of the run gives for each.
+3. Read the host's last report: in `docs/reports/<host>/`, the newest date, and within that date
+   the highest `-N` (`<date>.md` is the first of its date; a file name sort puts `<date>-2.md`
+   before it, so sort by date, then by number). If the directory holds no report, stop and say
+   so: "No report for `<host>` in `docs/reports/<host>/`, so there is nothing to verify; run
+   `/hosting-upgrades <host>` first." Name the report the mode read, by its path and date.
+4. **The items.** Every verify, take, and hold item in the report's "Hardware configuration" and
+   "System updates and debt", and the item its "Verify next" line names. An item listed in two
+   sections by reference (a kernel's row and its reboot item, say) is one item. The engine and
+   model rows the report ranks verify or hold, other than the one "Verify next" names, are
+   candidates rather than the host's items: the mode lists them by name, as left for a later
+   verification or a fresh run, and asks no decision on them.
+5. Read the host's last earlier anchor readings: the findings the descriptor lists under
+   "Measurements", and the host's earlier verification finding, if there is one. Step 6 sets the
+   first anchors beside them.
+
+### 2. Readiness and probe
+
+1. Run the readiness check with the verify mode's rules ("Readiness check"), and go on as the
+   architect answers it.
+2. Run the probe exactly as step 2 of the run gives it, and stop as it says when SSH fails.
+3. **What moved.** Compare the probe with the report's Inventory and with each item's own "what
+   the probe shows". Name every item whose state has moved since the report, cited to the probe
+   section that shows it: an update now on the host's channel that wasn't (`== updates ==`), an
+   item that is gone (a container, an image, a snapshot), a unit or a container whose state
+   changed, a kernel now running or newly installed, a setting now at another value. An item that
+   hasn't moved says so. The mode doesn't research again: a moved item goes to the architect's
+   decision with its movement beside it, and a change that would alter its verdict is a pause.
+
+For example, on framework against its 2026-10-30-2 report:
+
+```text
+Moved since docs/reports/framework/2026-10-30-2.md:
+  - linux-omarchy: 7.2.15-1 is now on the host's channel (probe == updates ==); the report held
+    7.2.14, which hadn't reached it.
+Not moved: the other ten items.
+```
+
+### 3. Decisions
+
+List every item from step 1, ordered as the report orders them (verify, take, hold, then by
+section), each with its report verdict, the report's recommendation, and its movement from step
+2. Ask the architect's decision on each:
+
+- **apply**: make the change the item names.
+- **remove**: take the item off the host (an image, a container, a stored model, a cache).
+- **close**: no action, with the architect's reason in a line (not on the host's channel, a
+  headroom met, a section no agent loads).
+
+Record each decision with its date, as the architect's. Applying the verify item is measured:
+its gates are re-checked (step 5), its cells run (step 6), and the verdict (step 8) settles
+whether it stays or rolls back.
+
+### 4. What each decision takes
+
+For each item to apply or remove, print:
+
+- **The exact commands**, in the order they run, each in the form that runs it from this
+  machine (`ssh <host> <command>`, or `ssh -t <host> sudo <command>` for root). They come from
+  the report's row (its remedy and rollback), checked against the probe today. A removal that
+  its tool can rehearse is rehearsed first (a dry run), and the dry run's output goes to the
+  architect before the removal.
+- **Who runs each step**: root steps are the architect's; steps that need no root the session
+  may run, in the architect's view; a tool's first use on this host, and any step the architect
+  asks to keep, is the architect's.
+- **The rollback**, as commands, and whether it needs root.
+- **Whether a reboot is needed.** The changes that need a reboot share one reboot, after which
+  the probe reads them back: the new kernel running, each engine up with its port published
+  (step 5b's boot-order check).
+
+**An offered update with no known rollback is an escalation**: a firmware update `fwupdmgr`
+lists, a BIOS, anything else with no downgrade path. The mode prints it, says it has no rollback,
+and asks the architect, who decides it outside the mode's defaults. An approved one gets a reboot
+of its own, after the host's other changes have booted cleanly, so a failure is traceable to it.
+
+Order the work so that each pass measures one state: the host stack first (its updates, its
+settings, the reboot, a probe), then any approved escalation and its reboot, then the verify
+item's pass (step 6), then the removals, each read back by the probe.
+
+### 5. Re-check the verify item's gates
+
+Before the verify item is measured, re-check its gates under the policy as it reads today, as a
+run's step 7 gates a model, by [models.md](models.md):
+
+1. **Origin** ("Origin"): the evidence chain, read fresh, with the screening-list script
+   (`.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...`).
+2. **Artifact integrity** ("Artifact integrity"): the format of the file the host would load,
+   from the probe's `magic` line for a stored file, or the Hub's per-file scan or
+   `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"` for one not
+   stored, and its projector's the same way. Then the chat-template check: the GGUF's embedded
+   template against the publisher's, read from the repository's `chat_template.jinja` when it has
+   one (Google keeps it there, and its `tokenizer_config.json` carries no `chat_template`), and
+   otherwise from `tokenizer_config.json`'s `chat_template`; a single trailing newline is no
+   difference (`jq -r` adds one), and any other difference is quoted.
+3. **The quantization floor** ("Quantization floor"): the path its build takes, and the
+   publisher's quality statement quoted for path 1.
+4. **Fit** ("Gate 2: fit"): its memory estimate against the probed ceiling and the policy's
+   headroom, and the model set it would join.
+
+Each gate cites what it read, with its date, as "Citing" (step 4) says. If a gate fails, stop
+the item's verification and name the gate and what failed it: the item isn't measured, and the
+finding records the gate.
+
+### 6. The cells
+
+Print the agreed cells before any runs, then each command as it runs. The host serves one model
+per purpose (`STANDARDS.md`, "Hosts"), so every load in the pass follows one rule: unload the
+model that serves the purpose, wait until the router reports it unloaded, and only then load the
+other, through the engine (a router's `/models/unload` and `/models/load`, read back by its
+`/models`). Never load a candidate beside its purpose's incumbent. A router holds a cap on loaded
+models (llama.cpp's `--models-max`, 4 by default), and a load that arrives before an unload has
+finished takes it over the cap, so the router evicts its least recently used model, another
+purpose's, unseen. The cells are:
+
+- **Anchors A and B before the change**, on the anchor section the host's earlier readings used,
+  loaded beside the incumbent of the item's purpose, with any section that would compete for the
+  GPU unloaded meanwhile, named.
+- **The item's cells beside its purpose's incumbent**, at the same shapes: the incumbent's cells,
+  then the item's, which loads only once the incumbent is reported unloaded.
+- **Anchors A and B after the change**, on the same section, loaded beside the item.
+
+Once the pass ends, restore the host's set, one model per purpose by the same rule: the set it
+served before the pass, or, on adoption (step 8), that set with the item in its incumbent's place.
+
+**Each model's cells run once each from a fresh load**: unload the model, wait until the router
+reports it unloaded, load it, then run its cells, each once. Never rerun a cell within one load:
+GuideLLM's synthetic prompts are the same on every run, so a second run in one load hits the
+router's prompt cache and reads faster than the first.
+
+Every cell of the pass runs on one engine build and one kernel; a pass whose build or kernel
+changes partway starts again. Each run is capped at 10 minutes (`timeout 10m`). Each pass
+records the engine build and the host stack (a probe), and the network path:
+
+```sh
+tailscale ping -c 1 <host>
+```
+
+**The routing check** runs from this machine before each pass, and a failed check is a pause:
+
+- `<host>.lan`, in the LAN domain this machine's resolver searches, has no A and no AAAA record;
+- the bare host name resolves to the tailnet address only;
+- 50 connects to the router's `/health` with none failed and none over 50 ms.
+
+It reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It guards
+against a LAN record for the bare name: the resolver tries the search domain too, so when the LAN
+router publishes `<host>.lan` from the host's DHCP leases, a connection can take the LAN address,
+where the host's firewall drops the engine's port, and the client waits out its connect timeout
+(GuideLLM's 5 s, `ConnectTimeout('')`). The commands, each printing a label rather than an
+address:
+
+```sh
+for ty in A AAAA; do echo "<host>.lan $ty: $(resolvectl query -t $ty <host>.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | awk '{print $1}' | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($1=="FAIL")f++; else if($1>0.05)s++; if($1>m)m=$1} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+```
+
+The fix the verify-framework finding records ("Routing") keeps the LAN from answering for the
+host, and both steps need root, so both are the architect's: the host stops sending its hostname
+in DHCP (NetworkManager's `ipv4.dhcp-send-hostname` and `ipv6.dhcp-send-hostname` set to `no` on
+each of its connections, which then come up again), and the router's lease names for the host
+are cleared (its DHCPv4 and DHCPv6 lease files, with the router's DHCP services restarted).
+
+The scenarios are the project's `bench/`: `anchor-a.yaml` and `anchor-b.yaml` for the anchors;
+`shape-a.yaml` and `shape-b.yaml`, the anchors' loads on any model, for every item's and
+incumbent's cells; and `audio-a.yaml` and `audio-b.yaml` beside them for an audio purpose's ASR
+cells. So an audio item and its incumbent each run shape A, shape B, ASR A, and ASR B. GuideLLM
+runs from this machine (`mise.bench.toml`), with the engine's URL exported in
+`GUIDELLM__SPEC__BACKEND__TARGET` by the host's short name (`http://<host>:<port>`), so no
+address is committed. Each result goes under `.state/verify/<host>/`:
+
+```sh
+MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-<a|b>.yaml --output "kind=json,path=.state/verify/<host>/<pass>-anchor-<a|b>.json"
+MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/<scenario>.yaml --backend "kind=openai_http,model=<model>" --tokenizer "kind=huggingface_auto,model=<tokenizer>" --output "kind=json,path=.state/verify/<host>/<cell>.json"
+```
+
+A cell's figure is its output tokens per second
+(`.benchmarks[0].metrics.output_tokens_per_second.successful.mean` in its JSON), and for an ASR
+cell its audio seconds a second (`.benchmarks[0].metrics.audio.seconds.input_per_second.successful.mean`),
+since a transcript's length is the model's own. A cell counts only with its full request count,
+the scenario's `max_requests` count (8 for A, 32 for B), in
+`.benchmarks[0].metrics.request_totals.successful`: a cell that records fewer successful requests
+fails, even with none errored. A cell with fewer, or with any errored or incomplete request, is a
+failed cell, rerun once from a fresh load of its model, and then a pause.
+
+**The reasoning check**, on each of the candidate's cells whose requests don't ask for reasoning
+(the ASR cells; the shape cells ask for it by design, `enable_thinking: true`), and on the
+incumbent's beside them: count the replies that reasoned in the thought channel (a non-empty
+`reasoning_output`), and the replies whose text speaks about the task instead of answering it
+("The user wants me to ...", "Thinking Process"). Read the replies the second count flags, to
+confirm each:
+
+```sh
+jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' .state/verify/<host>/<cell>.json
+```
+
+A configuration that turns reasoning off is tested with the budget-0 variants,
+`bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml`: `audio-a.yaml` and `audio-b.yaml`
+with `reasoning_budget_tokens: 0` sent in every request, which llama.cpp honours by closing a
+thought block as soon as the model opens one. They run in place of the ASR cells, for both
+models. Budget 0 empties the channel, but it can move the reasoning into the text: in
+verify-framework's run 4 it did, on 2 of E4B QAT's 40 replies, and the text count catches it.
+
+**The first anchors** are set beside the host's last earlier readings (step 1, item 5). A move
+beyond run noise, 1.4%, the widest the workspace has recorded, is a finding: the finding names
+it, with both readings and what changed between them (the engine build, the kernel, the
+firmware), and the comparison within the pass goes on, since only cells of one session are
+compared.
+
+### 7. Transcripts
+
+For a transcription purpose, the ASR B cell's 32 replies are compared with their LibriSpeech
+references by word differences, with curl and jq and no other tool. The references are the
+first 32 rows of `hf-internal-testing/librispeech_asr_dummy` (`clean`, `validation`), the rows
+`audio-b.yaml` reads, from the Hub's dataset viewer, read once:
+
+```sh
+curl -s 'https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32' > .state/verify/<host>/librispeech-refs.json
+```
+
+Each reply is paired with its reference in the order its request was queued
+(`.info.timings.queued`), which is the order the scenario reads the rows. Both are lower-cased
+and stripped of punctuation, then split into words, and the word differences are the word-level
+edit distance (substitutions, insertions, and deletions). The cell must hold 32 successful
+requests:
+
+```sh
+jq --slurpfile refs .state/verify/<host>/librispeech-refs.json '
+  def words: ascii_downcase | gsub("[^a-z0-9\\s]"; "") | [splits("\\s+")] | map(select(length > 0));
+  def lev($a; $b): reduce range(0; $a | length) as $i ([range(0; ($b | length) + 1)];
+    . as $p | reduce range(0; $b | length) as $j ([$i + 1];
+      . + [[$p[$j + 1] + 1, .[$j] + 1, $p[$j] + (if $a[$i] == $b[$j] then 0 else 1 end)] | min]))
+    | .[-1];
+  [$refs[0].rows[].row.text] as $r
+  | [.benchmarks[0].requests.successful | sort_by(.info.timings.queued)[] | (.output // "")] as $o
+  | if ($o | length) != ($r | length) then error("\($o | length) replies for \($r | length) references") else . end
+  | [range(0; $r | length) | {r: ($r[.] | words), o: ($o[.] | words)} | {n: (.r | length), d: lev(.r; .o)}]
+  | {pairs: length, reference_words: (map(.n) | add), word_differences: (map(.d) | add), per_pair: map(.d)}
+' .state/verify/<host>/<cell>.json
+```
+
+The finding gives each model's total, the reference words, and each pair's count, and quotes any
+pair whose count differs between the two models by more than a word.
+
+### 8. The verdict
+
+Adopt only when all four hold:
+
+- anchors A and B after the change are each within 1.4% of before
+- no candidate cell is behind the incumbent's cell at the same shape by more than 1.4%
+- for a transcription purpose, the candidate's word differences are within the incumbent's total
+  plus 1.4% of the reference words
+- the candidate's reasoning check (step 6) counts no reply that reasoned in the thought channel
+  and no reply whose text speaks about the task
+
+Otherwise roll back. State what the rule gave on each condition, with the figures, then the
+outcome. The architect may overrule it; the finding records the overrule and its reason beside
+what the rule gave. On adoption, the incumbent the item replaces is retired: the engine serves
+the item, and the incumbent is unloaded. Its files leave the store only once the walkthrough
+confirms the item, with their rollback (a download) printed.
+
+### 9. Write the finding
+
+The finding is the mode's only write: one file per host, `docs/findings/verify-<host>.md`. It is
+written at the first decision and kept current as each step runs; a later verification of the
+same host adds its own dated part below the earlier one, which it never edits. The mode never
+edits a report. The finding's sections, in order:
+
+```markdown
+# <host>: verification of <report path>, <YYYY-MM-DD>
+
+## The report and the probe
+The report verified, by its path and date; the descriptor and policy read; the readiness rules
+found missing and the answer; the probe's date; every item that moved since the report, cited to
+its probe section; and the engine and model candidates left for later (step 1, item 4).
+
+## Decisions
+One row per item, in step 3's order: the item, its report verdict, the architect's decision
+(apply, remove, or close) with its date, the reason for a closure, and the outcome.
+
+## Host stack
+Each applied item: every command exactly as run, who ran it (the architect, with root, or the
+session), its output where it settles something, its rollback, and the reboot; each escalation,
+with the architect's decision; then the probe that read the stack back.
+
+## Gates
+The verify item's four gates under today's policy, each with what it read and its citation.
+
+## Cells
+Each pass: its routing check, its engine build and host stack, from the probe, and
+`tailscale ping -c 1`. Then the cells,
+every command exactly as run, each cell's figure with its median TTFT and ITL: anchors A and B
+before, the incumbent's and the item's cells side by side, anchors A and B after. The first
+anchors beside the host's last earlier readings, and any move beyond run noise, named as a
+finding.
+
+## Transcripts
+For a transcription purpose: the command as run, each model's word differences, the reference
+words, and the pairs that differ.
+
+## Reasoning
+The reasoning check as run, and for each model's cells the replies that reasoned in the thought
+channel and the replies whose text speaks about the task, each such reply quoted by its opening.
+
+## Verdict
+The rule, what it gave on each condition with its figures, the outcome (adopt or roll back), and
+any overrule by the architect with its reason.
+
+## The claim beside the anchors
+The published claim the report cited for the item, with its source, beside what this host
+measured, and how far the source held.
+
+## Removals
+Each removal: the dry run, the command as run, the space freed, its rollback, and the probe
+reading it back as gone.
+
+## Where <retired model> still lives
+On adoption only: a table of every place that still names the retired model and that the mode
+didn't change (a preset, a script, a guide, a finding, another host, a consumer's model list),
+with its repository and path, addressed to whatever comes to own the host tooling.
+
+## Sources
+Every source cited, with its tier, URL, and read date.
+```
+
 ## What a run writes
 
 A run writes nothing except its report: not the descriptor, not the policy, not the skill, and
 nothing on the host. Changes it would make to any of them go into the report as proposals.
+
+The verify mode writes nothing except the host's verification finding,
+`docs/findings/verify-<host>.md`: not the report it verifies, not the descriptor, not the policy,
+not the skill, and nothing on the host. The commands that change the host are printed, run by the
+architect or the session as the mode assigns them, and recorded in the finding as run. `setup`
+writes nothing.

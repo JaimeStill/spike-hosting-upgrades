@@ -15,7 +15,11 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
   workspace needs and never writes settings; `/hosting-upgrades setup` runs the check alone.
 - The dated reports: `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md` for a later run
   the same day.
-- The verification findings: `docs/findings/`.
+- The verify mode: `/hosting-upgrades verify <host>` takes a host's last report to a decision on
+  each item, prints the commands, rollbacks, and anchor cells, and writes the host's verification
+  finding; it changes nothing on the host itself.
+- The verification findings: `docs/findings/verify-<host>.md`, such as
+  [framework's](docs/findings/verify-framework.md).
 
 ## The answer
 
