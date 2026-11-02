@@ -364,6 +364,11 @@ purpose (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
 No preset was changed. E4B QAT's unprompted reasoning, in the channel or in the text, goes to the
 screen task, with the check that caught it: replies whose text speaks about the task.
 
+The architect closed the audio promotion there: E4B Q8_0 stays framework's audio model, and E4B
+QAT Q4_0 is revisited when Google publishes a revision that fixes the reasoning. The other Gemma 4
+QAT models that take audio were not screened: E2B (audio evals below E4B's on Google's card) and
+12B (slower than Q8_0, shape A 25.7 tok/s as the report cites it) (architect, 2026-11-02).
+
 ## The claim beside the anchors
 
 The report's claim: E4B QAT +56.6% at text shape A over E4B Q8_0 (58.1 against 37.1 output tok/s)

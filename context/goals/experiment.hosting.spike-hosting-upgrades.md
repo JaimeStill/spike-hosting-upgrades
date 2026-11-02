@@ -661,6 +661,11 @@ Next: slice 4, the architect's walkthrough (routing check first). Run 4 rolled b
   trailed by 11.0%; rolled back by the rule and by revision 2's stop condition. No preset change,
   so spike-model-engines isn't touched by this task. E4B QAT's unprompted reasoning goes to the
   screen task, with a check on reply text, not only the thought channel (2026-11-02).
+- verify-framework: E4B Q8_0 stays framework's audio model. E4B QAT Q4_0 is revisited only when
+  Google publishes a revision that fixes its unprompted reasoning (a report run's watch on the
+  repository's revisions, or the screen task); E2B QAT and 12B QAT are not screened as audio
+  (E2B's audio evals are below E4B's, 12B is slower than Q8_0). Rejected: a reasoning screen of
+  E2B and 12B QAT in this task (architect, 2026-11-02).
 
 ## Pending edits
 
