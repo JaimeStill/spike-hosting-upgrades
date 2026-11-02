@@ -130,6 +130,9 @@ tailnet IPv6 bind couldn't win the lookup. The fix keeps the LAN from answering 
    ```
 
    Rollback: the same with `yes`.
+
+   `<Wi-Fi connection>` stands for framework's Wi-Fi connection, named by its network's name in
+   the command as run; the name is redacted here, as a LAN identifier (`STANDARDS.md`, "Docs").
 2. The router kept the name bound to the leases, so the architect cleared them on the router
    (`ssh root@192.168.1.1`): odhcpd's (`/tmp/odhcpd.leases`, `/tmp/hosts/odhcpd.hosts.lan`, which
    held `framework` on both `fda0:` addresses), then dnsmasq's (`/tmp/dhcp.leases`):

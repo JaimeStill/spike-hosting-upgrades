@@ -42,3 +42,7 @@ The architecture pages that apply, in the architecture repository:
 - Every command a session or the architect runs appears in a finding exactly as run. No tailnet
   identifier is committed, neither an address nor the MagicDNS suffix; hosts go by short name,
   such as `gb10-1`.
+- No LAN identifier is committed either: a Wi-Fi network's name (a connection named for it), a
+  LAN address other than the router's well-known gateway, or a MAC address. A command that ran
+  with one is recorded with a placeholder in its place, such as `<Wi-Fi connection>`, and a note
+  saying what the placeholder stands for.
