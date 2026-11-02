@@ -369,6 +369,36 @@ QAT Q4_0 is revisited when Google publishes a revision that fixes the reasoning.
 QAT models that take audio were not screened: E2B (audio evals below E4B's on Google's card) and
 12B (slower than Q8_0, shape A 25.7 tok/s as the report cites it) (architect, 2026-11-02).
 
+## Walkthrough
+
+The architect's, 2026-11-02, after the routing check (`framework.lan`: no A, no AAAA; 50 connects,
+none failed, none over 50 ms), on set A as served:
+
+1. The router served set A, one model per purpose:
+   `curl -s http://framework:8080/models | jq -c '[.data[] | select(.status.value=="loaded") | .id]'`.
+2. ASR A on the served E4B Q8_0, with set A's other models loaded: 8/8, 11.33 audio s/s (run 3
+   read 11.67 and run 4 11.60, each with Q8_0 alone):
+
+   ```sh
+   export GUIDELLM__SPEC__BACKEND__TARGET="http://framework:8080"
+   MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/audio-a.yaml --backend "kind=openai_http,model=ggml-org/gemma-4-E4B-it-GGUF:Q8_0" --tokenizer "kind=huggingface_auto,model=google/gemma-4-E4B-it" --output "kind=json,path=.state/verify/framework/walk-q8-audio-a.json"
+   ```
+3. Anchor A on the 4-slot section, set A's agent swapped out and back: 8/8, 44.74 tok/s (run 4:
+   44.91 before, 44.66 after):
+
+   ```sh
+   U=http://framework:8080; j='-H Content-Type:application/json'
+   curl -s -X POST $U/models/unload $j -d '{"model": "gpt-oss-120b-MXFP4-set-a"}'; curl -s -X POST $U/models/load $j -d '{"model": "ggml-org/gpt-oss-120b-GGUF:MXFP4"}'
+   MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-a.yaml --output "kind=json,path=.state/verify/framework/walk-anchor-a.json"
+   curl -s -X POST $U/models/unload $j -d '{"model": "ggml-org/gpt-oss-120b-GGUF:MXFP4"}'; curl -s -X POST $U/models/load $j -d '{"model": "gpt-oss-120b-MXFP4-set-a"}'
+   ```
+
+   The load followed the unload without waiting for it to finish, so the router, at its default
+   cap of four loaded models (`--models-max`, `common/common.h:703` at b11960; framework's launch
+   sets none), counted five and evicted the least recently used, the vision model (the router's
+   log: set A's agent and `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0` stopping 12 ms apart).
+   The session reloaded vision, and `STANDARDS.md`, "Hosts", now says to wait for the unload.
+
 ## The claim beside the anchors
 
 The report's claim: E4B QAT +56.6% at text shape A over E4B Q8_0 (58.1 against 37.1 output tok/s)

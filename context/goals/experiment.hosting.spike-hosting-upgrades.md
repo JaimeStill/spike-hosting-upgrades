@@ -212,8 +212,8 @@ Unchanged     Every other behavior, slice, and the door.
 
 ## Progress
 
-slices 3/4 committed (204d418, 0bc44f4, slice 3 rerun below) · standards — · spec — · editor —
-Next: slice 4, the architect's walkthrough (routing check first). Run 4 rolled back (QAT wrote reasoning into reply text with budget 0); no preset change, spike-model-engines untouched. Spec review: the verify mode's step 6 gains the two cell rules, the routing check, one model per purpose, and a reasoning check on reply text; the chat_template.jinja reading.
+slices 4/4 committed (walkthrough 2026-11-02) · standards — · spec — · editor —
+Next: the standards review, the spec review (the verify mode's step 6 gains the two cell rules, the routing check without a cache flush, one model per purpose with the unload finished first, and a reasoning check on reply text; the chat_template.jinja reading), then the editor.
 
 ## Decisions
 
