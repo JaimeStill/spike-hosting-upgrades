@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** idle
-- **Task:** none
-- **Branch:** none
+- **State:** building
+- **Task:** verify-framework
+- **Branch:** verify-framework
 
 ## Tasks
 
@@ -12,472 +12,170 @@
 4. [ ] screen
 5. [ ] answer
 
-## Task brief · skill
+## Task brief · verify-framework
 
 ```
-Problem       Upgrades to the hosting stack (a host's hardware configuration, its engine,
-              its models) are judged today from our own benchmarks or from memory, and
-              the inventory they rest on is scattered across other spikes' findings.
-              gb10-1's state is recorded nowhere. The spike needs one interactive,
-              environment-agnostic Claude Code skill. Pointed at one workstation, it
-              probes the host as it is now, gathers and cites what others publish, and
-              writes a dated report. The verify tasks then take one named upgrade from
-              that report, and the intake can move the skill into a plugin unchanged.
+Problem       framework's 2026-10-30-2 report ranks one verify item, Gemma 4 E4B
+              QAT Q4_0 as the audio model, and ten hold items, but nothing has
+              been measured or applied. The skill finds and ranks upgrades, and
+              has no way to take one to a decision, so a verified upgrade leaves
+              no record. The answer task's convention needs that record: what
+              was measured, against what claim, and what each item came to. This
+              task gives the skill a verification mode and uses it on framework.
+              It verifies E4B QAT with anchors A and B and settles every hold.
 
 Behaviors
-  Inputs
-  1.  The skill runs on one host a run, named by its SSH short name. It stops,
-      saying why, when the host isn't in the project's host descriptors or the
-      project has no policy document.
-  2.  A host descriptor holds only the short name, the declared model purposes
-      (agent, vision, audio, embedding), and optional engine watch items. Every
-      other fact comes from probing.
-  3.  The policy document states the model-origin rule (every model of Chinese
-      origin excluded outright, a fine-tune taking its base's origin), the
-      quantization floor in ai-hosting.md's wording, and the memory headroom a model
-      set must leave. When the policy lacks a value a step needs, the skill asks.
-  Probe
-  4.  One bundled, read-only probe runs over `ssh <host>` with no root. It reports
-      the OS and its release, the kernel (running, installed, reboot pending), the
-      firmware and BIOS version, the GPU and its driver or Mesa stack, memory (total,
-      available, the GPU-reachable ceiling), the container runtime, every engine
-      container or unit and its state, each running engine's build and served models
-      from its HTTP endpoints, and the models in the host's local store. It skips a
-      probe whose command is absent and says so.
-  5.  The probe never calls sudo and reads no network address. Its output contains
-      no tailnet address or MagicDNS suffix, so it can be committed as is.
-  Interaction
-  6.  When a fact needs root, the skill prints the exact command, asks the architect
-      to run it and paste the output, and continues from that output.
-  7.  The skill pauses and asks instead of guessing or failing in four cases: the
-      probe contradicts the descriptor (say, a served model whose purpose isn't
-      declared), sources conflict on a claim, a policy question arises, or a source's
-      tier is unclear.
-  Sources
-  8.  The skill carries trusted sources keyed by kind and vendor, in three tiers:
-      primary (vendor and publisher release notes, docs, model cards, upstream
-      trackers), attributed benchmarks (naming the hardware, the version, and the
-      method), and leads (unattributed posts, never a verify verdict on their own).
-      It never cites a blocklisted source, and each blocklist entry gives its reason.
-  9.  Every claim in a report cites its source with the URL and the date it was
-      read. A paper estimate is marked as an estimate and names its method.
-  The report
-  10. The report opens with the probed inventory and the descriptor it read. When
-      nothing is serving, the inventory says so and the sections rank against the
-      installed engines and models.
-  11. Hardware configuration: recommended adjustments (kernel, firmware, BIOS, OS
-      image, driver or Mesa, memory ceiling). Each gives its sources, the gain they
-      claim, its risk, and a verdict: verify, hold, or skip.
-  12. Engines:
-      - It weighs the incumbent engine and its configuration against the skill's
-        seed list (llama.cpp, vLLM, SGLang, and TensorRT-LLM on NVIDIA), filtered
-        to what the probed backend supports, and judges a packager by the engine it
-        embeds.
-      - It scans each run for emerging capabilities and engines, and weighs a
-        newly found engine in that run.
-      - It answers each watch item by name.
-      - It concludes with the most effective engine platform and configuration to
-        date for the host, as either an adjustment to the incumbent or a migration.
-  13. Models: grouped by declared purpose and sorted by viability, new models
-      included.
-      - The gates come first: policy (origin, quantization floor), fit in probed
-        memory, and the host's engine serving the architecture on its backend.
-      - Models that pass then sort by published speed on the same hardware class,
-        then by the card's evals for the purpose.
-      - A model that fails a gate is listed with the gate it failed. A model of
-        Chinese origin is listed under "excluded on origin" and never reaches a
-        verdict.
-  14. Model set: weighs combinations of one model per declared purpose.
-      - The candidates per purpose are the top three that pass the gates, plus the
-        incumbent. At most four per purpose is a bound the report states.
-      - It keeps the sets that fit the host together within the policy's headroom,
-        and that the chosen engine can serve side by side (one process holding
-        several models, or one process per model and its memory reservation).
-      - It recommends the most effective set, with its estimated memory, why it
-        wins, and the runner-up.
-  15. "Verify next" names one item across the sections: the highest verify-verdict
-      item, lowest risk first among equal claimed gains on the agent purpose, with a
-      one-line reason. Within each section, items are ordered verify, hold, skip.
-  16. "Proposed changes" lists additions to the watch items, the trusted sources,
-      the blocklist, and the engine seed list, each with its reason. A run writes
-      nothing except its report.
-  17. A report is per host and dated, and is never edited after its date. A later
-      run writes a new one. The project's report standard says so.
+  The verify mode
+  1.  `/hosting-upgrades verify <host>` reads the host's last report (the
+      newest date, and within that date the highest -N). It stops, saying
+      why, when the host has no descriptor or no report, or the project has
+      no policy.
+  2.  It runs the readiness check and the read-only probe first. It names
+      every report item whose state the probe shows has moved since the
+      report, such as an update now on the host's channel.
+  3.  It lists every verify, take, and hold item in the report. For each, it
+      asks for the architect's decision (apply, remove, or close with a
+      reason) and records the decision with its date.
+  4.  For each item to apply or remove, it prints:
+      - the exact commands
+      - which steps need root, which are the architect's, and which the
+        session may run without root
+      - the rollback, and whether a reboot is needed
+      The mode itself runs nothing that changes the host. An offered update
+      with no known rollback, such as a firmware update fwupd lists, is an
+      escalation. Once approved, it gets a reboot of its own, after the
+      host's other changes have booted cleanly.
+  5.  Before the verify item is measured, the mode re-checks the item's gates
+      under the current policy: origin, artifact integrity (the
+      chat-template check included), the quantization floor, and fit. If a
+      gate fails, it stops and names that gate.
+  6.  It prints the agreed cells:
+      - anchors A and B before and after the change, on one engine build and
+        one kernel
+      - the item's cells beside its role's incumbent, at the same shapes
+      Each run has a 10-minute cap. Every pass records the engine version,
+      the host stack, and `tailscale ping`. The first anchors are set beside
+      the host's last earlier readings, and a move beyond run noise is a
+      finding.
+  7.  The verdict rule. Adopt only when all three hold:
+      - anchors A and B after the change are within 1.4% of before
+      - no candidate cell is behind the incumbent by more than 1.4%
+      - for a transcription purpose, the candidate's word differences from
+        the references are within the incumbent's total plus 1.4% of the
+        reference words
+      Otherwise roll back. The finding states what the rule gave, and any
+      overrule by the architect.
+  8.  It writes one dated verification finding per host. The finding holds:
+      - every command, exactly as run
+      - each item's decision and its outcome
+      - the published claim beside the anchors
+      - on adoption, a "where <retired model> still lives" table of every
+        place the mode didn't change, addressed to whatever comes to own
+        the host tooling
+  9.  `setup` prints the verify mode's readiness rules beside the run's. A
+      report run is unchanged and stays read-only. The verify mode is the
+      skill's only change.
+  framework
+  10. Host stack, with no anchors:
+      - The architect refreshes fwupd's metadata. This is fwupdmgr's first
+        walk, and fwupdmgr is the task's one new tool. The get-updates
+        result is recorded.
+      - The boot-order sysctl is set to 1 before the reboot.
+      - `omarchy update` brings linux-omarchy to 7.2.15-1.
+      - After one reboot, the probe shows the new kernel running and llama
+        up, with its tailnet port published.
+  11. Mesa 26.2.6, linux-firmware 20261019, the TTM ceiling, and the two
+      gpt-oss measurement sections are closed with no action. The finding
+      gives each one's reason: not on the host's channel; not on the host's
+      channel; headroom met; measurement sections that no agent loads.
+  12. The model pass, all on 7.2.15:
+      - anchors A and B before the swap, on gpt-oss-120b's 4-slot section
+      - E4B Q8_0 and E4B QAT, each at shape A, shape B, ASR A, and ASR B
+      - the ASR B transcripts of both, paired with their LibriSpeech
+        references and compared by word differences
+      - anchors A and B after the swap
+      The verdict follows behavior 7.
+  13. On adopt, framework's router serves E4B QAT as the audio model and
+      Q8_0 is unloaded. The architect refreshes Pi's model list. The Q8_0
+      files leave the store only after the walkthrough confirms QAT. On
+      roll back, Q8_0 is served again and QAT is unloaded.
+  14. The vLLM container and its images are removed through the `engines`
+      suite. The six unused safetensors snapshots are removed, after a dry
+      run. The docker build cache is cleared in full. The probe reads back
+      all three as gone.
+  15. The shape and ASR scenarios are copied into the spike's bench
+      scenarios beside anchors A and B.
 
-Test seams    One: the skill run on a host, `/<skill> <host>`, and the report it writes.
-              The probe's output, read in that report's inventory, is checked by the
-              project check (shellcheck) and by a run on each host.
-
-Slices
-  1. Descriptors, policy, and the probe. Framework's and gb10-1's descriptors, the
-     policy document, and the bundled probe; the skill's skeleton loads its inputs,
-     probes, and pauses on discrepancies and sudo facts (behaviors 1-7). The bench
-     Python pin's comment is corrected to name torchcodec. Demo: the session runs the
-     probe read-only on framework and gb10-1, shows the inventory with no tailnet
-     identifier, and shows one discrepancy prompt.
-  2. Sources, hardware configuration, and engines. The tiered sources, the
-     blocklist seeded with a reason per entry, and the report's inventory, hardware,
-     and engines sections, with the engines conclusion. The report standard becomes
-     per host (behaviors 8-12, 17). Demo: an untracked scratch report for framework,
-     every claim cited.
-  3. Models, the model set, Verify next, and Proposed changes (behaviors 13-16).
-     Demo: an untracked scratch report for gb10-1 with all sections, the bound
-     stated, and one Verify next item.
-  4. Walkthrough (the architect). In a fresh session the architect runs the skill
-     on framework, then gb10-1, and commits the two dated reports. For each report
-     the architect checks 6 sampled claims (one per kind per host class, across
-     both) and each top upgrade's sources in full, then reviews the seeded blocklist,
-     striking or keeping each entry.
-
-Out of scope  Any change to a host: no install, no upgrade, no benchmark, no anchor
-              run. Verifying or adopting an upgrade (verify-framework, verify-gb10).
-              Same-session anchors beside incumbents (screen). The cadence and
-              convention (answer). Plugin packaging, and Pi or OpenCode support.
-              Reading other spikes' findings, pins, pool, or currency as inputs.
-
-Door          two-way: the task adds a skill, project documents, and reports to the
-              spike; its host step only reads, with no root; nothing is released.
-```
-
-### Revision · redirect at BRIEF, approved 2026-10-30
-
-Problem, Test seams, Out of scope, and Door are unchanged. These behaviors are amended or added, and
-the slices continue as below (an exception to the four-slice limit, approved with this revision):
-
-```
-Behaviors (amended)
-  3.  The policy document also states two readings:
-      - The floor's "card evals within about 1% of BF16" means every eval the
-        card reports for the checkpoint is within about 1%, relative.
-      - A model whose base can't be established from its card, its API record,
-        or its publisher's repository or paper is held out as "origin unclear",
-        without a pause. It is listed beside "excluded on origin" with what the
-        run checked.
-  4.  The probe is run by its project-relative path, the same literal path the
-      readiness check's ssh rules name.
-  5.  The probe prints no network address: it reads only ports and drops the
-      address.
-  7.  The origin pause narrows to conflicting origin evidence. Undocumented
-      origin no longer pauses (behavior 3).
-  8.  The skill reads sources with WebSearch and WebFetch, GitHub included
-      (release pages, api.github.com JSON, raw files), and runs no curl. It
-      searches GitHub with `gh search`. A prompted `gh api` call is only the
-      fallback when unauthenticated API reads run out.
-
-Behaviors (added)
-  18. A readiness check, run after the inputs load at the start of every run:
-      - It works out the permission rules this workspace needs: one exact ssh
-        probe rule per host in the descriptors, `gh search issues` and
-        `gh search prs`, WebSearch, WebFetch, and edits under the reports
-        directory.
-      - It reads the project's .claude/settings.json and
-        .claude/settings.local.json.
-      - It prints the exact JSON for every missing rule and the file it belongs
-        in: settings.json for a skill inside the project, settings.local.json
-        for one installed outside it.
-      - It then asks whether to continue with prompts or wait while the
-        architect adds the rules.
-      - It never writes a settings file, and it prints no rule for `gh api`.
-  19. `/hosting-upgrades setup` runs the readiness check alone and prints the
-      full rule set, for a new workspace or a new host, without starting a run.
-  20. The skill's frontmatter grants no tools. A frontmatter grant clears at the
-      first pause, so the durable rules come from the readiness check.
+Test seams    One: `/hosting-upgrades verify <host>` and the finding it writes.
+              The host's end state is read back by the skill's own probe. The
+              project check covers the scenarios and links (shellcheck, link
+              resolution).
 
 Slices
-  1-3. (committed)
-  4. Readiness check and policy readings (behaviors 3, 4, 5, 7, 8, 18-20): the
-     check and `setup`; the frontmatter without allowed-tools; the probe run
-     by its project-relative path; sources.md's GitHub and curl reads moved to
-     WebFetch; the policy's two readings; the narrowed origin pause; the
-     finding gains gb10-1's 2026-10-30 probe after its kernel update. Demo:
-     `setup`'s printed rules for framework and gb10-1, checked against the
-     current settings files (nothing is written), and a scratch run's
-     Inventory showing the check's output.
-  5. Walkthrough (the architect), as slice 4 was. It starts with
-     `/hosting-upgrades setup`: the architect adds the printed rules to
-     .claude/settings.json and commits them on `skill`, then runs framework
-     and gb10-1. Pause 3c: the gb10-1 run resolves VibeVoice-ASR-Streaming-7B's
-     base from Microsoft's VibeVoice repository or paper.
-```
+  1. The verify mode and the bench copies (behaviors 1-9, 15): the verify
+     mode, its readiness rules in `setup`, the finding's layout, and the four
+     copied scenarios.
+     Demo: `/hosting-upgrades verify framework`:
+     - lists the report's eleven items with their recommended actions
+     - names linux-omarchy 7.2.15-1 as moved since the report
+     - re-checks E4B QAT's gates, the chat-template check included
+     - changes nothing on the host
+     The project check passes.
+  2. The host stack (behaviors 10, 11; the architect's root steps, and the
+     session's no-root steps in the architect's view):
+     - fwupd refresh and get-updates (fwupdmgr's first walk); any offer is
+       an escalation
+     - the sysctl
+     - `omarchy update`
+     - the reboot
+     - a probe
+     - the four closures
+     Demo: the finding's stack section, and the probe showing 7.2.15-1
+     running with llama's port published.
+  3. The model pass (behaviors 12-14; the session, in the architect's view):
+     - anchors A+B before
+     - the eight cells
+     - the transcripts
+     - adopt or roll back
+     - anchors A+B after
+     - on adopt, QAT served and the "where Q8_0 still lives" table
+     - the vLLM, snapshot, and build-cache removals
+     Demo: the finding's model section, with the claim beside the anchors
+     and the verdict.
+  4. Walkthrough (the architect), from the finding:
+     - rerun anchor A and ASR A on the end state
+     - check what the router serves
+     - refresh Pi's model list
+     - review each closure and removal
+     - then remove the Q8_0 files from framework's store with `hf cache rm`,
+       dry run first
 
-### Revision 2 · after the framework walkthrough, approved 2026-10-30
+Out of scope  - A fresh report run (the answer task's second report).
+              - gb10-1 and its holds (verify-gb10).
+              - The pool screen, BFCL, and tool reliability (screen).
+              - Mesa or linux-firmware from outside the host's channel.
+              - A firmware update that isn't approved at its escalation.
+              - Any edit to a reference repository: spike-model-engines'
+                preset and guides, spike-harness-driver, personal-agents,
+                spike-model-hosting, spike-ai-pipeline.
+              - Q8_0 on gb10-1 and gb10-2.
+              - Changing the gpt-oss sections.
+              - The future owner of the host scripts (a pending edit).
 
-```
-Amended
-  3.  Policy: the floor's three paths (D1). Origin: any involvement of an
-      adversarial entity at any level (D2), with judges, labelers, and
-      translators among the levels. Conventions aren't involvement (D3), and
-      components are judged as shipped (D4). Data: only data an
-      adversary-origin model generated, labelled, judged, or translated
-      excludes a model, subsets included. Human-made datasets are recorded as
-      dataset sources, and subsets that can't be told apart make the model
-      origin unclear. Research comes before "origin unclear".
-  8.  Sources:
-      - the "Origin and build checks" table (eCFR 791.4 by its renderer API,
-        the screening list by screen.sh, HF records and organization overviews,
-        ggml-org's .src_sha)
-      - the run's 11 accepted sources and the tracker stand-ins
-      - an attributed Vulkan benchmark must name its Mesa or driver version
-      - the workspace's own same-host measurements count as attributed when a
-        host's descriptor lists them; only same-session cells compare
-      - curl appears only inside screen.sh and the probe
-  11. Verdicts become verify, take, hold, skip:
-      - "take" is a version update with no claim and no reported regression,
-        applied with the next host update.
-      - "Measured slower, but ahead on evals" is hold.
-      - Every section orders verify, take, hold, skip, and Verify next names a
-        verify item only.
-  13. The agent purpose is gated on the policy's agent quality bar (named
-      evals with floors, and the tool-reliability check). Speed sorts only
-      among the candidates that clear it; one with no comparable evals is
-      hold, "needs measurement". Model rows name the exact repository and
-      file, the build, and the projector with its precision. The floor path
-      comes from the build, not the label.
-  14. The model set places each incumbent in step 7's order. A model serving
-      two purposes is estimated at the more demanding purpose's
-      configuration.
-  16. Proposed changes gains a fifth list, "Policy and the model gates".
-
-Added
-  21. The skill's frame: it finds and ranks everything a workstation has
-      fallen behind on. A "System updates and debt" section covers:
-      - pending package updates (apt's cached lists with their age; Arch's
-        checkupdates)
-      - firmware updates (fwupdmgr get-updates)
-      - failed units, and units a descriptor or container implies should run
-      - container images behind their tag's latest release
-      - unused images and models taking disk
-      - configuration that differs from the descriptor
-      - the existing kernel, reboot-pending, and boot-order checks
-      Each item gets a verdict, and the probe skips any read whose command is
-      absent. Hardware asks which components reach the engine (a container
-      carries its own Mesa and ROCm, cited from the image's Dockerfile or
-      labels).
-  22. The probe prints the router preset's serving keys, filtered like the
-      flags lines, read without root from its mounted path.
-  23. A "Research" section defines the partition (hardware and system,
-      engines, agent models, other models, origin) and the tools each part
-      may use: WebSearch, WebFetch, gh search, screen.sh.
-  24. screen.sh: a bundled script that downloads trade.gov's public CSL JSON
-      once a day into .state/ and matches normalized names with jq. A miss is
-      "no match". The readiness check prints its exact rule.
-
-Out of scope (amended): applying any fix stays out of this task. The skill
-finds and ranks; verify-framework and verify-gb10 apply the take and verify
-items, with rollbacks.
-
-Slices
-  1-4. (committed)
-  5. Tuning: behaviors 3, 8, 11, 13, 14, 16, 21-24. Also:
-     - the wording "origin" for who was involved and "build" for how a file
-       was made, with "provenance" gone
-     - the granite example corrected: the served conversion stays origin
-       unclear, as the run found
-     - the root-command example in its `ssh -t <host> sudo` form
-     - D5's leads
-     - the accepted blocklist entry, seed engine, and framework watch items
-     - the agent quality bar in docs/policy.md, its floors proposed from
-       spike-model-hosting's pool.md for the architect to confirm in the
-       validation run
-     Demo: setup prints eight rules; the probe's new reads run read-only on
-     both hosts; screen.sh matches a known listed entity and misses a known
-     clean one.
-  6. Validation walkthrough (the architect): /hosting-upgrades gb10-1 with the
-     tuned skill. Commit framework's report, the gb10-1 report, and the
-     settings rules (now eight).
-```
-
-
-### Revision 3 · adopt the skill backlog, approved 2026-10-30
-
-```
-Research and origin
-  R1. A second, narrower research round feeds candidates the model parts
-      surfaced late to the origin part, so every ranked model has an origin
-      chain.
-  R2. A model already failing a later gate may stop at "not settled" for
-      origin, and the report says so.
-  R8. On a host whose inventory is unchanged since its last report, the run
-      researches only what moved, and cites that report for the rest.
-  R6. A version conflict among vendor notes that no verdict depends on is
-      settled by the probe, not a pause.
-
-Models
-  R3. A speed figure for another quantization of the same model stands in
-      for sorting at the same bit width and hardware class. It is marked as
-      a stand-in estimate and never makes an item verify.
-  R4. Evals from different cards compare only when both name the same suite
-      version and task set. Otherwise both are listed and the sort uses
-      speed alone, with the gap stated.
-  R12. docs/policy.md states a minimum context per agent session of 32,768
-      tokens, aiming at the model's native context when memory allows. The
-      engines and model-set steps compute each agent preset's per-session
-      context (ctx-size / parallel, or the unified pool) and flag presets
-      under the minimum.
-
-Policy and gates
-  R9. docs/policy.md gains an "Accepted code" list that the architect
-      edits: the repository, the exact revision, and the file reviewed. A
-      model whose code isn't listed is skip under artifact integrity, and the
-      acceptance is proposed under "Policy and the model gates".
-  R10. An adversary-origin drafter that a preset loads is a host
-      configuration fault, not an exclusion. Verification keeps it from
-      changing the output, so the target model stays eligible. Step 5b
-      flags it as hold, and the fix is removing it from the preset.
-  R7. The probe and report check that no preset section loads an excluded
-      drafter. R10 decides how the report treats a finding.
-  R11. Artifact integrity detects a pickle checkpoint from the file's format
-      (its magic bytes, or the HF record's file metadata), never from a .bin
-      extension.
-
-Inputs and reports
-  R5. gb10-1's descriptor lists spike-model-engines' GB10 measurements
-      under Measurements, as the run's Proposed changes named them.
-  Same-day report: a later run on a host that already has that date's
-      report writes <date>-2.md, then -3, and so on. The earlier one is never
-      edited. STANDARDS.md and SKILL.md step 11 change to say so.
-
-Slices
-  1-6. (done)
-  7. Adopt the backlog: R1-R12 and the same-day rule. Demo:
-     - setup still prints eight rules
-     - the probe's drafter check runs read-only on both hosts, recorded in
-       the finding
-     - a by-hand per-session context check flags gb10-1's 8,192-token
-       presets against 32,768
-  8. Fresh runs (the architect), each in a new session on skill:
-     /hosting-upgrades framework, then /hosting-upgrades gb10-1, writing
-     docs/reports/<host>/2026-10-30-2.md, or the date they run. Commit both
-     reports.
-```
-
-### Revision 4 · adopt the fresh runs' proposals, approved 2026-10-31
-
-```
-Problem, Test seams, Out of scope, and Door are unchanged. Out of scope still holds the
-verification step (verify-framework) and new fresh runs (answer's second report).
-
-Amended
-  2.  A host descriptor's watch items are named things of any kind (hardware, system,
-      engine), each answered in the report section of its kind.
-  3.  Policy, origin. The architect's bar, of 2026-10-31: "the origin of the model, and any
-      models it is directly trained on, are not adversarial and have been deemed safe for
-      use."
-      Excluding levels:
-      - an adversarial publisher or uploader (compliance)
-      - the weights chain: base models and merges
-      - a distillation teacher: a model whose outputs or logits the model was trained to
-        reproduce
-      - components in the inference path, as shipped
-      Read by role, not by label. When the publisher's own documents present an adversary
-      model's outputs as what the model was distilled from, or as its principal
-      post-training corpus, that model is a teacher.
-      Recorded, not excluding, as "dataset sources":
-      - adversary-generated data in a training mix (synthetic SFT data, reasoning traces,
-        preferences)
-      - the existing recorded levels (narrow transformations, drafters, conventions)
-      Unchanged:
-      - A run reads a publisher's disclosure file when the card points to one, now to find
-        teachers.
-      - A teacher the card doesn't name passes only when the publisher's own documents say
-        it is a checkpoint from their own pipeline.
-      Superseded:
-      - the 2026-10-31 granite exclusion
-      - the data rule's "origin unclear" for unspecified subsets
-  3.  Policy, artifact integrity and floor:
-      - A file stored on the host is settled by the probe's read of its first 4 bytes.
-      - Any other file is settled by magic.sh's ranged read of its first 4 bytes, or by the
-        Hub's per-file scan where that names the format. The repository-level header
-        fallback is dropped.
-      - Protect AI's PAIT-GGUF-100 under an overall "safe" status is recorded and passes,
-        by name only. Any other scanner message under "safe" is a rule's edge (pause; the
-        file fails until the architect answers).
-      - A GGUF's embedded chat template is compared with the publisher's
-        tokenizer_config.json template. Differences are recorded with the lines quoted. One
-        that adds text the model sees (a system prompt, instructions) fails integrity.
-      - A QAD build is not trained-in: it takes path 3.
-      - Memory headroom is held by sizing the model set, not by container limits (GB10
-        cudaMalloc isn't charged to the cgroup).
-      - The granite example stands as a pass after research, without framework's stale
-        clause.
-  4.  The probe adds two reads:
-      - each stored GGUF's first 4 bytes under the model store, following the Hugging
-        Face cache's links
-      - the host's package channel and mirror (the pacman mirrorlist's servers, the Omarchy
-        channel)
-  8.  Sources:
-      - IBM's Granite disclosure files
-      - Omarchy's pacman configuration at a tag, and the stable mirror's lastsync
-      - the gregkh/linux commits API (primary)
-      - packages.ubuntu.com
-      - Ollama's pinned llama.cpp build
-      - ggml-org's DGX Spark benches (attributed, as ruled 2026-10-30)
-      - NVIDIA's DGX Spark playbooks, the Launchpad publishing history, the DGX Spark
-        Porting Guide, and Dell KB 000379162
-      - Known leads gains the architect's four tier rulings, each dated
-  12. The engine seed list matches the built skill's five engines (llama.cpp, vLLM, SGLang,
-      TensorRT-LLM, ggml-hrx).
-  13. The origin chain:
-      - names the publisher's own GitHub organization, linked from its domain, as the
-        second identity link when its Hugging Face organization isn't verified
-      - records a WebFetch first-bytes read that a xet 302 defeats as "read not made",
-        then uses magic.sh
-  18. The readiness check prints nine rules. The ninth is magic.sh's exact rule.
-
-Added
-  25. When Arch news urges an upgrade of a package, the run prints
-      `ssh <host> pacman -Q <package>`, asks the architect for its output, and continues
-      from it, as it does for facts that need root.
-  26. scripts/magic.sh takes a Hugging Face repository and a file name and builds the
-      huggingface.co resolve URL itself. It prints the file's first 4 bytes from a ranged
-      curl, and accepts no URL, so its rule can fetch nothing else. With screen.sh and the
-      probe, it holds the skill's only curl.
-
-Slices
-  1-8. (done)
-  9.  Policy and the model gates (behaviors 3, 13): docs/policy.md, its template, and
-      models.md.
-      Demo: by hand against the amended text, recorded in the finding:
-      - granite-4.1-30b passes origin, with SYNTHETIC-1 recorded as a dataset source
-      - LFM2.5-24B-A2B stays origin unclear (unnamed teacher)
-      - Nemotron 3 Nano Omni's "improved using" Qwen models are read by role
-  10. The probe, magic.sh, and the run's steps (behaviors 4, 18, 25, 26):
-      - the two probe reads
-      - magic.sh and its readiness rule
-      - the no-root package ask
-      - SKILL.md's probe sections, step 5b, the Research tools, and the curl note
-      Demo:
-      - the probe runs read-only on framework and gb10-1, with a first-4-bytes line per
-        stored GGUF and no tailnet identifier
-      - magic.sh prints GGUF for ggml-org/gpt-oss-120b-GGUF gpt-oss-120b-MXFP4.gguf, and
-        80 02 for openai-community/gpt2 pytorch_model.bin
-      - the project check passes, shellcheck included
-  11. Sources and descriptors (behaviors 2, 8, 12):
-      - sources.md
-      - framework's watch items: #28495/#29510, and the Omarchy snapshot date
-      - gb10-1's watch items: #30781, #27148/#27624, #29510 on CUDA, the kernel reset
-        reports, and Dell display reserved memory
-      - the wider watch items in SKILL.md and the host template
-      Demo: setup prints nine rules; the project check resolves every link.
-  12. Walkthrough (the architect):
-      - /hosting-upgrades setup prints nine rules
-      - both probe outputs' magic lines
-      - the magic.sh pair
-      - the by-hand origin checks
-      Then SHIP. Twelve slices: a fourth exception, approved with this revision.
-
-Pending edits (coordinator)
-  - screen's summary gains "BFCL samples (100 single-turn, 20 multi-turn) and the
-    tool-reliability check on the agent candidates no card can place, Gemma 4 26B-A4B QAT
-    first".
-  - verify-gb10's summary gains "and the run's decided removals" (the vLLM container and
-    image, both bare-metal units).
-Deferred: the project's own conversion of granite-embedding-english-r2. Revisit if IBM's
-disclosure file shows a teacher.
+Door          two-way:
+              - The kernel rolls back from the cache or the fallback kernel.
+              - The sysctl rolls back by removing its file.
+              - The audio swap rolls back by a section load. After the Q8_0
+                removal, it rolls back by an 8.1G download.
+              - The vLLM, snapshot, and cache removals roll back by re-pull,
+                re-download, or rebuild.
+              Only a firmware update approved at its escalation would be
+              one-way, and none is planned. Nothing is released.
 ```
 
 ## Progress
 
+slices 0/4 committed · standards — · spec — · editor —
 
 ## Decisions
 
@@ -816,7 +514,82 @@ disclosure file shows a teacher.
   and tool-reliability check; spike-model-layout's role-split idea) landed early through this
   goal's plan, standards-lab PR #110 (architect, 2026-10-31). verify-framework's next brief is
   left to `start`.
+- verify-framework: the task verifies Gemma 4 E4B QAT Q4_0 as framework's audio model, the
+  2026-10-30-2 report's Verify next, with no fresh run; its gates are re-checked under today's
+  policy, the chat-template check included (architect, 2026-11-02).
+- verify-framework: every hold item in the 2026-10-30-2 report is settled in this task: applied,
+  removed, or closed with its reason (architect, 2026-11-02).
+- verify-framework: the skill's verification step is a second mode, `/hosting-upgrades verify
+  <host>`; a report run stays read-only, and the verify mode is the skill's only change in this
+  task (architect, 2026-11-02).
+- verify-framework: the verdict rule is to adopt only when anchors A and B after the change are
+  within 1.4% of before and no candidate cell is behind the incumbent by more than 1.4%;
+  otherwise roll back. 1.4% is the widest run noise the workspace recorded (architect,
+  2026-11-02).
+- verify-framework: anchors A and B run on gpt-oss-120b's 4-slot section, the one every earlier
+  framework anchor used, with set A's agent section unloaded meanwhile (architect, 2026-11-02).
+- verify-framework: linux-omarchy 7.2.15-1 is applied through `omarchy update`, a root step for
+  the architect, then a reboot. Rollback is to boot Arch linux 7.2.11, then `sudo pacman -U` the
+  cached 7.2.8-9 linux-omarchy and headers (architect, 2026-11-02).
+- verify-framework: no anchor pass runs before the kernel upgrade. The kernel goes first, then
+  anchors A+B before and after the E4B swap, both on 7.2.15 (architect, 2026-11-02).
+- verify-framework: the boot-order sysctl (`net.ipv4.ip_nonlocal_bind = 1` in
+  /etc/sysctl.d/60-tailnet-bind.conf) is set before the reboot, so the reboot shows llama's port
+  published. Rollback is to remove the file, then `sysctl -w net.ipv4.ip_nonlocal_bind=0`
+  (architect, 2026-11-02).
+- verify-framework: Mesa 26.2.6 is closed with no action: it isn't on framework's Omarchy mirror
+  (snapshot 2026-10-22), and the router runs its image's Mesa (architect, 2026-11-02).
+- verify-framework: linux-firmware 20261019 is closed with no action: it reached Arch core on
+  2026-11-01, but not framework's Omarchy mirror (architect, 2026-11-02).
+- verify-framework: the TTM ceiling (112 GiB) is closed with no action: the recommended set leaves
+  20.5 GiB, more than the 11.2 GiB headroom (architect, 2026-11-02).
+- verify-framework: the two gpt-oss sections at 8,192 tokens per session are closed with no
+  action: they are the anchors' and the sweep's measurement sections, which no agent loads, and
+  changing the 4-slot section would break anchor comparisons (architect, 2026-11-02).
+- verify-framework: framework's vllm container and every vLLM image are removed with
+  spike-model-engines' `host/engines vllm uninstall`. Rollback is `host/engines vllm install`
+  (architect, 2026-11-02).
+- verify-framework: the six unused safetensors snapshots (~168G) are removed with `hf cache rm`,
+  dry run first; ibm-granite's weights stay for the deferred conversion. Rollback is `hf download`
+  (architect, 2026-11-02).
+- verify-framework: the docker build cache is cleared in full with `docker builder prune -a`
+  (47.01 GB, none in use) (architect, 2026-11-02).
+- verify-framework: fwupd's metadata is refreshed by the architect; fwupdmgr is the task's one new
+  tool, and its first walk is the architect's (architect, 2026-11-02).
+- verify-framework: E4B Q8_0 and QAT each run shape A, shape B, ASR A, and ASR B in one session on
+  one build and kernel, each under `timeout 10m` (architect, 2026-11-02).
+- verify-framework: the shape-a, shape-b, audio-a, and audio-b scenarios are copied from
+  spike-model-engines into `bench/`, as setup copied the anchors (architect, 2026-11-02).
+- verify-framework: transcription quality is compared on ASR B's 32 replies, each paired with its
+  LibriSpeech reference (read as JSON with curl and jq), lower-cased with punctuation stripped. QAT
+  is adopted only if its word differences are within Q8_0's plus 1.4% of the reference words; no
+  new tool (architect, 2026-11-02).
+- verify-framework: the verify mode covers every verify, take, and hold item in the host's last
+  report, and records each decision and outcome in `docs/findings/verify-<host>.md`
+  (architect, 2026-11-02).
+- verify-framework: any update fwupd offers is an escalation. An approved one gets its own reboot
+  after the kernel boots cleanly, since none has a known rollback (architect, 2026-11-02).
+- verify-framework: on adoption, Q8_0 is retired within framework and this spike. The router
+  unloads Q8_0 and serves QAT, and the architect refreshes Pi's model list. Every repository still
+  naming Q8_0 is listed in the finding as "where Q8_0 still lives", addressed to whatever comes to
+  own the host tooling, and no reference repository is edited (architect, 2026-11-02).
+- verify-framework: the Q8_0 files leave framework's store after the walkthrough confirms QAT,
+  with `hf cache rm`, dry run first. Rollback is to `hf download` its two files (~8.1G) and load
+  the section, which stays in the preset (architect, 2026-11-02).
+- verify-framework: the future of spike-model-engines' host/ scripts goes to the coordinator as a
+  pending edit for a `plan experiment.hosting` session (architect, 2026-11-02).
 
 ## Pending edits
 
-None.
+- coordinator · `context/ai-hosting.md`, "spike-host-admin": add the architect's question
+  (2026-11-02). spike-model-engines' `host/` scripts (the `engines` suite, the llama.cpp and vLLM
+  scripts, the preset) have outlived the spike that wrote them; every later spike runs them
+  read-only, and none may tune them. Should they become a sustainable package that no spike owns,
+  adjustable as the workstations are tuned and reusable without friction? The lean: one repository
+  that adapts to its host through an explicit host-class profile (strix-halo, gb10), checked
+  against what the host detects, with the per-platform parts kept to those profiles. It matches
+  this note's rule for scripted install and setup, and dotfiles' `platforms/<class>/` pattern.
+  verify-framework's "where Q8_0 still lives" table is addressed to that owner.
+- coordinator · `context/roadmap.toml`, experiment.hosting: a `plan experiment.hosting` session
+  decides whether spike-host-admin widens to cover the repository's shape and the scripts' interim
+  owner, and whether it moves earlier than last in the experiment.
