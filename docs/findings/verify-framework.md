@@ -37,7 +37,7 @@ The architect decided each item in the task's plan rounds, 2026-11-02.
 
 | Item | Report verdict | Decision | Reason or outcome |
 |---|---|---|---|
-| Gemma 4 E4B QAT Q4_0 as the audio model (Verify next) | verify | apply, measured | rolled back by the verdict rule (ASR B −5.0%); see "Verdict" |
+| Gemma 4 E4B QAT Q4_0 as the audio model (Verify next) | verify | apply, measured | rolled back by the verdict rule in run 3 (ASR B −5.0%) and in run 4 with reasoning off (ASR A −11.0%; reasoning written into 2 of 40 replies); see "Verdict" and "Run 4" |
 | Kernel: linux-omarchy 7.2.8-9 → 7.2.15-1 (moved) | hold | apply | applied; running 7.2.15-1 ("Host stack") |
 | Boot-order: `net.ipv4.ip_nonlocal_bind = 1` | hold | apply | applied; llama published its port after the reboot |
 | fwupd metadata refresh (45 days old) | hold | apply | applied; no update offered |
@@ -309,6 +309,60 @@ that turns reasoning off for the audio model (the router's reasoning budget, or 
 thinking switch) might keep QAT's speed with no reasoning replies. That is a new candidate
 configuration in a preset this spike doesn't own (spike-model-engines `host/llama-preset`), for
 the screen task, or for whatever comes to own the host tooling.
+
+### Run 4: E4B QAT with reasoning off
+
+Revision 2 of the brief (the architect, after run 3): QAT is wanted as the Gemma baseline, so run 4
+tested whether turning its reasoning off removes run 3's loss. Gemma 4's template already defaults
+thinking off (`enable_thinking | default(false)`; no `<|think|>` token; the reply opens with
+`<|turn>model`), so QAT's thought blocks are its own. llama.cpp b11960's reasoning-budget sampler,
+at budget 0, forces the end tag as soon as the model opens a thought block
+(`common/reasoning-budget.cpp`), and the server takes it per request,
+`reasoning_budget_tokens` (`tools/server/server-common.cpp:1519`).
+
+**Smoke check**, QAT loaded, one request asking for thinking (`enable_thinking: true`):
+
+```sh
+curl -s http://framework:8080/v1/chat/completions -H "Content-Type: application/json" -d '{"model": "google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0", "max_tokens": 256, "chat_template_kwargs": {"enable_thinking": true}, "messages": [{"role": "user", "content": "What is 17 times 23? Answer with the number only."}], "reasoning_budget_tokens": 0}'
+```
+
+With the budget: no reasoning, "391" in 4 tokens. Without it (the control): 366 characters of
+reasoning, then "391", 177 tokens. The smoke check loaded QAT beside set A, and the router evicted
+set A's agent section unseen; set A was restored before the pass, and the architect made one model
+per purpose a standard (`STANDARDS.md`, "Hosts").
+
+**The pass**, 2026-11-02 21:33–21:47 UTC, run 3's script with the ASR cells swapped for
+`bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml` (each request sends
+`reasoning_budget_tokens: 0`) for both models; the shape cells unchanged, since they ask for
+thinking by design. The routing check passed first (`framework.lan`: no A, no AAAA). Results under
+`.state/verify/framework/pass4/`. Every cell held its full count with no error.
+
+| Cell | Q8_0 | QAT | QAT vs Q8_0 |
+|---|---|---|---|
+| Anchor A before → after (tok/s) | 44.91 | 44.66 | −0.6% |
+| Anchor B before → after (tok/s) | 76.73 | 76.46 | −0.4% |
+| Shape A (tok/s) | 37.29 | 57.93 | +55.3% |
+| Shape B (tok/s) | 125.65 | 183.20 | +45.8% |
+| ASR A, budget 0 (audio s/s) | 11.60 | 10.32 | −11.0% |
+| ASR B, budget 0 (audio s/s) | 19.41 | 24.64 | +26.9% |
+| ASR B word differences (of 568) | 43 | 49 | bound 50.95 |
+| Replies in a thought block (of 40) | 0 | 0 | |
+| Replies with reasoning in the text (of 40) | 0 | 2 | |
+
+**What budget 0 did.** It closed every thought block: no reply reasoned in the channel, none came
+back empty, none hit the cap. But on 2 of ASR A's 8 requests (#1, #2), QAT wrote its reasoning into
+the reply itself, before the transcript: "The user wants me to transcribe the provided speech
+segment into English text.\nThe speech segment is: \"nor ..." (85 and 121 tokens, against Q8_0's 14
+and 34). A consumer would take that text as the transcript. That costs ASR A its lead, and the
+replies are wrong as transcripts. Q8_0 did it on no request in any run.
+
+**Verdict: roll back**, by the rule, and by the stop condition the architect set for this run
+(budget 0 still let a reply reason): anchors hold; ASR A trails by 11.0%; the transcripts hold; the
+channel count holds, but the text carries reasoning on 2 of 40. Set A was restored, one model per
+purpose (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
+`google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`, `mrutkows/granite-embedding-english-r2-GGUF:BF16`).
+No preset was changed. E4B QAT's unprompted reasoning, in the channel or in the text, goes to the
+screen task, with the check that caught it: replies whose text speaks about the task.
 
 ## The claim beside the anchors
 

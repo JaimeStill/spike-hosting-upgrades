@@ -213,7 +213,7 @@ Unchanged     Every other behavior, slice, and the door.
 ## Progress
 
 slices 3/4 committed (204d418, 0bc44f4, slice 3 rerun below) · standards — · spec — · editor —
-Next: run 4 (revision 2): the budget-0 scenario variants, the smoke check, the pass; on adoption, the one-key PR on spike-model-engines, the swap, and Q8_0's retirement; then slice 4. Spec review: the verify mode's step 6 gains the two cell rules and the routing check; the chat_template.jinja reading; a reasoning count for a candidate.
+Next: slice 4, the architect's walkthrough (routing check first). Run 4 rolled back (QAT wrote reasoning into reply text with budget 0); no preset change, spike-model-engines untouched. Spec review: the verify mode's step 6 gains the two cell rules, the routing check, one model per purpose, and a reasoning check on reply text; the chat_template.jinja reading.
 
 ## Decisions
 
@@ -656,6 +656,11 @@ Next: run 4 (revision 2): the budget-0 scenario variants, the smoke check, the p
   and the router evicted the agent section (`gpt-oss-120b-MXFP4-set-a`) unseen; set A was
   restored. The rule is a standard (`STANDARDS.md`, "Hosts"), and the verify mode states it at the
   spec review (architect, 2026-11-02).
+- verify-framework: run 4 (reasoning budget 0) closed every thought block, but QAT wrote its
+  reasoning into 2 of 40 replies as plain text ("The user wants me to transcribe ..."), and ASR A
+  trailed by 11.0%; rolled back by the rule and by revision 2's stop condition. No preset change,
+  so spike-model-engines isn't touched by this task. E4B QAT's unprompted reasoning goes to the
+  screen task, with a check on reply text, not only the thought channel (2026-11-02).
 
 ## Pending edits
 
@@ -669,8 +674,6 @@ Next: run 4 (revision 2): the budget-0 scenario variants, the smoke check, the p
   host-class profile (strix-halo, gb10), checked against what the host detects, with the
   per-platform parts kept to those profiles (dotfiles' `platforms/<class>/` pattern). This
   answers the architect's question of 2026-11-02 on the scripts' owner (architect, 2026-11-02).
-- coordinator · `context/roadmap.toml`, experiment.hosting.spike-hosting-upgrades: the goal's
-  `repos` gains `spike-model-engines`, which verify-framework touches (one preset key).
 - coordinator · `context/roadmap.toml`, verify-gb10's summary: after gb10-1's verification,
   gb10-2 is brought in line with gb10-1 (the same host settings, the DHCP hostname, any adopted
   model), and the findings are relayed to spike-ai-pipeline, whose host gb10-2 is; who changes
