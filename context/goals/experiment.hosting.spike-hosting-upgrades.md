@@ -173,10 +173,27 @@ Door          two-way:
               one-way, and none is planned. Nothing is released.
 ```
 
+### Revision 1 · routing, approved 2026-11-02 (escalation in slice 3)
+
+```
+Added         framework stops sending its hostname in DHCP (IPv4 and IPv6) on
+              its LAN connections, so the LAN router stops publishing
+              framework.lan and the bare name `framework` resolves only
+              through MagicDNS (the architect's root step, rollback: the same
+              with `yes`). Before each pass, the verify mode checks that the
+              target name resolves to the tailnet address only and connects
+              in the path's time; a failed check is a pause.
+Changed       The model pass is discarded and runs again once routing is
+              settled, against `http://framework:8080`: anchors before, the
+              eight cells, transcripts, anchors after, verdict. The removals
+              stand. Slice 4's walkthrough follows the new pass.
+Unchanged     Every other behavior, slice, and the door.
+```
+
 ## Progress
 
 slices 3/4 committed (204d418, 0bc44f4, slice 3 below) · standards — · spec — · editor —
-Next: slice 4, the architect's walkthrough. E4B QAT rolled back by the verdict rule (ASR −38%/−26%, 85 vs 42 word differences, from unprompted reasoning); Q8_0 stays, so no Q8_0 retirement or removal. Removals done; space held by snapper snapshots of @. Spec review: add the two cell rules (full count; one run per fresh load) and the chat_template.jinja reading to the verify mode (architect, escalation 2026-11-02).
+Next: the routing fix (the architect's root step on framework), the routing check, then slice 3 again (the model pass, discarded and redone against http://framework:8080), then slice 4. Spec review: the verify mode's step 6 gains the two cell rules and the routing check; the chat_template.jinja reading.
 
 ## Decisions
 
@@ -579,6 +596,23 @@ Next: slice 4, the architect's walkthrough. E4B QAT rolled back by the verdict r
   the section, which stays in the preset (architect, 2026-11-02).
 - verify-framework: the future of spike-model-engines' host/ scripts goes to the coordinator as a
   pending edit for a `plan experiment.hosting` session (architect, 2026-11-02).
+- verify-framework: a cell counts only with its full request count, and each model's cells run
+  once each from a fresh load, never rerun within one load (GuideLLM's synthetic prompts hit the
+  router's prompt cache); Q8_0's first cells were redone from a fresh load (architect, escalation,
+  2026-11-02).
+- verify-framework: the bare name `framework` resolved IPv4 from MagicDNS and IPv6 from the LAN
+  router (framework.lan, a DHCPv6 lease), where ufw drops port 8080, so a new connection could
+  spend GuideLLM's 5 s connect timeout there. MagicDNS serves no AAAA for dual-stack nodes
+  (tailscale#1152). The fix is at the source: framework stops sending its hostname in DHCP on its
+  LAN connections, so `http://framework:8080` resolves only to the tailnet IPv4, over the direct
+  LAN path; rejected: a URL computed from the MagicDNS suffix, refusing instead of dropping on the
+  LAN, and dropping the `lan` search domain on every client (architect, 2026-11-02).
+- verify-framework: the GB10s take the same host setting; gb10-1 in verify-gb10's brief, and
+  gb10-2 as a note for spike-ai-pipeline (architect, 2026-11-02).
+- verify-framework: the first model pass is discarded and runs again once routing is settled; the
+  removals stand (architect, 2026-11-02).
+- verify-framework: the verify mode's step 6 gains a routing check before each pass, beside the
+  two cell rules, at the spec review (architect, 2026-11-02).
 
 ## Pending edits
 
@@ -594,3 +628,8 @@ Next: slice 4, the architect's walkthrough. E4B QAT rolled back by the verdict r
 - coordinator · `context/roadmap.toml`, experiment.hosting: a `plan experiment.hosting` session
   decides whether spike-host-admin widens to cover the repository's shape and the scripts' interim
   owner, and whether it moves earlier than last in the experiment.
+- coordinator · `context/ai-hosting.md`, beside the host-tooling question: dual-stack serving
+  (the router published on tailnet IPv4 and IPv6, `net.ipv6.ip_nonlocal_bind = 1` beside the
+  IPv4 key, on framework and the GB10s), to take up once MagicDNS serves AAAA records for
+  dual-stack nodes (tailscale#1152, open); until then the hosts keep their bare names
+  tailnet-only by sending no hostname in DHCP (architect, 2026-11-02).
