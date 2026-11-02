@@ -175,7 +175,8 @@ Door          two-way:
 
 ## Progress
 
-slices 0/4 committed · standards — · spec — · editor —
+slices 1/4 committed (204d418) · standards — · spec — · editor —
+Next: slice 1 demo (`/hosting-upgrades verify framework`, read-only), then slice 2 (host stack, the architect's root steps).
 
 ## Decisions
 
