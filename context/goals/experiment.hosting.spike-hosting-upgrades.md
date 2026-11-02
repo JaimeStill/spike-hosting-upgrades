@@ -651,6 +651,11 @@ Next: run 4 (revision 2): the budget-0 scenario variants, the smoke check, the p
 - verify-framework: QAT as the Gemma baseline is checked one model at a time: E4B in this task;
   the other Gemma QAT sections, vision's 26B-A4B included, get the same reasoning check (replies
   that reasoned, per purpose) in the screen task (architect, 2026-11-02).
+- verify-framework: a host serves one model per declared purpose at a time: a candidate loads
+  only after the purpose's incumbent is unloaded. Run 4's smoke check loaded E4B QAT beside set A,
+  and the router evicted the agent section (`gpt-oss-120b-MXFP4-set-a`) unseen; set A was
+  restored. The rule is a standard (`STANDARDS.md`, "Hosts"), and the verify mode states it at the
+  spec review (architect, 2026-11-02).
 
 ## Pending edits
 

@@ -22,6 +22,14 @@ The architecture pages that apply, in the architecture repository:
   the skill's read-only probe is its one host script.
 - No Python is authored, and a mise task runs one script or one command.
 
+## Hosts
+
+- A host serves one model per declared purpose at a time. To load a candidate for a purpose,
+  first unload the model serving that purpose, never load beside it; a session leaves the host
+  serving its set as it found it, or as an adoption changed it. A router that holds a cap on
+  loaded models evicts the least recently used one, so loading beside an incumbent can take
+  another purpose's model down unseen.
+
 ## Docs
 
 - A report is per host and dated, `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md`
