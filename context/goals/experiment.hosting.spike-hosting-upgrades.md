@@ -192,8 +192,8 @@ Unchanged     Every other behavior, slice, and the door.
 
 ## Progress
 
-slices 3/4 committed (204d418, 0bc44f4, slice 3 below) · standards — · spec — · editor —
-Next: the routing fix (the architect's root step on framework), the routing check, then slice 3 again (the model pass, discarded and redone against http://framework:8080), then slice 4. Spec review: the verify mode's step 6 gains the two cell rules and the routing check; the chat_template.jinja reading.
+slices 3/4 committed (204d418, 0bc44f4, slice 3 rerun below) · standards — · spec — · editor —
+Next: slice 4, the architect's walkthrough, after a routing check (the router is being sysupgraded to OpenWrt 25.12.6). Run 3 of the model pass counts: E4B QAT rolled back by the rule (ASR B −5.0%, from 2 of 32 unprompted reasoning replies; the other cells lead), architect applied the rule. Routing settled: framework sends no DHCP hostname; the router's leases cleared. Spec review: the verify mode's step 6 gains the two cell rules and the routing check (framework.lan has no records; 50 connects, none failed or slow); the chat_template.jinja reading.
 
 ## Decisions
 

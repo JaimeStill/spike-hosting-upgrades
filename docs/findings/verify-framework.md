@@ -37,7 +37,7 @@ The architect decided each item in the task's plan rounds, 2026-11-02.
 
 | Item | Report verdict | Decision | Reason or outcome |
 |---|---|---|---|
-| Gemma 4 E4B QAT Q4_0 as the audio model (Verify next) | verify | apply, measured | rolled back by the verdict rule (ASR cells and transcripts); see "Verdict" |
+| Gemma 4 E4B QAT Q4_0 as the audio model (Verify next) | verify | apply, measured | rolled back by the verdict rule (ASR B −5.0%); see "Verdict" |
 | Kernel: linux-omarchy 7.2.8-9 → 7.2.15-1 (moved) | hold | apply | applied; running 7.2.15-1 ("Host stack") |
 | Boot-order: `net.ipv4.ip_nonlocal_bind = 1` | hold | apply | applied; llama published its port after the reboot |
 | fwupd metadata refresh (45 days old) | hold | apply | applied; no update offered |
@@ -110,6 +110,51 @@ measure the model swap only, both passes on the new kernel).
 host's channel (probe `== updates ==`, 0 pending, after the update); the TTM ceiling and the
 gpt-oss measurement sections stand as decided (see "Decisions").
 
+### Routing
+
+Settled 2026-11-02, before the model pass that counts (the architect's decisions at two
+escalations). The bare name `framework` resolved IPv4 from MagicDNS (the tailnet address) but,
+now and then, through this machine's `lan` search domain to `framework.lan`, which the LAN router
+(OpenWrt 25.12.4) published from framework's DHCP leases: IPv6 from odhcpd, two `fda0:` ULA
+addresses, and IPv4 from dnsmasq. framework's ufw drops port 8080 on the LAN, so a connection that
+took a LAN address waited out GuideLLM's 5 s connect timeout: `ConnectTimeout('')`. ufw's log
+showed this machine's connections to framework's LAN IPv4 on port 8080 at the moments of the
+errors. MagicDNS serves no AAAA record for dual-stack nodes
+([tailscale#1152](https://github.com/tailscale/tailscale/issues/1152), open, read 2026-11-02), so a
+tailnet IPv6 bind couldn't win the lookup. The fix keeps the LAN from answering for `framework`:
+
+1. framework stops sending its hostname in DHCP: the architect, with root:
+
+   ```sh
+   ssh -t framework "sudo nmcli con mod 'Wired connection 1' ipv4.dhcp-send-hostname no ipv6.dhcp-send-hostname no && sudo nmcli con mod '<Wi-Fi connection>' ipv4.dhcp-send-hostname no ipv6.dhcp-send-hostname no && sudo systemd-run --unit=lan-reup-wifi nmcli con up '<Wi-Fi connection>' && sleep 10 && sudo systemd-run --unit=lan-reup-wired nmcli con up 'Wired connection 1'"
+   ```
+
+   Rollback: the same with `yes`.
+2. The router kept the name bound to the leases, so the architect cleared them on the router
+   (`ssh root@192.168.1.1`): odhcpd's (`/tmp/odhcpd.leases`, `/tmp/hosts/odhcpd.hosts.lan`, which
+   held `framework` on both `fda0:` addresses), then dnsmasq's (`/tmp/dhcp.leases`):
+
+   ```sh
+   /etc/init.d/odhcpd stop
+   sed -i '/framework/d' /tmp/odhcpd.leases /tmp/hosts/odhcpd.hosts.lan
+   /etc/init.d/odhcpd start
+   /etc/init.d/dnsmasq reload
+   /etc/init.d/dnsmasq stop
+   sed -i '/framework/d' /tmp/dhcp.leases
+   /etc/init.d/dnsmasq start
+   ```
+
+**The routing check**, from this machine, before the pass: `framework.lan` has no A record and no
+AAAA record (`resolvectl query -t A framework.lan`, `-t AAAA`); `framework` resolves to the
+tailnet IPv4 only (`getent ahosts framework`); and 50 connects to `http://framework:8080/health`
+with none failed and none over 50 ms (`curl -w '%{time_connect}'`; they read 2 to 5 ms, where the
+IPv6 fallback had read 205 ms). The tailnet path is direct over the LAN (`tailscale ping`, "via
+<LAN private address>:41641", 1 to 8 ms), so the tailnet costs no local-network latency.
+
+The GB10s' names had no LAN record when checked (`gb10-1.lan`, `gb10-2.lan`: no AAAA), and both
+connected at once; they take the same DHCP setting as prevention (gb10-1 in verify-gb10, gb10-2 a
+note for spike-ai-pipeline).
+
 ## Gates
 
 Gemma 4 E4B QAT Q4_0, `google/gemma-4-E4B-it-qat-q4_0-gguf` at
@@ -154,75 +199,61 @@ All four gates pass under today's policy.
 
 ## Cells
 
-One pass, 2026-11-02, from this machine (GuideLLM 0.8.1, `mise.bench.toml`), every cell on
-llama.cpp b11960-8642541b2 (`ghcr.io/ggml-org/llama.cpp:server-vulkan-b11960`) and kernel
-7.2.15-1-omarchy, the stack the post-reboot probe read ("Host stack"). The network path, before
-and after the cells: `tailscale ping -c 3 framework` and `tailscale ping -c 1 framework`, "pong
-from framework ... in 2ms", direct (address redacted). The target was the host's short name, so
-no address is committed:
+**The pass that counts** is run 3, 2026-11-02 20:13–20:25 UTC, after the routing check passed
+("Routing"). Two earlier passes are discarded, by the architect's decisions: run 1 (before the
+routing fix: Q8_0's first shape A recorded 7 of 8 requests and its rerun lost one to a
+`ConnectTimeout`, and a rerun within one load hit the router's prompt cache, TTFT 386 → 160 ms),
+and run 2 (after the IPv6 half of the fix: QAT shape B and both anchors after lost requests to
+`ConnectTimeout`, traced to the IPv4 half). Both were rolled back the same session, and neither's
+figures count.
+
+Every cell of run 3 ran on llama.cpp b11960-8642541b2
+(`ghcr.io/ggml-org/llama.cpp:server-vulkan-b11960`) and kernel 7.2.15-1-omarchy, the stack the
+post-reboot probe read ("Host stack"), from this machine (GuideLLM 0.8.1, `mise.bench.toml`).
+The network path: `tailscale ping -c 1 framework`, "pong from framework ... via <LAN private
+address>:41641", 6 ms before the pass and 1 ms before the anchors after. The script, as run
+(`bash pass.sh` from the repository root; results under `.state/verify/framework/pass3/`):
 
 ```sh
-export GUIDELLM__SPEC__BACKEND__TARGET="http://framework:8080"
+U=http://framework:8080; S=.state/verify/framework/pass3; mkdir -p $S
+export GUIDELLM__SPEC__BACKEND__TARGET="$U"
+G=ggml-org/gpt-oss-120b-GGUF:MXFP4; Q8=ggml-org/gemma-4-E4B-it-GGUF:Q8_0; QAT=google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0
+api() { curl -s -X POST "$U/models/$1" -H "Content-Type: application/json" -d "{\"model\": \"$2\"}"; echo " $1 $2"; }
+anchors() { for c in a b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-$c.yaml --output "kind=json,path=$S/$1-anchor-$c.json" > $S/$1-anchor-$c.log 2>&1; done; }
+cells() { for c in shape-a shape-b audio-a audio-b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/$c.yaml --backend "kind=openai_http,model=$2" --tokenizer "kind=huggingface_auto,model=google/gemma-4-E4B-it" --output "kind=json,path=$S/$1-$c.json" > $S/$1-$c.log 2>&1; done; }
+# unload_all unloads every loaded section and waits; wait_for polls $U/models for a state
+unload_all; api load $G; api load $Q8; anchors before        # 1. anchors before
+unload_all; api load $Q8; cells q8 $Q8                        # 2. Q8_0 alone, fresh load
+unload_all; api load $QAT; cells qat $QAT                     # 3. QAT alone, fresh load
+api load $G; anchors after                                    # 4. anchors after
 ```
 
-Sections were loaded and unloaded through the router (`U=http://framework:8080`):
-
-```sh
-curl -s -X POST $U/models/load -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"
-curl -s -X POST $U/models/unload -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"
-```
-
-Each anchor and each cell, every run under `timeout 10m`, results under `.state/verify/framework/`:
-
-```sh
-MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-$c.yaml --output "kind=json,path=.state/verify/framework/<pass>-anchor-$c.json"
-MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/$c.yaml --backend "kind=openai_http,model=$M" --tokenizer "kind=huggingface_auto,model=google/gemma-4-E4B-it" --output "kind=json,path=.state/verify/framework/<model>-$c.json"
-```
-
-The order, and what was loaded for each step (the session's choice within the brief: each anchor
-pass beside that pass's audio model, so before and after differ only by the swap; each model's
-cells with only that model loaded):
-
-1. **Anchors before**: `ggml-org/gpt-oss-120b-GGUF:MXFP4` (the 4-slot section) beside
-   `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`; nothing else loaded.
-2. **E4B Q8_0 alone**: shape A, shape B, ASR A, ASR B.
-3. **E4B QAT alone** (`google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0`, Q8_0 unloaded): the same four.
-4. **Anchors after**: the 4-slot section beside E4B QAT.
+Each anchor pass ran beside that pass's audio model, so before and after differ only by the swap;
+each model's cells ran once each from a fresh load, with only that model loaded.
 
 | Cell | Requests | Output tok/s | Audio s/s | TTFT median ms | ITL median ms |
 |---|---|---|---|---|---|
-| Anchor A, before | 8/8 | 44.48 | – | 639 | 19.88 |
-| Anchor B, before | 32/32 | 77.14 | – | 2140 | 44.91 |
-| Q8_0 shape A | 8/8 | 37.29 | – | 363 | 25.44 |
-| Q8_0 shape B | 32/32 | 125.69 | – | 1030 | 28.67 |
-| Q8_0 ASR A | 8/8 | 29.23 | 11.64 | 246 | 24.52 |
-| Q8_0 ASR B | 32/32 | 53.58 | 19.77 | 418 | 51.40 |
-| QAT shape A | 8/8 | 57.91 | – | 304 | 16.07 |
-| QAT shape B | 32/32 | 182.86 | – | 942 | 18.95 |
-| QAT ASR A | 8/8 | 50.44 | 7.20 | 261 | 15.93 |
-| QAT ASR B | 32/32 | 118.60 | 14.54 | 346 | 25.29 |
-| Anchor A, after | 8/8 | 44.44 | – | 644 | 19.84 |
-| Anchor B, after | 32/32 | 76.96 | – | 2146 | 45.45 |
+| Anchor A, before | 8/8 | 44.86 | – | 640 | 19.73 |
+| Anchor B, before | 32/32 | 77.14 | – | 2149 | 45.21 |
+| Q8_0 shape A | 8/8 | 37.33 | – | 363 | 25.34 |
+| Q8_0 shape B | 32/32 | 126.65 | – | 1031 | 28.38 |
+| Q8_0 ASR A | 8/8 | 29.02 | 11.67 | 250 | 24.84 |
+| Q8_0 ASR B | 32/32 | 53.17 | 19.55 | 439 | 55.85 |
+| QAT shape A | 8/8 | 57.99 | – | 303 | 16.07 |
+| QAT shape B | 32/32 | 182.65 | – | 943 | 19.03 |
+| QAT ASR A | 8/8 | 38.80 | 15.74 | 254 | 15.49 |
+| QAT ASR B | 32/32 | 83.14 | 18.57 | 390 | 29.51 |
+| Anchor A, after | 8/8 | 44.66 | – | 638 | 19.71 |
+| Anchor B, after | 32/32 | 77.31 | – | 2151 | 45.09 |
 
-A cell's figure is its output tok/s, and an ASR cell's is its audio seconds a second (skill, "The
-verify mode", step 6).
-
-**Q8_0's first cells, set aside** (the architect's decision at an escalation, 2026-11-02). Q8_0's
-four cells first ran once in one load. Its shape A recorded 7 of 8 requests, none errored or
-incomplete (`request_totals` 7/0/0; GuideLLM created 8), at 37.13 tok/s. The rerun, in the same
-load, had one request fail with `ConnectTimeout('')` after 5 s, nothing in the router's log, at
-34.73 tok/s (the 5 s gap counts in its window; per request 38.49), and its prefill hit the
-router's prompt cache: TTFT median 386 → 160 ms, ITL 25.56 → 25.41 ms. GuideLLM's synthetic prompts
-are the same every run, so a second run in one load reuses the first's cached prefixes. The
-architect decided: reload Q8_0, which empties its cache, and run its four cells again, once each,
-as QAT's ran; the table holds that run (`q8-redo-*`). The first run's other three cells, all with
-full counts: shape B 125.23, ASR A 11.53 audio s/s, ASR B 19.07, within 4% of the redo. The
-ConnectTimeout did not recur in the 120 requests after it.
+No request errored or went incomplete in any cell. A cell's figure is its output tok/s, and an
+ASR cell's its audio seconds a second (skill, "The verify mode", step 6).
 
 **The first anchors beside the host's last readings.** The last framework anchors on b11960, on
-kernel 7.2.8-9, over the LAN path: A 44.97903 and B 76.79873 tok/s (spike-model-engines
-`docs/findings/vllm-strix.md`, "Anchors"). Today's before-anchors on kernel 7.2.15-1: A 44.48
-(−1.1%), B 77.14 (+0.4%), each within 1.4%. No move beyond run noise, so no finding.
+kernel 7.2.8-9: A 44.97903 and B 76.79873 tok/s (spike-model-engines
+`docs/findings/vllm-strix.md`, "Anchors"). Run 3's before-anchors on kernel 7.2.15-1: A 44.86
+(−0.3%), B 77.14 (+0.4%), each within 1.4%. No move beyond run noise, so the kernel update moved
+nothing the anchors measure.
 
 ## Transcripts
 
@@ -231,69 +262,64 @@ skill's step 7. The references, as run:
 
 ```sh
 curl -s 'https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32' > .state/verify/framework/librispeech-refs.json
-jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .state/verify/framework/<model>-audio-b.json
+jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .state/verify/framework/pass3/<model>-audio-b.json
 ```
 
 (`wer.jq` is the skill's step 7 program, saved to a file.)
 
-| Model | Pairs | Reference words | Word differences | Output tokens (all 32) |
-|---|---|---|---|---|
-| E4B Q8_0 | 32 | 568 | 42 | 666 |
-| E4B QAT | 32 | 568 | 85 | 1,984 |
+| Model | Pairs | Reference words | Word differences | Output tokens (all 32) | Replies that reasoned |
+|---|---|---|---|---|---|
+| E4B Q8_0 | 32 | 568 | 45 | 668 | 0 |
+| E4B QAT | 32 | 568 | 50 | 1,085 | 2 |
 
-**Why QAT's count doubled.** On 6 of ASR B's 32 requests (#0, #3, #15, #21, #24, #25) and 2 of ASR
-A's 8, QAT opened a reasoning block the prompt didn't ask for ("Thinking Process: 1. **Analyze the
-Request:** The user wants a transcription..."), which GuideLLM records as `reasoning_output`. It
-spent the cap of 256 tokens, so the transcript came back short or empty. Q8_0 opened none, with
-the same template, prompt, and engine. The embedded templates are byte-identical ("Gates").
+Per pair, Q8_0: 1,1,2,2,9,0,1,0,1,3,2,5,0,2,0,2,0,0,0,3,1,0,0,1,0,5,1,0,0,0,2,1. QAT:
+1,2,1,2,14,0,2,0,1,2,2,3,0,2,2,2,0,0,0,3,1,0,0,1,0,3,3,0,0,0,2,1. The pairs that differ by more
+than a word: #4 (Q8_0 9, QAT 14, LibriSpeech's longest clip, the "Linnell's pictures" passage)
+and #14 ("by harry quilter m a": Q8_0 0, QAT 2, "by Harry Quilter", a reply that reasoned first).
 
-The pairs whose counts differ by more than a word between the models:
-
-| # | Q8_0 | QAT | QAT tokens | QAT reasoned | Reference | Q8_0 | QAT |
-|---|---|---|---|---|---|---|---|
-| 2 | 1 | 3 | 35 | no | he tells us that at this festive season of the year with christmas and roast beef looming before us similes drawn from eating and its results occur most readily to the mind | he tells us that at this festive season of the year with christmas and a roast beef looming before us similes drawn from eating and its results occur most readily to the mind | She tells us that at this festive season of the year with christmas and a roast beef looming before us similies drawn from eating and its results occur most readily to the mind |
-| 3 | 1 | 10 | 256 | yes | he has grave doubts whether sir frederick leighton's work is really greek after all and can discover in it but little of rocky ithaca | he has grave doubts whether sir frederick layton's work is really greek after all and can discover in it but little of rocky ithaca | He has grave doubts whether Sir Frederick Leighton's work is really Greek after all |
-| 10 | 0 | 2 | 17 | no | near the fire and the ornaments fred brought home from india on the mantel board | near the fire and the ornaments fred brought home from india on the mantel board | near the fire and the ornaments fred brought home from india on the mantelboard. |
-| 14 | 0 | 2 | 6 | no | by harry quilter m a | by harry quilter m a | by harry quilter ma |
-| 15 | 3 | 26 | 256 | yes | because you were sleeping instead of conquering the lovely rose princess has become a fiddle without a bow while poor shaggy sits there a cooing dove | because you were asleep instead of conquering the lovely rose princess has become a fiddle without a bow ohpoor shaggy sits there a cooing dove | (empty) |
-| 24 | 0 | 2 | 256 | yes | he doesn't work at all | he doesn't work at all | He doesn't work |
-| 26 | 1 | 3 | 7 | no | not exactly returned kaliko | not exactly returned calico | Not exactly we turned calico |
+**QAT's unprompted reasoning.** On 2 of ASR B's 32 requests (#14, #30), and none of ASR A's 8, QAT
+opened a reasoning block the prompt didn't ask for ("Thinking Process: 1. **Analyze the
+Request:** ..."), which GuideLLM records as `reasoning_output`: #14 spent the cap of 256 tokens
+in 8.3 s, and #30 186 tokens in 3.5 s. Q8_0 opened none, with the same template, prompt, and
+engine (the templates are byte-identical, "Gates"). The discarded runs showed the same behavior,
+on 6 and 3 of 32.
 
 ## Verdict
 
 **Roll back.** The rule (skill, "The verify mode", step 8), condition by condition:
 
-1. **Anchors A and B after within 1.4% of before:** holds. A 44.48 → 44.44 (−0.1%), B 77.14 →
-   76.96 (−0.2%).
-2. **No candidate cell behind the incumbent's by more than 1.4%:** fails. Shape A +55.3% (57.91
-   against 37.29), shape B +45.5% (182.86 against 125.69), but ASR A −38.1% (7.20 against 11.64
-   audio s/s) and ASR B −26.5% (14.54 against 19.77).
-3. **Transcription within the incumbent's total plus 1.4% of the reference words:** fails. 85
-   against a bound of 42 + 7.95 = 49.95.
+1. **Anchors A and B after within 1.4% of before:** holds. A 44.86 → 44.66 (−0.45%), B 77.14 →
+   77.31 (+0.21%).
+2. **No candidate cell behind the incumbent's by more than 1.4%:** fails, on ASR B alone: −5.0%
+   (18.57 against 19.55 audio s/s). The other three lead: shape A +55.4% (57.99 against 37.33),
+   shape B +44.2% (182.65 against 126.65), ASR A +34.9% (15.74 against 11.67).
+3. **Transcription within the incumbent's total plus 1.4% of the reference words:** holds. 50
+   against a bound of 45 + 7.95 = 52.95.
 
-No overrule. Rolled back the same session: QAT and the 4-slot section unloaded, and set A loaded
-as before the pass (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
+The architect applied the rule, with no overrule (2026-11-02). Rolled back the same session: QAT
+and the 4-slot section unloaded, and set A loaded as before the pass
+(`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
 `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`, `mrutkows/granite-embedding-english-r2-GGUF:BF16`),
-read back by the router's `/models` and by the probe's `== endpoints ==`. E4B Q8_0 stays the
-audio model, so nothing is retired and no "Where … still lives" table applies. QAT's files stay
-in the store, as before the task.
+read back by the router's `/models`. E4B Q8_0 stays the audio model, so nothing is retired and no
+"Where … still lives" table applies. QAT's files stay in the store, as before the task.
 
-**For a later task.** The ASR loss traces to QAT's unprompted reasoning, not to its speed: its
-token rate is ahead at every shape. A section that turns reasoning off for the audio model (the
-router's reasoning budget, or the template's thinking switch) might keep QAT's speed and Q8_0's
-transcripts. That is a new candidate configuration in a preset this spike doesn't own
-(spike-model-engines `host/llama-preset`), so it goes to the screen task, or to whatever comes to
-own the host tooling, not to this verification.
+**For a later task.** ASR B's loss traces to the two replies that reasoned: QAT's median request
+took 0.95 s against Q8_0's 1.23 s, and with no reply reasoning (ASR A) it leads by 35%. A section
+that turns reasoning off for the audio model (the router's reasoning budget, or the template's
+thinking switch) might keep QAT's speed with no reasoning replies. That is a new candidate
+configuration in a preset this spike doesn't own (spike-model-engines `host/llama-preset`), for
+the screen task, or for whatever comes to own the host tooling.
 
 ## The claim beside the anchors
 
 The report's claim: E4B QAT +56.6% at text shape A over E4B Q8_0 (58.1 against 37.1 output tok/s)
 on this host, Vulkan, b11669 (spike-model-engines `docs/findings/llama-strix-rocm.md`, as the
-report cites it). Measured here, b11960 and kernel 7.2.15-1, with anchors steady within 0.2%:
-+55.3% (57.91 against 37.29). The claim held for what it measured, within 1.3 points. It said
-nothing of ASR, where QAT fell behind for a reason no speed figure shows. So a speed claim on
-text shapes doesn't carry to another modality of the same model, and the verify mode's cells per
-purpose are what caught it.
+report cites it). Measured here, b11960 and kernel 7.2.15-1, with the anchors steady within 0.5%:
++55.4% (57.99 against 37.33). The claim held for what it measured, within about a point, and the
+lead carries to shape B (+44.2%) and to ASR A (+34.9%). It said nothing of the model's
+unprompted reasoning, which costs ASR B its lead. A speed claim measured on fixed-length text
+doesn't show a behavior that changes a reply's length, so the verify mode's cells per purpose,
+with replies the model ends itself, are what caught it.
 
 ## Removals
 
@@ -346,6 +372,7 @@ a model is removed.
 | E4B QAT card | primary | <https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf> | 2026-11-02 |
 | Publisher's template, QAT unquantized | primary | <https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-unquantized/raw/main/chat_template.jinja> | 2026-11-02 |
 | spike-model-engines vllm-strix.md, "Anchors" (last framework anchors) | attributed benchmark | spike-model-engines `docs/findings/vllm-strix.md` | 2026-11-02 |
+| tailscale#1152, "Add AAAA records to MagicDNS" | primary | <https://github.com/tailscale/tailscale/issues/1152> | 2026-11-02 |
 | LibriSpeech references, dataset viewer | primary | <https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32> | 2026-11-02 |
 | Publisher's template, E4B-it | primary | <https://huggingface.co/google/gemma-4-E4B-it/raw/main/chat_template.jinja> | 2026-11-02 |
 | Consolidated Screening List | primary | <https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json> | 2026-11-02 |
