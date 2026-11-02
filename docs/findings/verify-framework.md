@@ -144,11 +144,19 @@ tailnet IPv6 bind couldn't win the lookup. The fix keeps the LAN from answering 
    /etc/init.d/dnsmasq start
    ```
 
-**The routing check**, from this machine, before the pass: `framework.lan` has no A record and no
-AAAA record (`resolvectl query -t A framework.lan`, `-t AAAA`); `framework` resolves to the
-tailnet IPv4 only (`getent ahosts framework`); and 50 connects to `http://framework:8080/health`
-with none failed and none over 50 ms (`curl -w '%{time_connect}'`; they read 2 to 5 ms, where the
-IPv6 fallback had read 205 ms). The tailnet path is direct over the LAN (`tailscale ping`, "via
+**The routing check**, from this machine, before each pass and the walkthrough: `framework.lan`
+has no A record and no AAAA record; `framework` resolves to the tailnet IPv4 only; and 50 connects
+to `http://framework:8080/health` with none failed and none over 50 ms (they read 2 to 10 ms, where
+the IPv6 fallback had read 205 ms). As run before the walkthrough (the earlier checks also ran
+`resolvectl flush-caches` first, dropped once framework and the router were fixed):
+
+```sh
+for ty in A AAAA; do echo "framework.lan $ty: $(resolvectl query -t $ty framework.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+echo "bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E 's/^100\..*/tailnet4/; s/^192.*/lan4/; s/^fda0.*/lan6/' | paste -sd' ')"
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://framework:8080/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($1=="FAIL")f++; else if($1>0.05)s++; if($1>m)m=$1} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+```
+
+ The tailnet path is direct over the LAN (`tailscale ping`, "via
 <LAN private address>:41641", 1 to 8 ms), so the tailnet costs no local-network latency.
 
 The GB10s' names had no LAN record when checked (`gb10-1.lan`, `gb10-2.lan`: no AAAA), and both
@@ -212,20 +220,31 @@ Every cell of run 3 ran on llama.cpp b11960-8642541b2
 post-reboot probe read ("Host stack"), from this machine (GuideLLM 0.8.1, `mise.bench.toml`).
 The network path: `tailscale ping -c 1 framework`, "pong from framework ... via <LAN private
 address>:41641", 6 ms before the pass and 1 ms before the anchors after. The script, as run
-(`bash pass.sh` from the repository root; results under `.state/verify/framework/pass3/`):
+(`bash pass3.sh` from the repository root, kept outside the repository; results under
+`.state/verify/framework/pass3/`), whole:
 
 ```sh
+#!/usr/bin/env bash
+# The verify-framework model pass, run 3 (after the IPv4 lease name was cleared). From the repository root.
+set -uo pipefail
 U=http://framework:8080; S=.state/verify/framework/pass3; mkdir -p $S
 export GUIDELLM__SPEC__BACKEND__TARGET="$U"
 G=ggml-org/gpt-oss-120b-GGUF:MXFP4; Q8=ggml-org/gemma-4-E4B-it-GGUF:Q8_0; QAT=google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0
 api() { curl -s -X POST "$U/models/$1" -H "Content-Type: application/json" -d "{\"model\": \"$2\"}"; echo " $1 $2"; }
-anchors() { for c in a b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-$c.yaml --output "kind=json,path=$S/$1-anchor-$c.json" > $S/$1-anchor-$c.log 2>&1; done; }
-cells() { for c in shape-a shape-b audio-a audio-b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/$c.yaml --backend "kind=openai_http,model=$2" --tokenizer "kind=huggingface_auto,model=google/gemma-4-E4B-it" --output "kind=json,path=$S/$1-$c.json" > $S/$1-$c.log 2>&1; done; }
-# unload_all unloads every loaded section and waits; wait_for polls $U/models for a state
-unload_all; api load $G; api load $Q8; anchors before        # 1. anchors before
-unload_all; api load $Q8; cells q8 $Q8                        # 2. Q8_0 alone, fresh load
-unload_all; api load $QAT; cells qat $QAT                     # 3. QAT alone, fresh load
-api load $G; anchors after                                    # 4. anchors after
+state() { curl -s $U/models | jq -c '[.data[] | select(.status.value!="unloaded") | {id, s: .status.value}]'; }
+wait_for() { for i in $(seq 1 120); do curl -s $U/models | jq -e --arg m "$1" --arg s "$2" '.data[]|select(.id==$m)|.status.value==$s' >/dev/null && return 0; sleep 3; done; echo "timeout waiting for $1 $2"; return 1; }
+unload_all() { for m in $(curl -s $U/models | jq -r '.data[]|select(.status.value!="unloaded")|.id'); do api unload "$m"; wait_for "$m" unloaded; done; }
+summ() { jq -c --arg n "$1" '{c: $n, t: .benchmarks[0].metrics.request_totals, tps: .benchmarks[0].metrics.output_tokens_per_second.successful.mean, asps: .benchmarks[0].metrics.audio.seconds.input_per_second.successful.mean, ttft: .benchmarks[0].metrics.time_to_first_token_ms.successful.median, itl: .benchmarks[0].metrics.inter_token_latency_ms.successful.median}' "$S/$1.json"; }
+anchors() { for c in a b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-$c.yaml --output "kind=json,path=$S/$1-anchor-$c.json" > $S/$1-anchor-$c.log 2>&1; echo "$1-anchor-$c exit $?"; summ $1-anchor-$c; done; }
+cells() { for c in shape-a shape-b audio-a audio-b; do MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/$c.yaml --backend "kind=openai_http,model=$2" --tokenizer "kind=huggingface_auto,model=google/gemma-4-E4B-it" --output "kind=json,path=$S/$1-$c.json" > $S/$1-$c.log 2>&1; echo "$1 $c exit $?"; summ $1-$c; done; }
+
+echo "== start $(date -u +%FT%TZ)"; tailscale ping -c 1 framework 2>&1 | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g'
+unload_all; state
+echo "== 1. anchors before: $G beside $Q8"; api load $G; api load $Q8; wait_for $G loaded; wait_for $Q8 loaded; state; anchors before
+echo "== 2. Q8_0 alone, fresh load"; unload_all; api load $Q8; wait_for $Q8 loaded; state; cells q8 $Q8
+echo "== 3. QAT alone, fresh load"; unload_all; api load $QAT; wait_for $QAT loaded; state; cells qat $QAT
+echo "== 4. anchors after: $G beside $QAT"; api load $G; wait_for $G loaded; state; tailscale ping -c 1 framework 2>&1 | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g'; anchors after
+echo "== end $(date -u +%FT%TZ)"
 ```
 
 Each anchor pass ran beside that pass's audio model, so before and after differ only by the swap;
@@ -262,7 +281,8 @@ skill's step 7. The references, as run:
 
 ```sh
 curl -s 'https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32' > .state/verify/framework/librispeech-refs.json
-jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .state/verify/framework/pass3/<model>-audio-b.json
+jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .state/verify/framework/pass3/q8-audio-b.json
+jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .state/verify/framework/pass3/qat-audio-b.json
 ```
 
 (`wer.jq` is the skill's step 7 program, saved to a file.)
@@ -296,7 +316,14 @@ on 6 and 3 of 32.
 3. **Transcription within the incumbent's total plus 1.4% of the reference words:** holds. 50
    against a bound of 45 + 7.95 = 52.95.
 
-The architect applied the rule, with no overrule (2026-11-02). Rolled back the same session: QAT
+The architect applied the rule, with no overrule (2026-11-02). Rolled back the same session, as
+run:
+
+```sh
+U=http://framework:8080; for m in $(curl -s $U/models | jq -r '.data[]|select(.status.value!="unloaded")|.id'); do curl -s -X POST $U/models/unload -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"; echo " unload $m"; done; for i in $(seq 1 30); do [ "$(curl -s $U/models | jq '[.data[]|select(.status.value!="unloaded")]|length')" = 0 ] && break; sleep 2; done; for m in gpt-oss-120b-MXFP4-set-a ggml-org/gemma-4-E4B-it-GGUF:Q8_0 google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 mrutkows/granite-embedding-english-r2-GGUF:BF16; do curl -s -X POST $U/models/load -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"; echo " load $m"; done
+```
+
+QAT
 and the 4-slot section unloaded, and set A loaded as before the pass
 (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
 `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`, `mrutkows/granite-embedding-english-r2-GGUF:BF16`),
@@ -323,15 +350,31 @@ at budget 0, forces the end tag as soon as the model opens a thought block
 **Smoke check**, QAT loaded, one request asking for thinking (`enable_thinking: true`):
 
 ```sh
-curl -s http://framework:8080/v1/chat/completions -H "Content-Type: application/json" -d '{"model": "google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0", "max_tokens": 256, "chat_template_kwargs": {"enable_thinking": true}, "messages": [{"role": "user", "content": "What is 17 times 23? Answer with the number only."}], "reasoning_budget_tokens": 0}'
+U=http://framework:8080; M=google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0; curl -s -X POST $U/models/load -H "Content-Type: application/json" -d "{\"model\": \"$M\"}"; echo; for i in $(seq 1 40); do curl -s $U/models | jq -e --arg m $M '.data[]|select(.id==$m)|.status.value=="loaded"' >/dev/null && break; sleep 3; done; for b in 0 none; do body=$(jq -n --arg m "$M" --arg b "$b" '{model: $m, max_tokens: 256, chat_template_kwargs: {enable_thinking: true}, messages: [{role: "user", content: "What is 17 times 23? Answer with the number only."}]} + (if $b == "0" then {reasoning_budget_tokens: 0} else {} end)'); r=$(curl -s $U/v1/chat/completions -H "Content-Type: application/json" -d "$body"); echo "budget=$b: $(echo "$r" | jq -c '{reasoning_chars: ((.choices[0].message.reasoning_content // "") | length), reasoning_head: ((.choices[0].message.reasoning_content // "")[0:60]), content: .choices[0].message.content, completion_tokens: .usage.completion_tokens}')"; done
 ```
 
 With the budget: no reasoning, "391" in 4 tokens. Without it (the control): 366 characters of
 reasoning, then "391", 177 tokens. The smoke check loaded QAT beside set A, and the router evicted
-set A's agent section unseen; set A was restored before the pass, and the architect made one model
+set A's agent section unseen; set A was restored before the pass, as run:
+
+```sh
+U=http://framework:8080; curl -s -X POST $U/models/unload -H "Content-Type: application/json" -d '{"model": "google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0"}'; echo; for i in $(seq 1 30); do curl -s $U/models | jq -e '.data[]|select(.id=="google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0")|.status.value=="unloaded"' >/dev/null && break; sleep 2; done; curl -s -X POST $U/models/load -H "Content-Type: application/json" -d '{"model": "gpt-oss-120b-MXFP4-set-a"}'
+```
+
+Then and the architect made one model
 per purpose a standard (`STANDARDS.md`, "Hosts").
 
-**The pass**, 2026-11-02 21:33–21:47 UTC, run 3's script with the ASR cells swapped for
+**The pass**, 2026-11-02 21:33–21:47 UTC, run 3's script (`bash pass4.sh`) with three changes,
+as run: the results path (`S=.state/verify/framework/pass4`), the cells' loop
+(`for c in shape-a shape-b audio-a-budget0 audio-b-budget0; do`), and a routing check before the
+start:
+
+```sh
+echo "== routing"; for ty in A AAAA; do resolvectl query -t $ty framework.lan >/dev/null 2>&1 && echo "framework.lan $ty PRESENT: stop" && exit 1; done
+echo "framework.lan: no A, no AAAA; bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E 's/^100\..*/tailnet4/; s/^192.*/lan4/; s/^fda0.*/lan6/' | paste -sd' ')"
+```
+
+That is, the ASR cells swapped for
 `bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml` (each request sends
 `reasoning_budget_tokens: 0`) for both models; the shape cells unchanged, since they ask for
 thinking by design. The routing check passed first (`framework.lan`: no A, no AAAA). Results under
@@ -359,7 +402,7 @@ replies are wrong as transcripts. Q8_0 did it on no request in any run.
 **Verdict: roll back**, by the rule, and by the stop condition the architect set for this run
 (budget 0 still let a reply reason): anchors hold; ASR A trails by 11.0%; the transcripts hold; the
 channel count holds, but the text carries reasoning on 2 of 40. Set A was restored, one model per
-purpose (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
+purpose, by the same commands as after run 3 (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
 `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`, `mrutkows/granite-embedding-english-r2-GGUF:BF16`).
 No preset was changed. E4B QAT's unprompted reasoning, in the channel or in the text, goes to the
 screen task, with the check that caught it: replies whose text speaks about the task.
@@ -397,7 +440,11 @@ none failed, none over 50 ms), on set A as served:
    cap of four loaded models (`--models-max`, `common/common.h:703` at b11960; framework's launch
    sets none), counted five and evicted the least recently used, the vision model (the router's
    log: set A's agent and `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0` stopping 12 ms apart).
-   The session reloaded vision, and `STANDARDS.md`, "Hosts", now says to wait for the unload.
+   The session reloaded vision, and `STANDARDS.md`, "Hosts", now says to wait for the unload:
+
+   ```sh
+   U=http://framework:8080; curl -s -X POST $U/models/load -H "Content-Type: application/json" -d '{"model": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0"}'
+   ```
 
 ## The claim beside the anchors
 
@@ -443,10 +490,15 @@ with replies the model ends itself, are what caught it.
 models ==` lists eight snapshots, none of the six; `== docker-disk ==` shows one image (1.211GB)
 and a build cache of 0B.
 
-**The space hasn't come back yet.** `df -h /` reads 524G free after the removals, about what it
-read before them. `/srv/models` and docker's data live in the root subvolume
-(`btrfs /dev/mapper/root[/@]`, `findmnt -T /srv/models`), which Omarchy's snapper config `root`
-snapshots (`/etc/snapper/configs/root`), so the removed files' extents stay held until the
+**The space hasn't come back yet.** `ssh framework df -h /srv/models` reads 524G free after the
+removals, about what it read before them. `/srv/models` and docker's data live in the root subvolume
+(`btrfs /dev/mapper/root[/@]`), which Omarchy's snapper config `root` snapshots, as run:
+
+```sh
+ssh framework 'findmnt -no FSTYPE,SOURCE,OPTIONS -T /srv/models; ls /.snapshots 2>&1 | tail -5; snapper list 2>&1 | tail -6; ls /etc/snapper/configs 2>&1'
+```
+
+(`/.snapshots` and `snapper list` need root; the config `root` is listed), so the removed files' extents stay held until the
 snapshots that hold them rotate out or the architect deletes them (root). That a 100G-scale model
 store sits inside snapshotted root is a finding for the host's next report and for whatever comes
 to own the host tooling: a store on its own subvolume, outside the snapshots, frees space when
