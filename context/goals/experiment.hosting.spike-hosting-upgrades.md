@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** building
+- **State:** brief ready
 - **Task:** verify-framework
 - **Branch:** verify-framework
 
@@ -213,7 +213,7 @@ Unchanged     Every other behavior, slice, and the door.
 ## Progress
 
 slices 4/4 committed (walkthrough 2026-11-02) · standards ✓ · spec ✓ (gaps closed) · editor ✓
-Next: rewrite the branch history to remove the Wi-Fi connection name, then the session brief.
+Next: the architect accepts or redirects the session brief (branch history rewritten; no commit holds the Wi-Fi name).
 
 ## Decisions
 
