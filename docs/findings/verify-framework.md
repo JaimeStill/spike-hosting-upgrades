@@ -465,3 +465,6 @@ a model is removed.
 | LibriSpeech references, dataset viewer | primary | <https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32> | 2026-11-02 |
 | Publisher's template, E4B-it | primary | <https://huggingface.co/google/gemma-4-E4B-it/raw/main/chat_template.jinja> | 2026-11-02 |
 | Consolidated Screening List | primary | <https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json> | 2026-11-02 |
+| llama.cpp b11960, the reasoning-budget sampler | primary | <https://github.com/ggml-org/llama.cpp/blob/b11960/common/reasoning-budget.cpp> | 2026-11-02 |
+| llama.cpp b11960, the server's `reasoning_budget_tokens` | primary | <https://github.com/ggml-org/llama.cpp/blob/b11960/tools/server/server-common.cpp#L1519> | 2026-11-02 |
+| llama.cpp b11960, the router's `models_max` default of 4 | primary | <https://github.com/ggml-org/llama.cpp/blob/b11960/common/common.h#L703> | 2026-11-02 |

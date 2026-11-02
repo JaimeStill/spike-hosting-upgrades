@@ -1048,9 +1048,10 @@ tailscale ping <host>
 The scenarios are the project's `bench/`: `anchor-a.yaml` and `anchor-b.yaml` for the anchors;
 `shape-a.yaml` and `shape-b.yaml`, the anchors' loads on any model, for every item's and
 incumbent's cells; and `audio-a.yaml` and `audio-b.yaml` beside them for an audio purpose's ASR
-cells. So an audio item and its incumbent each run shape A, shape B, ASR A, and ASR B. GuideLLM runs from this machine
-(`mise.bench.toml`), with the engine's URL in `GUIDELLM__SPEC__BACKEND__TARGET`, which the
-architect exports so no address is committed. Each result goes under `.state/verify/<host>/`:
+cells. So an audio item and its incumbent each run shape A, shape B, ASR A, and ASR B. GuideLLM
+runs from this machine (`mise.bench.toml`), with the engine's URL exported in
+`GUIDELLM__SPEC__BACKEND__TARGET` by the host's short name (`http://<host>:<port>`), so no
+address is committed. Each result goes under `.state/verify/<host>/`:
 
 ```sh
 MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-<a|b>.yaml --output "kind=json,path=.state/verify/<host>/<pass>-anchor-<a|b>.json"
@@ -1058,9 +1059,9 @@ MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/<scenario>.yaml --
 ```
 
 A cell's figure is its output tokens per second
-(`metrics.output_tokens_per_second.successful.mean`), and for an ASR cell its audio seconds a
-second (`metrics.audio.seconds.input_per_second.successful.mean`), since a transcript's length is
-the model's own. A cell with any errored or incomplete request is a failed cell, rerun once,
+(`.benchmarks[0].metrics.output_tokens_per_second.successful.mean` in its JSON), and for an ASR
+cell its audio seconds a second (`.benchmarks[0].metrics.audio.seconds.input_per_second.successful.mean`),
+since a transcript's length is the model's own. A cell with any errored or incomplete request is a failed cell, rerun once,
 and then a pause.
 
 **The first anchors** are set beside the host's last earlier readings (step 1, item 5). A move
