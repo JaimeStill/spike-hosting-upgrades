@@ -1,13 +1,13 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
-- **Task:** verify-framework
-- **Branch:** verify-framework
+- **State:** idle
+- **Task:** none
+- **Branch:** none
 
 ## Tasks
 
 1. [x] skill
-2. [ ] verify-framework
+2. [x] verify-framework
 3. [ ] verify-gb10
 4. [ ] screen
 5. [ ] answer
@@ -211,9 +211,6 @@ Unchanged     Every other behavior, slice, and the door.
 ```
 
 ## Progress
-
-slices 4/4 committed (walkthrough 2026-11-02) · standards ✓ · spec ✓ (gaps closed) · editor ✓
-Next: the architect accepts or redirects the session brief (branch history rewritten; no commit holds the Wi-Fi name).
 
 ## Decisions
 
