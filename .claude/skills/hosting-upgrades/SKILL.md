@@ -84,8 +84,8 @@ sets.
    The verify mode needs every one of the run's rules (its probe, and its gate re-checks' reads
    and scripts, models.md), and these beside them:
    - one exact rule per host with a descriptor, named by its SSH short name:
-     `Bash(tailscale ping <host>)`, for the network path each pass records ("The verify mode",
-     step 6)
+     `Bash(tailscale ping -c 1 <host>)`, for the network path each pass records ("The verify
+     mode", step 6)
    - `Edit(docs/findings/verify-*.md)`, for the verification finding, the mode's only write
 
    Reading the project's own files needs no rule.
@@ -124,13 +124,13 @@ sets.
      present  "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)"
      ...
    Readiness check, the verify mode's rules (the run's 9, and these): 3 missing.
-     missing  "Bash(tailscale ping framework)"
-     missing  "Bash(tailscale ping gb10-1)"
+     missing  "Bash(tailscale ping -c 1 framework)"
+     missing  "Bash(tailscale ping -c 1 gb10-1)"
      missing  "Edit(docs/findings/verify-*.md)"
    Add them to .claude/settings.json, under permissions.allow:
 
-     "Bash(tailscale ping framework)",
-     "Bash(tailscale ping gb10-1)",
+     "Bash(tailscale ping -c 1 framework)",
+     "Bash(tailscale ping -c 1 gb10-1)",
      "Edit(docs/findings/verify-*.md)"
    ```
 4. **Ask.** When a rule is missing, ask whether to continue with the prompts the missing rules
@@ -1016,7 +1016,10 @@ run's step 7 gates a model, by [models.md](models.md):
    from the probe's `magic` line for a stored file, or the Hub's per-file scan or
    `.claude/skills/hosting-upgrades/scripts/magic.sh "<org>/<repo>" "<file>"` for one not
    stored, and its projector's the same way. Then the chat-template check: the GGUF's embedded
-   template against the publisher's `tokenizer_config.json`, any difference quoted.
+   template against the publisher's, read from the repository's `chat_template.jinja` when it has
+   one (Google keeps it there, and its `tokenizer_config.json` carries no `chat_template`), and
+   otherwise from `tokenizer_config.json`'s `chat_template`; a single trailing newline is no
+   difference (`jq -r` adds one), and any other difference is quoted.
 3. **The quantization floor** ("Quantization floor"): the path its build takes, and the
    publisher's quality statement quoted for path 1.
 4. **Fit** ("Gate 2: fit"): its memory estimate against the probed ceiling and the policy's
@@ -1028,22 +1031,62 @@ finding records the gate.
 
 ### 6. The cells
 
-Print the agreed cells before any runs, then each command as it runs. The cells are:
+Print the agreed cells before any runs, then each command as it runs. The host serves one model
+per purpose (`STANDARDS.md`, "Hosts"), so every load in the pass follows one rule: unload the
+model that serves the purpose, wait until the router reports it unloaded, and only then load the
+other, through the engine (a router's `/models/unload` and `/models/load`, read back by its
+`/models`). Never load a candidate beside its purpose's incumbent. A router holds a cap on loaded
+models (llama.cpp's `--models-max`, 4 by default), and a load that arrives before an unload has
+finished takes it over the cap, so the router evicts its least recently used model, another
+purpose's, unseen. The cells are:
 
 - **Anchors A and B before the change**, on the anchor section the host's earlier readings used,
-  with any section that would compete for the GPU unloaded meanwhile, named.
-- **The item's cells beside its role's incumbent**, at the same shapes: the incumbent's cells,
-  then the item's, each loaded in turn through the engine (a router's `/models/load` and
-  `/models/unload`), with the other unloaded.
-- **Anchors A and B after the change**, on the same section.
+  loaded beside the incumbent of the item's purpose, with any section that would compete for the
+  GPU unloaded meanwhile, named.
+- **The item's cells beside its purpose's incumbent**, at the same shapes: the incumbent's cells,
+  then the item's, which loads only once the incumbent is reported unloaded.
+- **Anchors A and B after the change**, on the same section, loaded beside the item.
+
+Once the pass ends, restore the host's set, one model per purpose by the same rule: the set it
+served before the pass, or, on adoption (step 8), that set with the item in its incumbent's place.
+
+**Each model's cells run once each from a fresh load**: unload the model, wait until the router
+reports it unloaded, load it, then run its cells, each once. Never rerun a cell within one load:
+GuideLLM's synthetic prompts are the same on every run, so a second run in one load hits the
+router's prompt cache and reads faster than the first.
 
 Every cell of the pass runs on one engine build and one kernel; a pass whose build or kernel
 changes partway starts again. Each run is capped at 10 minutes (`timeout 10m`). Each pass
 records the engine build and the host stack (a probe), and the network path:
 
 ```sh
-tailscale ping <host>
+tailscale ping -c 1 <host>
 ```
+
+**The routing check** runs from this machine before each pass, and a failed check is a pause:
+
+- `<host>.lan`, in the LAN domain this machine's resolver searches, has no A and no AAAA record;
+- the bare host name resolves to the tailnet address only;
+- 50 connects to the router's `/health` with none failed and none over 50 ms.
+
+It reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It guards
+against a LAN record for the bare name: the resolver tries the search domain too, so when the LAN
+router publishes `<host>.lan` from the host's DHCP leases, a connection can take the LAN address,
+where the host's firewall drops the engine's port, and the client waits out its connect timeout
+(GuideLLM's 5 s, `ConnectTimeout('')`). The commands, each printing a label rather than an
+address:
+
+```sh
+for ty in A AAAA; do echo "<host>.lan $ty: $(resolvectl query -t $ty <host>.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | awk '{print $1}' | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($1=="FAIL")f++; else if($1>0.05)s++; if($1>m)m=$1} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+```
+
+The fix the verify-framework finding records ("Routing") keeps the LAN from answering for the
+host, and both steps need root, so both are the architect's: the host stops sending its hostname
+in DHCP (NetworkManager's `ipv4.dhcp-send-hostname` and `ipv6.dhcp-send-hostname` set to `no` on
+each of its connections, which then come up again), and the router's lease names for the host
+are cleared (its DHCPv4 and DHCPv6 lease files, with the router's DHCP services restarted).
 
 The scenarios are the project's `bench/`: `anchor-a.yaml` and `anchor-b.yaml` for the anchors;
 `shape-a.yaml` and `shape-b.yaml`, the anchors' loads on any model, for every item's and
@@ -1061,8 +1104,29 @@ MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/<scenario>.yaml --
 A cell's figure is its output tokens per second
 (`.benchmarks[0].metrics.output_tokens_per_second.successful.mean` in its JSON), and for an ASR
 cell its audio seconds a second (`.benchmarks[0].metrics.audio.seconds.input_per_second.successful.mean`),
-since a transcript's length is the model's own. A cell with any errored or incomplete request is a failed cell, rerun once,
-and then a pause.
+since a transcript's length is the model's own. A cell counts only with its full request count,
+the scenario's `max_requests` count (8 for A, 32 for B), in
+`.benchmarks[0].metrics.request_totals.successful`: a cell that records fewer successful requests
+fails, even with none errored. A cell with fewer, or with any errored or incomplete request, is a
+failed cell, rerun once from a fresh load of its model, and then a pause.
+
+**The reasoning check**, on each of the candidate's cells whose requests don't ask for reasoning
+(the ASR cells; the shape cells ask for it by design, `enable_thinking: true`), and on the
+incumbent's beside them: count the replies that reasoned in the thought channel (a non-empty
+`reasoning_output`), and the replies whose text speaks about the task instead of answering it
+("The user wants me to ...", "Thinking Process"). Read the replies the second count flags, to
+confirm each:
+
+```sh
+jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' .state/verify/<host>/<cell>.json
+```
+
+A configuration that turns reasoning off is tested with the budget-0 variants,
+`bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml`: `audio-a.yaml` and `audio-b.yaml`
+with `reasoning_budget_tokens: 0` sent in every request, which llama.cpp honours by closing a
+thought block as soon as the model opens one. They run in place of the ASR cells, for both
+models. Budget 0 empties the channel, but it can move the reasoning into the text: in
+verify-framework's run 4 it did, on 2 of E4B QAT's 40 replies, and the text count catches it.
 
 **The first anchors** are set beside the host's last earlier readings (step 1, item 5). A move
 beyond run noise, 1.4%, the widest the workspace has recorded, is a finding: the finding names
@@ -1107,12 +1171,14 @@ pair whose count differs between the two models by more than a word.
 
 ### 8. The verdict
 
-Adopt only when all three hold:
+Adopt only when all four hold:
 
 - anchors A and B after the change are each within 1.4% of before
 - no candidate cell is behind the incumbent's cell at the same shape by more than 1.4%
 - for a transcription purpose, the candidate's word differences are within the incumbent's total
   plus 1.4% of the reference words
+- the candidate's reasoning check (step 6) counts no reply that reasoned in the thought channel
+  and no reply whose text speaks about the task
 
 Otherwise roll back. State what the rule gave on each condition, with the figures, then the
 outcome. The architect may overrule it; the finding records the overrule and its reason beside
@@ -1148,7 +1214,8 @@ with the architect's decision; then the probe that read the stack back.
 The verify item's four gates under today's policy, each with what it read and its citation.
 
 ## Cells
-Each pass: its engine build and host stack, from the probe, and `tailscale ping`. Then the cells,
+Each pass: its routing check, its engine build and host stack, from the probe, and
+`tailscale ping -c 1`. Then the cells,
 every command exactly as run, each cell's figure with its median TTFT and ITL: anchors A and B
 before, the incumbent's and the item's cells side by side, anchors A and B after. The first
 anchors beside the host's last earlier readings, and any move beyond run noise, named as a
@@ -1157,6 +1224,10 @@ finding.
 ## Transcripts
 For a transcription purpose: the command as run, each model's word differences, the reference
 words, and the pairs that differ.
+
+## Reasoning
+The reasoning check as run, and for each model's cells the replies that reasoned in the thought
+channel and the replies whose text speaks about the task, each such reply quoted by its opening.
 
 ## Verdict
 The rule, what it gave on each condition with its figures, the outcome (adopt or roll back), and

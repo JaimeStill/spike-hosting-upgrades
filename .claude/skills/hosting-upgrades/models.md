@@ -206,7 +206,10 @@ raw bytes alike.
    answers, and the row quotes the message.
 4. **The chat template**, for a GGUF: compare its embedded template, the Hub record's
    `gguf.chat_template` (`https://huggingface.co/api/models/<id>?expand[]=gguf`), with the
-   `chat_template` in the publisher's `tokenizer_config.json`. Record any difference in the row,
+   publisher's template: its repository's `chat_template.jinja` when it has one (Google keeps the
+   template there, and its `tokenizer_config.json` carries no `chat_template`), and otherwise the
+   `chat_template` in its `tokenizer_config.json`. A single trailing newline is no difference
+   (`jq -r` adds one to the embedded template). Record any other difference in the row,
    with the differing lines quoted. A difference that adds text the model sees (a system prompt,
    instructions) fails artifact integrity; one that doesn't is recorded and passes.
 
