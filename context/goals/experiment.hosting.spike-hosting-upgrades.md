@@ -190,10 +190,30 @@ Changed       The model pass is discarded and runs again once routing is
 Unchanged     Every other behavior, slice, and the door.
 ```
 
+### Revision 2 · E4B QAT with reasoning off, approved 2026-11-02 (after run 3)
+
+```
+Added         Run 4 of the model pass: E4B Q8_0 and E4B QAT, every cell sending
+              `reasoning_budget_tokens: 0` (scenario variants `bench/*-budget0.yaml`),
+              after a one-request smoke check, with anchors before and after.
+              Adopt only when the verdict rule holds and no QAT reply reasoned.
+              On adoption, QAT is served with reasoning off for every consumer
+              through one key in spike-model-engines' preset
+              (`reasoning-budget = 0` in the
+              `[google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0]` section), a pull
+              request this task opens and merges with its own; then the swap
+              and Q8_0's retirement as decided. If budget 0 still lets a reply
+              reason or empties a transcript, stop and carry it to screen.
+Changed       This task touches spike-model-engines (branch `verify-framework`),
+              by the architect's decision that experiment.hosting owns it.
+              Slice 4's walkthrough follows run 4.
+Unchanged     Every other behavior, slice, and the door.
+```
+
 ## Progress
 
 slices 3/4 committed (204d418, 0bc44f4, slice 3 rerun below) · standards — · spec — · editor —
-Next: slice 4, the architect's walkthrough, after a routing check (the router is being sysupgraded to OpenWrt 25.12.6). Run 3 of the model pass counts: E4B QAT rolled back by the rule (ASR B −5.0%, from 2 of 32 unprompted reasoning replies; the other cells lead), architect applied the rule. Routing settled: framework sends no DHCP hostname; the router's leases cleared. Spec review: the verify mode's step 6 gains the two cell rules and the routing check (framework.lan has no records; 50 connects, none failed or slow); the chat_template.jinja reading.
+Next: run 4 (revision 2): the budget-0 scenario variants, the smoke check, the pass; on adoption, the one-key PR on spike-model-engines, the swap, and Q8_0's retirement; then slice 4. Spec review: the verify mode's step 6 gains the two cell rules and the routing check; the chat_template.jinja reading; a reasoning count for a candidate.
 
 ## Decisions
 
@@ -613,22 +633,45 @@ Next: slice 4, the architect's walkthrough, after a routing check (the router is
   removals stand (architect, 2026-11-02).
 - verify-framework: the verify mode's step 6 gains a routing check before each pass, beside the
   two cell rules, at the spec review (architect, 2026-11-02).
+- verify-framework: run 3 rolled E4B QAT back by the rule (ASR B −5.0%, from 2 of 32 replies
+  that reasoned unprompted; shape A +55.4%, shape B +44.2%, ASR A +34.9%; transcripts within the
+  bound); the architect applied the rule, then asked to fix the reasoning before discarding the
+  promotion: QAT is wanted as the Gemma baseline for its size (architect, 2026-11-02).
+- verify-framework: Gemma 4's template already defaults thinking off, so QAT's thought blocks are
+  its own; the fix is llama.cpp's reasoning budget at 0 (b11960 forces the end tag at once), sent
+  per request in run 4 and set in the preset on adoption; rejected: the template switch (already
+  off), consumers sending the field, and a second fix in this task (a logit-bias ban on
+  `<|channel>` goes to screen if budget 0 fails) (architect, 2026-11-02).
+- verify-framework: experiment.hosting owns spike-model-engines for as long as the experiment
+  runs: its spikes change the repository's `host/` (scripts and presets) through pull requests,
+  each citing the finding behind it, so the host tooling stays in step with the findings; after
+  the intake, the de facto management repository is established in `~/architecture`. Rejected:
+  extracting `host/` into a new repository now, which the intake would only move again
+  (architect, 2026-11-02).
+- verify-framework: QAT as the Gemma baseline is checked one model at a time: E4B in this task;
+  the other Gemma QAT sections, vision's 26B-A4B included, get the same reasoning check (replies
+  that reasoned, per purpose) in the screen task (architect, 2026-11-02).
 
 ## Pending edits
 
-- coordinator · `context/ai-hosting.md`, "spike-host-admin": add the architect's question
-  (2026-11-02). spike-model-engines' `host/` scripts (the `engines` suite, the llama.cpp and vLLM
-  scripts, the preset) have outlived the spike that wrote them; every later spike runs them
-  read-only, and none may tune them. Should they become a sustainable package that no spike owns,
-  adjustable as the workstations are tuned and reusable without friction? The lean: one repository
-  that adapts to its host through an explicit host-class profile (strix-halo, gb10), checked
-  against what the host detects, with the per-platform parts kept to those profiles. It matches
-  this note's rule for scripted install and setup, and dotfiles' `platforms/<class>/` pattern.
-  verify-framework's "where Q8_0 still lives" table is addressed to that owner.
-- coordinator · `context/roadmap.toml`, experiment.hosting: a `plan experiment.hosting` session
-  decides whether spike-host-admin widens to cover the repository's shape and the scripts' interim
-  owner, and whether it moves earlier than last in the experiment.
-- coordinator · `context/ai-hosting.md`, beside the host-tooling question: dual-stack serving
+- coordinator · `context/references.toml` and `context/ai-hosting.md`, "Experiment:
+  experiment.hosting": experiment.hosting owns spike-model-engines until its intake. Its spikes
+  may change the repository's `host/` (scripts and presets) through pull requests, each citing
+  the finding behind it, so the host tooling stays in step with the findings; every other
+  reference stays read-only. After the intake, the de facto management repository for the
+  workstations is established in `~/architecture`, from spike-model-engines' `host/` as it then
+  stands. The lean for its shape: one repository that adapts to its host through an explicit
+  host-class profile (strix-halo, gb10), checked against what the host detects, with the
+  per-platform parts kept to those profiles (dotfiles' `platforms/<class>/` pattern). This
+  answers the architect's question of 2026-11-02 on the scripts' owner (architect, 2026-11-02).
+- coordinator · `context/roadmap.toml`, experiment.hosting.spike-hosting-upgrades: the goal's
+  `repos` gains `spike-model-engines`, which verify-framework touches (one preset key).
+- coordinator · `context/roadmap.toml`, verify-gb10's summary: after gb10-1's verification,
+  gb10-2 is brought in line with gb10-1 (the same host settings, the DHCP hostname, any adopted
+  model), and the findings are relayed to spike-ai-pipeline, whose host gb10-2 is; who changes
+  gb10-2 (verify-gb10 itself, or spike-ai-pipeline from verify-gb10's steps) is for the `plan`
+  session that stages verify-gb10 (architect, 2026-11-02).
+- coordinator · `context/ai-hosting.md`, beside the ownership entry above: dual-stack serving
   (the router published on tailnet IPv4 and IPv6, `net.ipv6.ip_nonlocal_bind = 1` beside the
   IPv4 key, on framework and the GB10s), to take up once MagicDNS serves AAAA records for
   dual-stack nodes (tailscale#1152, open); until then the hosts keep their bare names
