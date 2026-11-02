@@ -175,8 +175,8 @@ Door          two-way:
 
 ## Progress
 
-slices 1/4 committed (204d418) · standards — · spec — · editor —
-Next: slice 1 demo (`/hosting-upgrades verify framework`, read-only), then slice 2 (host stack, the architect's root steps).
+slices 2/4 committed (204d418; slice 2 below) · standards — · spec — · editor —
+Next: slice 3 (the model pass: anchors A+B before, eight E4B cells, transcripts, verdict, anchors after, removals). Slice 1 demo ran 2026-11-02; framework now on 7.2.15-1, sysctl set, no firmware offered.
 
 ## Decisions
 
