@@ -21,4 +21,6 @@ workflow, so start from `context/README.md`.
   `standards-lab/context/roadmap.toml`, under `experiment.hosting.spike-hosting-upgrades`. Its
   goal record is `context/goals/experiment.hosting.spike-hosting-upgrades.md`.
 - **References:** the repositories this spike reads are keys in the coordinator's
-  `references.toml` and `references.local.toml`. The spike reads them and never writes to them.
+  `references.toml` and `references.local.toml`. The spike reads them and never writes to them,
+  except spike-model-engines' `host/`, which experiment.hosting owns: its spikes may change it
+  through pull requests, each citing the finding behind it.

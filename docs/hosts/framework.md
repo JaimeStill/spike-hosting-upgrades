@@ -34,6 +34,8 @@ Named things every run checks, beside its own scan.
   ([#28495](https://github.com/ggml-org/llama.cpp/issues/28495)) and its fix
   ([#29510](https://github.com/ggml-org/llama.cpp/pull/29510))
 - The Omarchy stable mirror's snapshot date (what the host can update to)
+- A revision of `google/gemma-4-E4B-it-qat-q4_0-gguf` that fixes its unprompted reasoning, which
+  rolled E4B QAT back as the audio model (`docs/findings/verify-framework.md`, "Verdict")
 
 ## Measurements
 

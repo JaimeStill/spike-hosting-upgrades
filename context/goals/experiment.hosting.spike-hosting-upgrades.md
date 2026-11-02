@@ -212,8 +212,8 @@ Unchanged     Every other behavior, slice, and the door.
 
 ## Progress
 
-slices 4/4 committed (walkthrough 2026-11-02) · standards — · spec — · editor —
-Next: the standards review, the spec review (the verify mode's step 6 gains the two cell rules, the routing check without a cache flush, one model per purpose with the unload finished first, and a reasoning check on reply text; the chat_template.jinja reading), then the editor.
+slices 4/4 committed (walkthrough 2026-11-02) · standards ✓ · spec ✓ (gaps closed) · editor ✓
+Next: rewrite the branch history to remove the Wi-Fi connection name, then the session brief.
 
 ## Decisions
 
@@ -666,6 +666,19 @@ Next: the standards review, the spec review (the verify mode's step 6 gains the 
   repository's revisions, or the screen task); E2B QAT and 12B QAT are not screened as audio
   (E2B's audio evals are below E4B's, 12B is slower than Q8_0). Rejected: a reasoning screen of
   E2B and 12B QAT in this task (architect, 2026-11-02).
+- verify-framework: run 4 sent reasoning budget 0 only on the ASR cells, since the shape
+  scenarios ask for thinking by design; both models ran the same settings in every cell. The
+  session's decision, told to the architect before the run (2026-11-02).
+- verify-framework: the `chat_template.jinja` reading changes the shared artifact-integrity check
+  in `models.md`, so a report run's gate reads the publisher's `.jinja` file too; it fixes the gap
+  the verify mode's gate re-check found. Slice 1 shortened the skill's frontmatter description to
+  fit Claude Code's 1,024-character limit, dropping "reconciles the probe with the project's host
+  descriptor and policy". The session's decision; behavior 9's "only change" is read as "the only
+  new mode" (2026-11-02).
+- verify-framework: the Wi-Fi connection name is redacted from the finding as `<Wi-Fi
+  connection>`, and the Docs standard extends to LAN identifiers (`STANDARDS.md`, "Docs"). The
+  branch history is rewritten before publishing, so no commit holds the name (architect,
+  2026-11-02).
 
 ## Pending edits
 

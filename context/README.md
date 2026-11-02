@@ -78,7 +78,13 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 - **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`, or
   `<YYYY-MM-DD>-N.md` for a later run the same day.
 - **The anchor scenarios:** anchors A and B, for the incumbent and for a candidate.
-- **The verification findings:** before and after, adopted or rolled back.
+- **The verify mode:** `/hosting-upgrades verify <host>`, which takes a host's last report to a
+  decision on each verify, take, and hold item, re-checks the verify item's gates, prints the
+  commands, rollbacks, and cells, and writes the host's verification finding. Like a run, it
+  changes nothing on the host itself.
+- **The verification findings:** `docs/findings/verify-<host>.md`, one per host, with each item's
+  decision and outcome, the anchors before and after, and the verdict; framework's is
+  `docs/findings/verify-framework.md`.
 - **The screened pool:** the pool's candidates, kept or dropped per host class.
 - **The convention:** the method and its cadence.
 
@@ -89,8 +95,9 @@ The tasks, in the order they run; each cites the evidence it proves.
 1. `skill`: the skill and its first dated report for each of framework and gb10-1, with
    read-only, no-root host probes (evidence 1, 2).
 2. `verify-framework`: framework's top-ranked upgrade, verified by anchors A and B before and
-   after, then adopted or rolled back; it also applies the run's take items, with rollbacks, and
-   the skill gains its verification step (evidence 3, 5).
+   after, then adopted or rolled back; it also settles the report's take and hold items, with
+   rollbacks, and the skill gains its verify mode (evidence 3, 5). Its record is
+   `docs/findings/verify-framework.md`.
 3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
 4. `screen`: the pool's candidates screened for both host classes, each supported one verified
    beside its role's incumbent (evidence 4).
@@ -100,7 +107,9 @@ The tasks, in the order they run; each cites the evidence it proves.
 ## References
 
 The spike reads these repositories for its setup, the anchors, and the verify and screen tasks,
-and never writes to them. The skill takes none of them as inputs, except the findings a host
+and never writes to them, with one exception: experiment.hosting owns spike-model-engines while
+the experiment runs, so its spikes may change that repository's `host/` (scripts and presets)
+through pull requests, each citing the finding behind it. The skill takes none of them as inputs, except the findings a host
 descriptor lists under Measurements. Each is a key in the
 coordinator's `references.toml`, with its local checkout in `references.local.toml`:
 

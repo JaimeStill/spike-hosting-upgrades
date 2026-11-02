@@ -10,9 +10,11 @@ experiment.hosting.spike-hosting-upgrades.
   framework's last report (2026-10-30, the second run that day).
 - **Read:** the descriptor [`docs/hosts/framework.md`](../hosts/framework.md) and the policy
   [`docs/policy.md`](../policy.md), 2026-11-02.
-- **Readiness:** the run's 9 rules present; the verify mode's 3 missing (`Bash(tailscale ping
-  framework)`, `Bash(tailscale ping gb10-1)`, `Edit(docs/findings/verify-*.md)`). The session went on
-  with each use asking.
+- **Readiness:** the run's 9 rules were present, and the verify mode's 3 were missing
+  (`Bash(tailscale ping framework)`, `Bash(tailscale ping gb10-1)`,
+  `Edit(docs/findings/verify-*.md)`). The session went on with each use asking. The readiness
+  rule read `Bash(tailscale ping framework)` at the time; the skill now prints
+  `Bash(tailscale ping -c 1 <host>)`.
 - **The probe:** `ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh`, run
   2026-11-02 before any change. Omarchy 4.0.6-1, kernel 7.2.8-9-omarchy (booted 2026-10-27),
   BIOS 03.06, mesa and vulkan-radeon 1:26.2.5-1, linux-firmware 20260916-1, docker 29.9.2, TTM
@@ -38,7 +40,7 @@ The architect decided each item in the task's plan rounds, 2026-11-02.
 | Item | Report verdict | Decision | Reason or outcome |
 |---|---|---|---|
 | Gemma 4 E4B QAT Q4_0 as the audio model (Verify next) | verify | apply, measured | rolled back by the verdict rule in run 3 (ASR B −5.0%) and in run 4 with reasoning off (ASR A −11.0%; reasoning written into 2 of 40 replies); see "Verdict" and "Run 4" |
-| Kernel: linux-omarchy 7.2.8-9 → 7.2.15-1 (moved) | hold | apply | applied; running 7.2.15-1 ("Host stack") |
+| Kernel: linux-omarchy 7.2.8-9 → 7.2.15-1 (moved); Arch `linux` 7.2.11 → 7.2.14 (core-testing), the fallback | hold | apply | linux-omarchy applied, running 7.2.15-1 ("Host stack"); Arch `linux` 7.2.14 isn't on the host's channel (the probe after the update reads 0 pending), so the fallback stays at 7.2.11 |
 | Boot-order: `net.ipv4.ip_nonlocal_bind = 1` | hold | apply | applied; llama published its port after the reboot |
 | fwupd metadata refresh (45 days old) | hold | apply | applied; no update offered |
 | Mesa and vulkan-radeon 1:26.2.5 → 26.2.6 | hold | close | not on the host's channel (Omarchy stable mirror, snapshot 2026-10-22), and the router runs its image's Mesa |
@@ -147,19 +149,26 @@ tailnet IPv6 bind couldn't win the lookup. The fix keeps the LAN from answering 
    /etc/init.d/dnsmasq start
    ```
 
-**The routing check**, from this machine, before run 3, as run (the first 50 connects had one
-over 50 ms as the tailnet path settled after the router's reboot, so the 50 connects were run again
-and read 0 over 50 ms, at most 7.9 ms):
+**The routing check** runs from this machine before each pass and the walkthrough. It passes when
+`framework.lan` has no A record and no AAAA record, `framework` resolves to the tailnet IPv4 only,
+and 50 connects to `http://framework:8080/health` have none failed and none over 50 ms (they read
+2 to 10 ms, where the IPv6 fallback had read 205 ms).
+
+Before run 3, as run; it read no A and no AAAA record, the bare name the tailnet IPv4, and 50
+connects with none failed and none over 50 ms:
 
 ```sh
 resolvectl flush-caches; echo "framework.lan A:    $(resolvectl query -t A framework.lan 2>&1 | grep -q 'does not have\|not found\|NXDOMAIN\|failed' && echo none || echo PRESENT)"; echo "framework.lan AAAA: $(resolvectl query -t AAAA framework.lan 2>&1 | grep -q 'does not have\|not found\|NXDOMAIN\|failed' && echo none || echo PRESENT)"; echo "bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E 's/^100\..*/tailnet4/; s/^192\.168\..*/lan4/; s/^fda0.*/lan6/' | paste -sd' ')"; n=0; slow=0; for i in $(seq 1 50); do t=$(curl -s -o /dev/null -w '%{time_connect}' --connect-timeout 5 http://framework:8080/health) || t=fail; [ "$t" = fail ] && n=$((n+1)); [ "$t" != fail ] && awk -v t="$t" 'BEGIN{exit !(t > 0.05)}' && slow=$((slow+1)); done; echo "50 connects: $n failed, $slow over 50 ms"
 ```
 
-The routing check in general, before each pass and the walkthrough: `framework.lan`
-has no A record and no AAAA record; `framework` resolves to the tailnet IPv4 only; and 50 connects
-to `http://framework:8080/health` with none failed and none over 50 ms (they read 2 to 10 ms, where
-the IPv6 fallback had read 205 ms). As run before the walkthrough (the earlier checks also ran
-`resolvectl flush-caches` first, dropped once framework and the router were fixed):
+Between run 3 and run 4, the architect upgraded the router from OpenWrt 25.12.4 to 25.12.6
+(`owut upgrade`, an attended sysupgrade that rebooted it), which also cleared its DHCP leases.
+The same check after the reboot read no `framework.lan` record and the tailnet IPv4; its first 50
+connects had one over 50 ms as the tailnet path settled, and the 50 connects run again read none
+over 50 ms, at most 7.9 ms.
+
+Before the walkthrough, as run. The earlier checks also ran `resolvectl flush-caches` first; this
+one dropped it, since framework and the router were fixed:
 
 ```sh
 for ty in A AAAA; do echo "framework.lan $ty: $(resolvectl query -t $ty framework.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
@@ -167,7 +176,7 @@ echo "bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E
 for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://framework:8080/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($1=="FAIL")f++; else if($1>0.05)s++; if($1>m)m=$1} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
 ```
 
- The tailnet path is direct over the LAN (`tailscale ping`, "via
+The tailnet path is direct over the LAN (`tailscale ping`, "via
 <LAN private address>:41641", 1 to 8 ms), so the tailnet costs no local-network latency.
 
 The GB10s' names had no LAN record when checked (`gb10-1.lan`, `gb10-2.lan`: no AAAA), and both
@@ -213,8 +222,8 @@ All four gates pass under today's policy.
    dramatically reducing the memory requirements to load the model"
    ([card](https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf), line 25, read 2026-11-02).
 4. **Fit:** pass. 5.8G stored against the Q8_0's 8.1G (probe `== models ==`), so the swap
-   lowers the set's memory; the recommended set already left 20.5 GiB beyond the policy's
-   11.2 GiB headroom (report, "Model set").
+   lowers the set's memory. The report's recommended set, with QAT as its audio model, leaves
+   about 20.5 GiB free, 9.3 GiB beyond the policy's 11.2 GiB headroom (report, "Model set").
 
 ## Cells
 
@@ -298,15 +307,38 @@ jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq .
 
 (`wer.jq` is the skill's step 7 program, saved to a file.)
 
-| Model | Pairs | Reference words | Word differences | Output tokens (all 32) | Replies that reasoned |
-|---|---|---|---|---|---|
-| E4B Q8_0 | 32 | 568 | 45 | 668 | 0 |
-| E4B QAT | 32 | 568 | 50 | 1,085 | 2 |
+| Model | Pairs | Reference words | Word differences | Output tokens (all 32) |
+|---|---|---|---|---|
+| E4B Q8_0 | 32 | 568 | 45 | 668 |
+| E4B QAT | 32 | 568 | 50 | 1,085 |
 
-Per pair, Q8_0: 1,1,2,2,9,0,1,0,1,3,2,5,0,2,0,2,0,0,0,3,1,0,0,1,0,5,1,0,0,0,2,1. QAT:
-1,2,1,2,14,0,2,0,1,2,2,3,0,2,2,2,0,0,0,3,1,0,0,1,0,3,3,0,0,0,2,1. The pairs that differ by more
-than a word: #4 (Q8_0 9, QAT 14, LibriSpeech's longest clip, the "Linnell's pictures" passage)
-and #14 ("by harry quilter m a": Q8_0 0, QAT 2, "by Harry Quilter", a reply that reasoned first).
+Per pair, numbered from #0, Q8_0: 1,1,2,2,9,0,1,0,1,3,2,5,0,2,0,2,0,0,0,3,1,0,0,1,0,5,1,0,0,0,2,1.
+QAT: 1,2,1,2,14,0,2,0,1,2,2,3,0,2,2,2,0,0,0,3,1,0,0,1,0,3,3,0,0,0,2,1. The pairs that differ by
+more than a word:
+
+- #4: Q8_0 9, QAT 14, LibriSpeech's longest clip, the "Linnell's pictures" passage.
+- #11: Q8_0 5, QAT 3.
+- #14: "by harry quilter m a": Q8_0 0, QAT 2, "by Harry Quilter", a reply that reasoned first.
+- #25: Q8_0 5, QAT 3.
+- #26: Q8_0 1, QAT 3.
+
+## Reasoning
+
+Run 3's reasoning counts, per model:
+
+| Model | Replies in a thought block (ASR B, of 32) | Replies with reasoning in the text (ASR B, of 32) |
+|---|---|---|
+| E4B Q8_0 | 0 | 0 |
+| E4B QAT | 2 | 0 |
+
+The thought-block count, as run (from the repository root, with the transcript count before it):
+
+```sh
+S=.state/verify/framework/pass3; for m in q8 qat; do echo "== $m"; jq -c --slurpfile refs .state/verify/framework/librispeech-refs.json -f wer.jq $S/$m-audio-b.json; for c in audio-a audio-b; do jq -r --arg c $c '"\($c): reasoning on \([.benchmarks[0].requests.successful[] | select((.reasoning_output // "") | length > 0)] | length) of \(.benchmarks[0].requests.successful|length); output tokens \([.benchmarks[0].requests.successful[].output_metrics.text_tokens]|add)"' $S/$m-$c.json; done; done
+```
+
+It read 0 of 8 and 0 of 32 for Q8_0, 0 of 8 and 2 of 32 for QAT. The text count comes from the
+second line of the reasoning check in "Run 4", which also read run 3's ASR B results. Run 4's own counts are in "Run 4".
 
 **QAT's unprompted reasoning.** On 2 of ASR B's 32 requests (#14, #30), and none of ASR A's 8, QAT
 opened a reasoning block the prompt didn't ask for ("Thinking Process: 1. **Analyze the
@@ -327,18 +359,17 @@ on 6 and 3 of 32.
 3. **Transcription within the incumbent's total plus 1.4% of the reference words:** holds. 50
    against a bound of 45 + 7.95 = 52.95.
 
-The architect applied the rule, with no overrule (2026-11-02). Rolled back the same session, as
-run:
+The architect applied the rule, with no overrule (2026-11-02). The rollback ran the same session,
+as run:
 
 ```sh
 U=http://framework:8080; for m in $(curl -s $U/models | jq -r '.data[]|select(.status.value!="unloaded")|.id'); do curl -s -X POST $U/models/unload -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"; echo " unload $m"; done; for i in $(seq 1 30); do [ "$(curl -s $U/models | jq '[.data[]|select(.status.value!="unloaded")]|length')" = 0 ] && break; sleep 2; done; for m in gpt-oss-120b-MXFP4-set-a ggml-org/gemma-4-E4B-it-GGUF:Q8_0 google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 mrutkows/granite-embedding-english-r2-GGUF:BF16; do curl -s -X POST $U/models/load -H "Content-Type: application/json" -d "{\"model\": \"$m\"}"; echo " load $m"; done
 ```
 
-QAT
-and the 4-slot section unloaded, and set A loaded as before the pass
+It unloaded QAT and the 4-slot section and loaded set A as before the pass
 (`gpt-oss-120b-MXFP4-set-a`, `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`,
 `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`, `mrutkows/granite-embedding-english-r2-GGUF:BF16`),
-read back by the router's `/models`. E4B Q8_0 stays the audio model, so nothing is retired and no
+which the router's `/models` read back. E4B Q8_0 stays the audio model, so nothing is retired and no
 "Where … still lives" table applies. QAT's files stay in the store, as before the task.
 
 **For a later task.** ASR B's loss traces to the two replies that reasoned: QAT's median request
@@ -372,8 +403,7 @@ set A's agent section unseen; set A was restored before the pass, as run:
 U=http://framework:8080; curl -s -X POST $U/models/unload -H "Content-Type: application/json" -d '{"model": "google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0"}'; echo; for i in $(seq 1 30); do curl -s $U/models | jq -e '.data[]|select(.id=="google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0")|.status.value=="unloaded"' >/dev/null && break; sleep 2; done; curl -s -X POST $U/models/load -H "Content-Type: application/json" -d '{"model": "gpt-oss-120b-MXFP4-set-a"}'
 ```
 
-Then and the architect made one model
-per purpose a standard (`STANDARDS.md`, "Hosts").
+The architect then made one model per purpose a standard (`STANDARDS.md`, "Hosts").
 
 **The pass**, 2026-11-02 21:33–21:47 UTC, run 3's script (`bash pass4.sh`) with three changes,
 as run: the results path (`S=.state/verify/framework/pass4`), the cells' loop
@@ -385,15 +415,14 @@ echo "== routing"; for ty in A AAAA; do resolvectl query -t $ty framework.lan >/
 echo "framework.lan: no A, no AAAA; bare name: $(getent ahosts framework | awk '{print $1}' | sort -u | sed -E 's/^100\..*/tailnet4/; s/^192.*/lan4/; s/^fda0.*/lan6/' | paste -sd' ')"
 ```
 
-That is, the ASR cells swapped for
-`bench/audio-a-budget0.yaml` and `bench/audio-b-budget0.yaml` (each request sends
-`reasoning_budget_tokens: 0`) for both models; the shape cells unchanged, since they ask for
-thinking by design (the session's decision, told to the architect before the run: both models
-still ran the same settings in every cell). The script's routing check passed first
-(`framework.lan`: no A, no AAAA; the bare name the tailnet IPv4); it ran no connect test, the one
-part of the check run 4 skipped, and every cell held its full count. The pass ran on the same
-build and kernel as run 3 (b11960-8642541b2, 7.2.15-1-omarchy; the router's `/models` and the
-probe read nothing changed between them), and `tailscale ping -c 1 framework` read "via <LAN
+For both models, the budget-0 scenarios `bench/audio-a-budget0.yaml` and
+`bench/audio-b-budget0.yaml` replaced the ASR cells; each of their requests sends
+`reasoning_budget_tokens: 0`. The shape cells stayed unchanged, since they ask for thinking by
+design (the session's decision, told to the architect before the run: both models still ran the
+same settings in every cell). The script's routing check passed first (`framework.lan`: no A, no
+AAAA; the bare name the tailnet IPv4). It ran no connect test, the one part of the check run 4
+skipped. The pass ran on the same build and kernel as run 3 (b11960-8642541b2,
+7.2.15-1-omarchy; the router's `/models` and the probe read nothing changed between them), and `tailscale ping -c 1 framework` read "via <LAN
 private address>:41641" in 3 ms at the start and 2 ms before the anchors after. Results under
 `.state/verify/framework/pass4/`. Every cell held its full count with no error.
 
@@ -437,8 +466,10 @@ screen task, with the check that caught it: replies whose text speaks about the 
 
 The architect closed the audio promotion there: E4B Q8_0 stays framework's audio model, and E4B
 QAT Q4_0 is revisited when Google publishes a revision that fixes the reasoning. The other Gemma 4
-QAT models that take audio were not screened: E2B (audio evals below E4B's on Google's card) and
-12B (slower than Q8_0, shape A 25.7 tok/s as the report cites it) (architect, 2026-11-02).
+QAT models that take audio were not screened: E2B, whose audio evals are below E4B's, and 12B,
+which is slower than Q8_0 (shape A 25.7 tok/s, as the report cites it) (architect, 2026-11-02).
+Google's E4B QAT [card](https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf), read
+2026-11-02, gives Gemma 4's audio eval table with the E2B and 12B figures.
 
 ## Walkthrough
 
@@ -473,6 +504,9 @@ none failed, none over 50 ms), on set A as served:
    ```sh
    U=http://framework:8080; curl -s -X POST $U/models/load -H "Content-Type: application/json" -d '{"model": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0"}'
    ```
+
+The architect's review of each closure and removal comes with the acceptance of the session
+brief.
 
 ## The claim beside the anchors
 
@@ -526,8 +560,9 @@ removals, about what it read before them. `/srv/models` and docker's data live i
 ssh framework 'findmnt -no FSTYPE,SOURCE,OPTIONS -T /srv/models; ls /.snapshots 2>&1 | tail -5; snapper list 2>&1 | tail -6; ls /etc/snapper/configs 2>&1'
 ```
 
-(`/.snapshots` and `snapper list` need root; the config `root` is listed), so the removed files' extents stay held until the
-snapshots that hold them rotate out or the architect deletes them (root). That a 100G-scale model
+`/.snapshots` and `snapper list` need root, and `/etc/snapper/configs` lists the config `root`.
+So the removed files' extents stay held until the snapshots that hold them rotate out or the
+architect deletes them (root). That a 100G-scale model
 store sits inside snapshotted root is a finding for the host's next report and for whatever comes
 to own the host tooling: a store on its own subvolume, outside the snapshots, frees space when
 a model is removed.
@@ -541,6 +576,8 @@ a model is removed.
 | E4B QAT card | primary | <https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf> | 2026-11-02 |
 | Publisher's template, QAT unquantized | primary | <https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-unquantized/raw/main/chat_template.jinja> | 2026-11-02 |
 | spike-model-engines vllm-strix.md, "Anchors" (last framework anchors) | attributed benchmark | spike-model-engines `docs/findings/vllm-strix.md` | 2026-11-02 |
+| spike-model-engines llama-strix-rocm.md (the report's claim, read through the report) | attributed benchmark | spike-model-engines `docs/findings/llama-strix-rocm.md` | 2026-11-02 |
+| E4B QAT card, Gemma 4's audio eval table (E2B and 12B audio figures) | primary | <https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf> | 2026-11-02 |
 | tailscale#1152, "Add AAAA records to MagicDNS" | primary | <https://github.com/tailscale/tailscale/issues/1152> | 2026-11-02 |
 | LibriSpeech references, dataset viewer | primary | <https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32> | 2026-11-02 |
 | Publisher's template, E4B-it | primary | <https://huggingface.co/google/gemma-4-E4B-it/raw/main/chat_template.jinja> | 2026-11-02 |
