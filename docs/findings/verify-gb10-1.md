@@ -80,10 +80,14 @@ Run 2026-11-02 to 2026-11-03, in this order.
    ```sh
    sudo apt update && sudo apt upgrade
    sudo apt autoremove
+   nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml
    ```
 
    0 upgraded; the autoremove took three 6.17.0-1008 packages; the CDI spec was regenerated (spec
-   0.7.0). The session's first probe read these back ("The report and the probe").
+   0.7.0), as the architect gave the command on 2026-11-03; it writes under `/var/run`, so it ran
+   as root. The session's first probe read these back ("The report and the probe"). The spec was
+   regenerated again at the reboot of 2026-11-03 (`/var/run/cdi/nvidia.yaml` modified 07:25:49,
+   the spec-review probe's `== container-runtime ==`).
 2. **fwupd**: the architect, with root, 2026-11-02:
 
    ```sh
