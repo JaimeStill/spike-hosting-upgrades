@@ -8,7 +8,7 @@
 
 1. [x] skill
 2. [x] verify-framework
-3. [ ] verify-gb10
+3. [x] verify-gb10
 4. [ ] screen
 5. [ ] answer
 
@@ -761,12 +761,29 @@ Door          two-way:
 - verify-gb10: the six unused snapshots (~146G) are removed with `hf cache rm`, dry run first, keeping ibm-granite's safetensors and ggml-org's E4B Q8_0; rollback is `hf download` (architect, 2026-11-02).
 - verify-gb10: hello-world:latest is removed by the session, and the 6.17.0-1008 kernel image and modules by the architect (root, apt); autoremove already took three 6.17.0-1008 packages on 2026-11-02 (architect, 2026-11-02).
 - verify-gb10: the session reads update-notifier-crash's cause without root, then runs `systemctl --user reset-failed`; a crash in the kernel, driver or engine is an escalation (architect, 2026-11-02).
-- verify-gb10: spike-model-engines joins the goal's repos with a `[workspace.paths]` entry, and verify-gb10 branches there; experiment.hosting owns its `host/` until the intake (Decisions :642) (architect, 2026-11-02).
+- verify-gb10: spike-model-engines joins the goal's repos with a `[workspace.paths]` entry, and verify-gb10 branches there; experiment.hosting owns its `host/` until the intake (verify-framework's decision) (architect, 2026-11-02).
 - verify-gb10: held python at 3.14.10 in spike-model-engines' bench environment: torchcodec 0.17.0 has no cp315 wheel (architect, 2026-11-02).
 - verify-gb10: held vLLM at v0.32.0: v0.33.0rc3 is a release candidate, and vLLM is being removed from both hosts (architect, 2026-11-02).
 - verify-gb10: held native vLLM's Python at 3.12: native vLLM is retired on both hosts (architect, 2026-11-02).
 - verify-gb10: spike-model-engines' upgrade work folds into slice 1, keeping four slices (architect, 2026-11-02).
+- verify-gb10: the candidate build is b12063, the newest llama.cpp release at session start (published 2026-11-03 01:39 UTC), by the newest-build decision (architect, 2026-11-02).
+- verify-gb10: tailscale 1.104.4 to 1.104.5, new on the channel since the report, is applied with the session's apt step before the engine pass; rollback `apt install tailscale=1.104.4` (architect, 2026-11-02).
+- verify-gb10: fwupd refreshed by the architect on 2026-11-02; get-updates offers no update, so no firmware escalation; the "updated successfully" lines are the history of the earlier BIOS 5.36_2.1.0 to 5.36_4.1.0 capsules (architect, 2026-11-02).
+- verify-gb10: nvidia-spark-initcall-bl 1.0-2, newly pending on 2026-11-03 (it adds `power_wrap_init` to the kernel's `initcall_blacklist`), is applied by the architect with a reboot of its own before the engine pass; rollback is 1.0-1, update-grub, and a reboot; rejected closing it for the task (architect, 2026-11-03).
+- verify-gb10: the session restarts the llama container on b11669 so the router reads set A's section before the incumbent build's anchors (architect, 2026-11-03).
+- verify-gb10: the DHCP hostname setting goes on `Wired connection 1` only, gb10-1's one DHCP connection; the ConnectX-7 netplan connections are manual and send no hostname, and the GB10s have no Wi-Fi (architect, 2026-11-03).
+- verify-gb10: the engine pass runs from the office over the DERP-relayed path; the routing check's latency condition is overruled, and the pass restarts from the anchors so all 12 cells share one path; rejected waiting for the direct LAN path (architect, 2026-11-03).
+- verify-gb10: the architect overrules the engine rule's roll back and adopts b12063: outside legitimately broken behavior, hosts stay on the latest version; the rule's figures (anchor B -1.9%, ASR A -3.8%, ASR B -11.1%) stand beside the overrule in the finding (architect, 2026-11-03).
+- verify-gb10: the 20 noble-security updates newly pending after the pass (bind9, gnome-shell, gvfs, libsoup, libpcre2, libmspack; apt lists 2026-11-03 12:25:59) are applied by the architect with `apt-get upgrade`, no reboot, before the walkthrough (architect, 2026-11-03).
+- verify-gb10: uv 0.13.6 to 0.13.7 (released 2026-11-03, bug fixes only), new in both repositories' currency mid-task, is taken in spike-hosting-upgrades' mise.bench.toml and spike-model-engines' mise.bench.toml and mise.host.toml; rejected holding it (architect, 2026-11-03).
+- verify-gb10: spike-model-engines' currency keeps comparing each class's llama.cpp pin with the build the newest semver release names (v0.8.0 = b11960 today), so gb10 at b12063 reads current until a semver release passes it; the skill's runs find newer builds per host; whether currency should compare with the newest build goes to the intake; rejected changing it in this task (architect, 2026-11-03).
+- verify-gb10: gb10-1's finding keeps the verify mode's name, `docs/findings/verify-gb10-1.md`, and STANDARDS.md names it beside `<task>.md`; rejected renaming it to verify-gb10.md (architect, 2026-11-03).
+- verify-gb10: the gb10-2 alignment report lives at `docs/findings/gb10-2-upgrade.md`, not under `docs/reports/gb10-2/`, which holds the skill's runs (architect, 2026-11-03).
+- verify-gb10: the six snapshots are removed by the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md, not `hf cache rm` (superseding the method of the 2026-11-02 decision above), since every repository in /srv/models links into the shared /srv/models/blobs and `hf cache rm` would free almost nothing; the session's dry run (27 files, 143.9 GiB, none shared with the 8 kept) was shown, and the architect ran the removal on the host (architect, 2026-11-03).
+- verify-gb10: for the walkthrough, the session pushes spike-model-engines' verify-gb10 branch straight to gb10-1's clone over ssh (no GitHub push) and checks it out there, so `engines llama update` with no version reads the per-class pin; the clone returns to main and pulls once the pull request merges; rejected running the update only after the merge (architect, 2026-11-03).
+- verify-gb10: the walkthrough runs over the relayed path from the office; the overrule of the routing check's latency condition extends to it, recorded in the finding; rejected waiting for the LAN (architect, 2026-11-03).
+- verify-gb10: the gb10-2 report reaches spike-ai-pipeline by the architect pointing that spike at `docs/findings/gb10-2-upgrade.md`; no coordinator note; rejected a roadmap pending edit (architect, 2026-11-03).
 
 ## Pending edits
 
-(none)
+- Coordinator roadmap (`standards-lab/context/roadmap.toml`), experiment.hosting's intake: a note that spike-model-engines' currency compares each host class's llama.cpp pin with the newest semver release's build, so a class pinned past it (gb10 at b12063) reads current until the next semver release; the intake decides whether currency should compare with the newest build release (verify-gb10, Decisions).
