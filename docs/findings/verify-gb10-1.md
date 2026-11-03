@@ -805,6 +805,64 @@ above the policy's 12.2 GiB headroom.
 **gb10-2**: the steps that bring gb10-2 in line with gb10-1, for spike-ai-pipeline, which holds
 gb10-2, are in [`docs/findings/gb10-2-upgrade.md`](gb10-2-upgrade.md).
 
+## Walkthrough
+
+The architect's, 2026-11-03, from this machine at the office, on b12063 as adopted and gb10-1's
+clone on spike-model-engines' verify-gb10 branch (ad754b7, pushed to the clone over ssh, by the
+architect's decision). The path was relayed, DERP(nyc), and the architect's overrule of the
+routing check's latency condition extends to the walkthrough (Decisions).
+
+1. **The routing check**, as in Host stack step 6, then `tailscale ping -c 1 gb10-1`:
+   `gb10-1.lan A: none`, `AAAA: none`; bare name: tailnet; 50 connects, 0 failed, 50 over 50 ms,
+   max 0.325178 s; pong via DERP(nyc) in 55 ms, "direct connection not established".
+2. **The set on b12063**, one model per purpose, each load waiting for the one before, with the
+   pass's helpers:
+
+   ```sh
+   . .state/verify/gb10-1/pass.sh walk && unload_all && for m in $A $V $Q8 mrutkows/granite-embedding-english-r2-GGUF:BF16; do api load "$m"; wait_for "$m" loaded; done; state
+   curl -s http://gb10-1:8080/props | jq -r .build_info
+   ```
+
+   All four unloaded, then loaded in turn; `state` lists the four loaded; `b12063-2cbca389f`.
+3. **Anchor A and ASR A**, from that fresh load, with the set's other models loaded:
+
+   ```sh
+   run walk anchor-a $A openai/gpt-oss-120b
+   run walk audio-a $Q8 google/gemma-4-E4B-it
+   ```
+
+   | Cell | Requests | Figure | TTFT median | ITL median | Pass 2, b12063 |
+   |---|---|---|---|---|---|
+   | Anchor A | 8/8 | 48.127 tok/s | 474.2 ms | 18.60 ms | 48.136 tok/s (-0.02%) |
+   | ASR A | 8/8 | 8.826 audio s/s (21.56 tok/s) | 593.8 ms | 21.71 ms | 6.751 audio s/s (+30.7%) |
+
+   Anchor A reproduces pass 2 within 0.02%. ASR A reads 30.7% above pass 2's reading of the same
+   cell on the same build, and 25.8% above b11669's (7.016), with TTFT 594 ms against 1,021 ms.
+   **A finding:** the audio cells' spread on this host is far wider than the engine rule's 1.4%
+   margin. The runs differ in the models loaded beside E4B (the set here, E4B alone in the
+   pass) and in time of day; on framework, the same difference moved ASR A by 3%
+   (verify-framework's "Walkthrough", 11.33 against 11.67). So the rule's roll back, which rested
+   on ASR A (-3.8%) and ASR B (-11.1%) with anchor B (-1.9%), rested on audio figures inside
+   their own spread; the architect's overrule stands on firmer ground than the rule did. The
+   engine rule's audio condition needs a measured spread, or a margin that fits it: a question
+   for the spike's `answer` task.
+4. **The suite's update with no version**, from the clone on the branch:
+
+   ```sh
+   ssh gb10-1 'cd ~/repos/spike-model-engines && host/engines llama update; echo "exit $?"'
+   ```
+
+   `llama already runs ghcr.io/ggml-org/llama.cpp:server-cuda13-b12063; nothing changed`,
+   `exit 0`: gb10's per-class pin is b12063.
+5. **spike-model-engines' currency**, `cd ~/experiments/spike-model-engines && mise run currency`:
+   only the three held items (`mise.bench.toml: python 3.14.10 -> 3.15.2`, `host/vllm.env: vLLM
+   v0.32.0 -> v0.33.0rc3`, `host/vllm.env: native Python 3.12 -> 3.15`), exit 1 as it is when it
+   reports items.
+
+The architect's review of each closure and removal, and of the gb10-2 report
+([`docs/findings/gb10-2-upgrade.md`](gb10-2-upgrade.md)), comes with the acceptance of the
+session brief.
+
 ## Removals
 
 Each by the decision in its row ("Decisions"), in the order run, 2026-11-03.
