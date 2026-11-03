@@ -781,6 +781,7 @@ Door          two-way:
 - verify-gb10: the DHCP hostname setting goes on `Wired connection 1` only, gb10-1's one DHCP connection; the ConnectX-7 netplan connections are manual and send no hostname, and the GB10s have no Wi-Fi (architect, 2026-11-03).
 - verify-gb10: the engine pass runs from the office over the DERP-relayed path; the routing check's latency condition is overruled, and the pass restarts from the anchors so all 12 cells share one path; rejected waiting for the direct LAN path (architect, 2026-11-03).
 - verify-gb10: the architect overrules the engine rule's roll back and adopts b12063: outside legitimately broken behavior, hosts stay on the latest version; the rule's figures (anchor B -1.9%, ASR A -3.8%, ASR B -11.1%) stand beside the overrule in the finding (architect, 2026-11-03).
+- verify-gb10: the 20 noble-security updates newly pending after the pass (bind9, gnome-shell, gvfs, libsoup, libpcre2, libmspack; apt lists 2026-11-03 12:25:59) are applied by the architect with `apt-get upgrade`, no reboot, before the walkthrough (architect, 2026-11-03).
 
 ## Pending edits
 
