@@ -3,7 +3,7 @@
 An alignment report, addressed to spike-ai-pipeline's agent. It is not a `/hosting-upgrades`
 run: no probe of gb10-2 was taken, and nothing here was read on gb10-2. Task verify-gb10 of
 experiment.hosting.spike-hosting-upgrades wrote it from gb10-1's verification finding,
-[`docs/findings/verify-gb10-1.md`](../../findings/verify-gb10-1.md) ("Host stack", steps 6 to 10,
+[`docs/findings/verify-gb10-1.md`](verify-gb10-1.md) ("Host stack", steps 6 to 10,
 and "Engine pass"), so that gb10-2 can be brought in line with gb10-1.
 
 spike-ai-pipeline holds gb10-2. **This report changes nothing on gb10-2**: that spike runs each
@@ -142,8 +142,8 @@ for none of them.
 
 | Source | Tier | URL | Read |
 |---|---|---|---|
-| gb10-1's verification finding, "Host stack" and "Engine pass" | the finding | [`docs/findings/verify-gb10-1.md`](../../findings/verify-gb10-1.md) | 2026-11-03 |
-| framework's verification finding, "Verdict" (E4B QAT's reasoning) | the finding | [`docs/findings/verify-framework.md`](../../findings/verify-framework.md) | 2026-11-03 |
-| The skill's routing check | the skill | [`.claude/skills/hosting-upgrades/SKILL.md`](../../../.claude/skills/hosting-upgrades/SKILL.md), "The verify mode", step 6 | 2026-11-03 |
+| gb10-1's verification finding, "Host stack" and "Engine pass" | the finding | [`docs/findings/verify-gb10-1.md`](verify-gb10-1.md) | 2026-11-03 |
+| framework's verification finding, "Verdict" (E4B QAT's reasoning) | the finding | [`docs/findings/verify-framework.md`](verify-framework.md) | 2026-11-03 |
+| The skill's routing check | the skill | [`.claude/skills/hosting-upgrades/SKILL.md`](../../.claude/skills/hosting-upgrades/SKILL.md), "The verify mode", step 6 | 2026-11-03 |
 | llama.cpp #30804, "CUDA: chunk graphs to amortize graph launch" (through the finding, "Verdict") | primary | <https://github.com/ggml-org/llama.cpp/pull/30804> | 2026-11-03 (the finding) |
 | llama.cpp #29510, `flash_attn_ext_rows` (through the finding, "Verdict") | primary | <https://github.com/ggml-org/llama.cpp/pull/29510> | 2026-11-03 (the finding) |

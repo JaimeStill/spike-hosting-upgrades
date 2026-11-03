@@ -778,7 +778,7 @@ set takes ~99.6 GiB against the estimate's 95.4 to 98.8 ("Gates", "Fit"), and th
 above the policy's 12.2 GiB headroom.
 
 **gb10-2**: the steps that bring gb10-2 in line with gb10-1, for spike-ai-pipeline, which holds
-gb10-2, are in [`docs/reports/gb10-2/2026-11-03.md`](../reports/gb10-2/2026-11-03.md).
+gb10-2, are in [`docs/findings/gb10-2-upgrade.md`](gb10-2-upgrade.md).
 
 ## Removals
 
