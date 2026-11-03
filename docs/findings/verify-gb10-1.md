@@ -17,15 +17,17 @@ machine, in the architect's view; "the architect" ran a step with root.
   `Edit(docs/findings/verify-*.md)`). The architect added them to `.claude/settings.json`
   (committed in 5c32f8d), and the mode went on.
 - **The probe:** run 2026-11-02, before any step of the session, as every probe of the session
-  was run, from the project root: `ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh`. Kernel 7.0.0-1024-nvidia running,
-  booted 2026-10-30 08:44:22 (`== kernel ==`); driver 580.178.04 (`== gpu ==`); the CDI spec
-  `/var/run/cdi/nvidia.yaml` modified 2026-11-02 17:53:48 (`== container-runtime ==`); the
-  6.17.0-1008 image and module tree still installed (`== kernel ==`); apt's lists refreshed
-  2026-11-02 20:44:38, one pending, tailscale 1.104.4 → 1.104.5 (`== updates ==`); fwupd metadata
-  from 2026-11-02, no updates (`== firmware-updates ==`); the user unit `update-notifier-crash`
-  failed (`== units ==`); `llama` on b11669, running and healthy, and `vllm` exited
-  (`== engines ==`); the preset's 9 sections, none of them a set A section (`== endpoints ==`);
-  `ip_nonlocal_bind` 1 for IPv4, 0 for IPv6 (`== container-runtime ==`).
+  was run, from the project root:
+  `ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh`. Kernel
+  7.0.0-1024-nvidia running, booted 2026-10-30 08:44:22 (`== kernel ==`); driver 580.178.04
+  (`== gpu ==`); the CDI spec `/var/run/cdi/nvidia.yaml` modified 2026-11-02 17:53:48
+  (`== container-runtime ==`); the 6.17.0-1008 image and module tree still installed
+  (`== kernel ==`); apt's lists refreshed 2026-11-02 20:44:38, one pending, tailscale 1.104.4 →
+  1.104.5 (`== updates ==`); fwupd metadata from 2026-11-02, no updates
+  (`== firmware-updates ==`); the user unit `update-notifier-crash` failed (`== units ==`);
+  `llama` on b11669, running and healthy, and `vllm` exited (`== engines ==`); the preset's 9
+  sections, none of them a set A section (`== endpoints ==`); `ip_nonlocal_bind` 1 for IPv4, 0
+  for IPv6 (`== container-runtime ==`).
 - **What moved since the report**, beside the architect's own account of what they ran on the host
   since it (2026-11-02, given as complete):
   - `apt upgrade`: 0 upgraded. The probe reads kernel 7.0.0-1024 and driver 580.178.04, as the
@@ -108,10 +110,10 @@ Run 2026-11-02 to 2026-11-03, in this order.
    **The cause:** `/usr/lib/update-notifier/update-notifier-crash` runs under `set -e` and starts
    with `which whoopsie`. whoopsie isn't installed (`which` exits 1, and dpkg-query lists it with no
    version), so the helper exits 1 before it looks for a report. The kernel journal since
-   2026-10-19 holds no segfault, Xid, NVRM error, Oops, BUG, or panic (its one match, "simple-framebuffer
-   ... Registered 1 planes with drm panic", is the panic handler registering at boot), and the
-   system journal records no apport report written. So no kernel, driver, or engine crash, and no
-   root process's crash report to read.
+   2026-10-19 holds no segfault, Xid, NVRM error, Oops, BUG, or panic (its one match,
+   "simple-framebuffer ... Registered 1 planes with drm panic", is the panic handler registering
+   at boot), and the system journal records no apport report written. So no kernel, driver, or
+   engine crash, and no root process's crash report to read.
 
    The reset, as run:
 
@@ -150,24 +152,22 @@ Run 2026-11-02 to 2026-11-03, in this order.
    for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://$h:8080/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
    ```
 
-   It read `gb10-1.lan A: PRESENT`,
-   `AAAA: PRESENT`; the bare name: tailnet; 50 connects, 0 failed, 0 over 50 ms, max 0.015100 s.
-   So `gb10-1.lan` now had both records, where verify-framework's finding ("Routing") read no
-   AAAA for it on 2026-11-02. During the session, three SSH connections to gb10-1 failed with
-   `Permission denied (publickey)` while a retry succeeded: the name reached the LAN address,
-   where OpenSSH answers, rather than Tailscale SSH on the tailnet. That is the routing fault
-   itself.
+   It read `gb10-1.lan A: PRESENT`, `AAAA: PRESENT`; the bare name: tailnet; 50 connects, 0
+   failed, 0 over 50 ms, max 0.015100 s. So `gb10-1.lan` now had both records, where
+   verify-framework's finding ("Routing") read no AAAA for it on 2026-11-02. During the session,
+   three SSH connections to gb10-1 failed with `Permission denied (publickey)` while a retry
+   succeeded: the name reached the LAN address, where OpenSSH answers, rather than Tailscale SSH
+   on the tailnet. That is the routing fault itself.
 7. **NetworkManager's connections**: read by the session, with no root:
 
    ```sh
    ssh gb10-1 'nmcli -t -f NAME,DEVICE,STATE con show --active; for c in "Wired connection 1" netplan-enP2p1s0f0np0 netplan-enp1s0f0np0; do d=$(nmcli -g GENERAL.DEVICES con show "$c"); echo "$c ($d): $(nmcli -g ipv4.method,ipv6.method con show "$c" | paste -sd" ") carrier=$(cat /sys/class/net/$d/carrier 2>/dev/null)"; done; ip route show default | sed -E "s/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g"'
    ```
 
-   `Wired connection 1` (enP7s7): ipv4
-   auto, ipv6 auto, and it carries the default route. `netplan-enP2p1s0f0np0` and
-   `netplan-enp1s0f0np0` (the ConnectX-7): ipv4 manual, ipv6 ignore. Then tailscale0, docker0,
-   and lo. Each had `dhcp-send-hostname` yes for IPv4 and IPv6. The GB10s have no Wi-Fi, so
-   `Wired connection 1` is gb10-1's only DHCP connection.
+   `Wired connection 1` (enP7s7): ipv4 auto, ipv6 auto, and it carries the default route.
+   `netplan-enP2p1s0f0np0` and `netplan-enp1s0f0np0` (the ConnectX-7): ipv4 manual, ipv6 ignore.
+   Then tailscale0, docker0, and lo. Each had `dhcp-send-hostname` yes for IPv4 and IPv6. The
+   GB10s have no Wi-Fi, so `Wired connection 1` is gb10-1's only DHCP connection.
 8. **The DHCP hostname**: the architect, with root, 2026-11-03, the setting verify-framework's
    finding gave framework, on gb10-1's only DHCP connection:
 

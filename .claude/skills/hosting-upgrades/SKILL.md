@@ -1067,8 +1067,9 @@ GuideLLM's synthetic prompts are the same on every run, so a second run in one l
 router's prompt cache and reads faster than the first.
 
 Every cell of a model item's pass runs on one engine build and one kernel; a pass whose build or
-kernel changes partway starts again. An engine item's pass runs on one kernel and its two builds. Each run is capped at 10 minutes (`timeout 10m`). Each pass
-records the engine build and the host stack (a probe), and the network path:
+kernel changes partway starts again. An engine item's pass runs on one kernel and its two builds.
+Each run is capped at 10 minutes (`timeout 10m`). Each pass records the engine build and the host
+stack (a probe), and the network path:
 
 ```sh
 tailscale ping -c 1 <host>
@@ -1081,12 +1082,12 @@ tailscale ping -c 1 <host>
 - 50 connects to the router's `/health` with none failed and none over 50 ms.
 
 The commands name no numbered field (a dollar sign and a digit): Claude Code replaces those in a
-skill with the skill's arguments when it loads it, so a field is read by `cut` or by `$NF`. It
-reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It guards
-against a LAN record for the bare name: the resolver tries the search domain too, so when the LAN
-router publishes `<host>.lan` from the host's DHCP leases, a connection can take the LAN address,
-where the host's firewall drops the engine's port, and the client waits out its connect timeout
-(GuideLLM's 5 s, `ConnectTimeout('')`). The commands, each printing a label rather than an
+skill with the skill's arguments when it loads it, so a field is read by `cut` or by `$NF`. The
+check reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It
+guards against a LAN record for the bare name: the resolver tries the search domain too, so when
+the LAN router publishes `<host>.lan` from the host's DHCP leases, a connection can take the LAN
+address, where the host's firewall drops the engine's port, and the client waits out its connect
+timeout (GuideLLM's 5 s, `ConnectTimeout('')`). The commands, each printing a label rather than an
 address:
 
 ```sh
