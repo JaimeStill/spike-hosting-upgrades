@@ -283,7 +283,8 @@ Door          two-way:
 
 ## Progress
 
-- slice 1 committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds' reasons in their pin comments, currency.sh and context/README.md), spike-hosting-upgrades aadf6ce (the verify mode's engine item: steps 1-3 and 5-9 of SKILL.md). Both checks pass; engines currency reports only the three held pins. Demo (`/hosting-upgrades verify gb10-1`) next.
+- slice 1 committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds' reasons in their pin comments, currency.sh and context/README.md), spike-hosting-upgrades aadf6ce (the verify mode's engine item: steps 1-3 and 5-9 of SKILL.md). Both checks pass; engines currency reports only the three held pins. Gap closed in 5c32f8d: the routing check's awk read numbered fields, which Claude Code replaces with the skill's arguments at load; it now reads `cut` and `$NF`; the three verify-mode readiness rules committed.
+- slice 1 demo shown (2026-11-02): 14 items with their decisions, what moved, the three models' gates all passing (templates byte-identical to their publishers'), the 12 cells and the engine rule; nothing changed on the host. Slice 2 next.
 
 ## Decisions
 
@@ -768,6 +769,9 @@ Door          two-way:
 - verify-gb10: held vLLM at v0.32.0: v0.33.0rc3 is a release candidate, and vLLM is being removed from both hosts (architect, 2026-11-02).
 - verify-gb10: held native vLLM's Python at 3.12: native vLLM is retired on both hosts (architect, 2026-11-02).
 - verify-gb10: spike-model-engines' upgrade work folds into slice 1, keeping four slices (architect, 2026-11-02).
+- verify-gb10: the candidate build is b12063, the newest llama.cpp release at session start (published 2026-11-03 01:39 UTC), by the newest-build decision (architect, 2026-11-02).
+- verify-gb10: tailscale 1.104.4 to 1.104.5, new on the channel since the report, is applied with the session's apt step before the engine pass; rollback `apt install tailscale=1.104.4` (architect, 2026-11-02).
+- verify-gb10: fwupd refreshed by the architect on 2026-11-02; get-updates offers no update, so no firmware escalation; the "updated successfully" lines are the history of the earlier BIOS 5.36_2.1.0 to 5.36_4.1.0 capsules (architect, 2026-11-02).
 
 ## Pending edits
 
