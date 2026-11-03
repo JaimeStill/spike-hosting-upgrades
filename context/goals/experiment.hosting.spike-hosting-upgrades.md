@@ -286,7 +286,7 @@ Door          two-way:
 - **Position (2026-11-03):** slices 1-3 are committed in both repositories, and the standards,
   round, and spec reviews are done. Left: slice 4, the walkthrough, which the architect runs from
   the finding; then BRIEF. The verify-gb10 branch of spike-model-engines is pushed to gb10-1's
-  clone and checked out (a92d962; it resolves gb10 to b12063; preset unchanged).
+  clone and checked out (now ad754b7, the branch head after the editor pass, by a temporary branch and a fast-forward; it resolves gb10 to b12063; preset unchanged). The editor pass is committed: 3d4447e here, ad754b7 in spike-model-engines. Slice 4, the walkthrough, is with the architect.
 - **Slice 1**, committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds'
   reasons in their pin comments, currency.sh, and context/README.md); spike-hosting-upgrades
   aadf6ce (the verify mode's engine item, SKILL.md steps 1-3 and 5-9) and 5c32f8d (the routing
