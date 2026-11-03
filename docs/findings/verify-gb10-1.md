@@ -101,11 +101,23 @@ Run 2026-11-02 to 2026-11-03, in this order.
    answered y to upload that history report to LVFS. No update was offered, so no firmware
    escalation and no firmware reboot. The next probe read fwupd metadata from 2026-11-03, no
    updates (`== firmware-updates ==`).
-3. **`update-notifier-crash`**: the session, no root, 2026-11-03. It read, over SSH,
-   `systemctl --user status`, `journalctl --user -u update-notifier-crash.service`, and
-   `ls -la /var/crash` (empty; the directory's mtime Oct 31 07:39). The unit failed on Oct 20
+3. **`update-notifier-crash`**: the session, no root, 2026-11-03. The reads, as run, in order.
+   The first also read the clone's state for step 4 and each connection's `dhcp-send-hostname`
+   for step 7:
+
+   ```sh
+   ssh gb10-1 'cd ~/repos/spike-model-engines && echo "== clone"; git status -sb | head -3; git log --oneline -1; git fetch -q origin && git log --oneline HEAD..origin/main | head; echo "== nmcli"; nmcli -t -f NAME,TYPE,DEVICE con show; for c in $(nmcli -t -f NAME con show | tr " " "_"); do :; done; nmcli -t -f NAME con show | while IFS= read -r c; do echo "$c: $(nmcli -g ipv4.dhcp-send-hostname,ipv6.dhcp-send-hostname con show "$c" | paste -sd" ")"; done; echo "== unit"; systemctl --user status update-notifier-crash.service --no-pager 2>&1 | head -15; echo "== journal"; journalctl --user -u update-notifier-crash.service --no-pager -n 30 2>&1 | tail -30; echo "== /var/crash"; ls -la /var/crash'
+   ssh gb10-1 'id -nG; for t in "2026-10-31 07:38" "2026-10-22 07:38" "2026-10-20 03:35"; do echo "== $t"; journalctl --since "$t" --until "$(date -d "$t 3 min" "+%F %T")" --no-pager -o short 2>&1 | grep -iE "apport|whoopsie|crash|segfault|core|Xid|NVRM|llama" | head -8; done; echo "== helper"; sed -n 1,40p /usr/lib/update-notifier/update-notifier-crash 2>/dev/null; cat /usr/lib/systemd/user/update-notifier-crash.path'
+   ssh gb10-1 'which whoopsie; echo "which exit $?"; dpkg-query -W whoopsie apport 2>&1; echo "== kernel/driver/engine faults since 2026-10-19"; journalctl -k --since 2026-10-19 --no-pager 2>/dev/null | grep -icE "segfault|Xid|NVRM.*(error|fault)|Oops|BUG:|panic"; journalctl --since 2026-10-19 --no-pager 2>/dev/null | grep -iE "segfault|traps:|Xid|apport.*(called|writing|report)" | tail -8; echo "== what touches /var/crash at 07:39"; systemctl list-timers --all --no-pager 2>/dev/null | grep -iE "apport|crash|tmpfiles|daily" ; ls /etc/cron.daily | grep -i apport'
+   ssh gb10-1 'journalctl -k --since 2026-10-19 --no-pager -o short 2>/dev/null | grep -iE "segfault|Xid|NVRM.*(error|fault)|Oops|BUG:|panic"'
+   ```
+
+   `/var/crash` was empty, the directory's mtime Oct 31 07:39. The unit failed on Oct 20
    03:35:56, Oct 22 07:39:18, and Oct 31 07:39:58, each time its path unit
-   (`PathChanged=/var/crash/`) fired.
+   (`PathChanged=/var/crash/`) fired. The third call read `which exit 1`; `apport
+   2.28.3-0ubuntu0.1`, and `whoopsie` with no version; a count of 1 kernel match; apport.service's
+   stop and start lines around the reboot of 2026-10-30 only; the tmpfiles and apt-daily timers;
+   and `apport` in `/etc/cron.daily`. The fourth printed the one kernel match.
 
    **The cause:** `/usr/lib/update-notifier/update-notifier-crash` runs under `set -e` and starts
    with `which whoopsie`. whoopsie isn't installed (`which` exits 1, and dpkg-query lists it with no
@@ -118,30 +130,43 @@ Run 2026-11-02 to 2026-11-03, in this order.
    The reset, as run:
 
    ```sh
-   ssh gb10-1 'systemctl --user reset-failed update-notifier-crash.service'
+   ssh gb10-1 'systemctl --user reset-failed update-notifier-crash.service; echo "exit $?"; systemctl --user is-failed update-notifier-crash.service; systemctl --user is-system-running'
    ```
 
    Exit 0; `is-failed` reads `inactive`, and the user manager `running`. It recurs whenever
    `/var/crash` changes while whoopsie is absent; fixing the helper is outside the task. No
    rollback is needed: it resets a state.
-4. **The clone**: the session, no root, 2026-11-03, on a clean tree:
+4. **The clone**: the session, no root, 2026-11-03, on a clean tree (step 3's first call read its
+   state first). The pull, as run:
 
    ```sh
-   ssh gb10-1 'cd ~/repos/spike-model-engines && git pull --ff-only'
+   ssh gb10-1 'cd ~/repos/spike-model-engines && git status --porcelain | head; git pull --ff-only 2>&1 | tail -3; echo "exit $?"; git log --oneline -1; grep -n "^\[" host/llama-preset/models.ini'
    ```
 
    54fcd01 → a89afc5 (main). The preset gains `[gpt-oss-120b-MXFP4-set-a]`:
    `-c 131072 --parallel 4 --kv-unified true --checkpoint-min-step 4096 --temp 1 --top-p 1 --top-k 0 --min-p 0`,
-   with no drafter. Rollback: `git checkout 54fcd01`.
+   with no drafter. Rollback: `git checkout 54fcd01`. Then the router's `/models`, from this
+   machine, the read step 12 repeats after the restart:
+
+   ```sh
+   curl -s --connect-timeout 5 http://gb10-1:8080/models | jq -r '.data[] | "\(.id)  \(.status.value // .status)"'
+   ```
 5. **tailscale**: the architect, with root, 2026-11-03:
 
    ```sh
    sudo apt-get install --only-upgrade -y tailscale
    ```
 
-   Read back over Tailscale SSH: `tailscale version` 1.104.5, tailscaled active, dpkg-query
-   1.104.5. The upgrade restarts tailscaled, which drops Tailscale SSH sessions for a moment.
-   Rollback, root: `sudo apt-get install tailscale=1.104.4`.
+   Read back by the session, from this machine, as run:
+
+   ```sh
+   tailscale ping -c 1 gb10-1
+   for i in 1 2 3; do ssh -o ConnectTimeout=10 gb10-1 'tailscale version | head -1; systemctl is-active tailscaled; dpkg-query -W tailscale' && break; echo "attempt $i failed"; done
+   ```
+
+   `tailscale version` 1.104.5, tailscaled active, dpkg-query 1.104.5. The upgrade restarts
+   tailscaled, which drops Tailscale SSH sessions for a moment. Rollback, root:
+   `sudo apt-get install tailscale=1.104.4`.
 6. **The routing check before the DHCP change**: the session, from this machine, 2026-11-03, the
    skill's routing check (SKILL.md, "The verify mode", step 6), as run here, at step 10, and in the
    read back after the boot:
@@ -158,15 +183,17 @@ Run 2026-11-02 to 2026-11-03, in this order.
    three SSH connections to gb10-1 failed with `Permission denied (publickey)` while a retry
    succeeded: the name reached the LAN address, where OpenSSH answers, rather than Tailscale SSH
    on the tailnet. That is the routing fault itself.
-7. **NetworkManager's connections**: read by the session, with no root:
+7. **NetworkManager's connections**: read by the session, with no root, in a retry loop, as run;
+   attempt 1 failed with `Permission denied (publickey)`:
 
    ```sh
-   ssh gb10-1 'nmcli -t -f NAME,DEVICE,STATE con show --active; for c in "Wired connection 1" netplan-enP2p1s0f0np0 netplan-enp1s0f0np0; do d=$(nmcli -g GENERAL.DEVICES con show "$c"); echo "$c ($d): $(nmcli -g ipv4.method,ipv6.method con show "$c" | paste -sd" ") carrier=$(cat /sys/class/net/$d/carrier 2>/dev/null)"; done; ip route show default | sed -E "s/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g"'
+   for i in 1 2 3; do ssh -o ConnectTimeout=10 gb10-1 'nmcli -t -f NAME,DEVICE,STATE con show --active; for c in "Wired connection 1" netplan-enP2p1s0f0np0 netplan-enp1s0f0np0; do d=$(nmcli -g GENERAL.DEVICES con show "$c"); echo "$c ($d): $(nmcli -g ipv4.method,ipv6.method con show "$c" | paste -sd" ") carrier=$(cat /sys/class/net/$d/carrier 2>/dev/null)"; done; ip route show default | sed -E "s/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g"' && break; echo "attempt $i failed"; done
    ```
 
    `Wired connection 1` (enP7s7): ipv4 auto, ipv6 auto, and it carries the default route.
    `netplan-enP2p1s0f0np0` and `netplan-enp1s0f0np0` (the ConnectX-7): ipv4 manual, ipv6 ignore.
-   Then tailscale0, docker0, and lo. Each had `dhcp-send-hostname` yes for IPv4 and IPv6. The
+   Then tailscale0, docker0, and lo. Each had `dhcp-send-hostname` yes for IPv4 and IPv6 (step 3's
+   first call). The
    GB10s have no Wi-Fi, so `Wired connection 1` is gb10-1's only DHCP connection.
 8. **The DHCP hostname**: the architect, with root, 2026-11-03, the setting verify-framework's
    finding gave framework, on gb10-1's only DHCP connection:
@@ -175,8 +202,17 @@ Run 2026-11-02 to 2026-11-03, in this order.
    sudo nmcli con mod 'Wired connection 1' ipv4.dhcp-send-hostname no ipv6.dhcp-send-hostname no && sudo systemd-run --unit=lan-reup-wired nmcli con up 'Wired connection 1'
    ```
 
-   Read back: `no no`. NetworkManager's journal: 07:18:42, a new DHCPv4 lease and the device
-   activated; 07:18:43, a new DHCPv6 lease. Rollback, root: the same with `yes`, then `con up`.
+   Read back by the session, as run:
+
+   ```sh
+   for i in 1 2 3; do ssh -o ConnectTimeout=10 gb10-1 'nmcli -g ipv4.dhcp-send-hostname,ipv6.dhcp-send-hostname con show "Wired connection 1" | paste -sd" "; systemctl status lan-reup-wired --no-pager 2>&1 | head -3' && break; echo "attempt $i failed"; done
+   ssh -o ConnectTimeout=10 gb10-1 'journalctl -u NetworkManager --since "-2h" --no-pager -o short 2>/dev/null | grep -E "Wired connection 1|enP7s7" | grep -iE "activation|state change.*activated|dhcp4|dhcp6" | tail -5 | sed -E "s/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<v4>/g; s/[0-9a-f]{1,4}(:[0-9a-f]{0,4}){3,7}/<v6>/g"; journalctl --since "-2h" --no-pager 2>/dev/null | grep -c lan-reup-wired'
+   ```
+
+   `no no`; "Unit lan-reup-wired.service could not be found.", since the transient unit had
+   finished. NetworkManager's journal: 07:18:42, a new DHCPv4 lease and the device activated;
+   07:18:43, a new DHCPv6 lease; `lan-reup-wired` in the journal 5 times. Rollback, root: the
+   same with `yes`, then `con up`.
 9. **The router's leases**: the architect, with root on the OpenWrt router, 2026-11-03. First the
    search:
 
@@ -200,8 +236,15 @@ Run 2026-11-02 to 2026-11-03, in this order.
     (`== kernel ==`); the user manager running, no failed unit (`== units ==`); fwupd metadata
     from 2026-11-03, no updates (`== firmware-updates ==`); apt's lists 2026-11-03 06:44:37, one
     pending, nvidia-spark-initcall-bl 1.0-1 → 1.0-2, from
-    <https://repo.download.nvidia.com/spark/ubuntu/arm64> noble-updates (`== updates ==`). The
-    package's one file is `/etc/default/grub.d/nvidia-spark-initcall-bl.cfg`, which at 1.0-1
+    <https://repo.download.nvidia.com/spark/ubuntu/arm64> noble-updates (`== updates ==`). Then
+    the session's reads of the package, as run; the second call also ran step 12's restart:
+
+    ```sh
+    ssh gb10-1 'apt-cache show nvidia-spark-initcall-bl 2>/dev/null | grep -E "^(Version|Description|Depends|Source)" ; dpkg -L nvidia-spark-initcall-bl 2>/dev/null; apt-get changelog nvidia-spark-initcall-bl 2>/dev/null | head -20'
+    ssh gb10-1 'echo "== cfg (1.0-1)"; cat /etc/default/grub.d/nvidia-spark-initcall-bl.cfg; echo "== cmdline"; cat /proc/cmdline | sed -E "s/root=[^ ]+/root=<root>/"; echo "== restart"; docker restart llama; echo "exit $?"'
+    ```
+
+    The package's one file is `/etc/default/grub.d/nvidia-spark-initcall-bl.cfg`, which at 1.0-1
     reads `GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT initcall_blacklist=tegra234_cbb_init"`.
     No changelog was readable on the host.
 
@@ -209,13 +252,9 @@ Run 2026-11-02 to 2026-11-03, in this order.
     no changelog to read. The architect chose to apply it, with a reboot of its own, before the
     engine pass (2026-11-03), and rejected closing it for the task. The `llama` restart (step 12)
     was agreed at the same escalation.
-12. **The `llama` restart on b11669**: the session, no root, 2026-11-03:
-
-    ```sh
-    ssh gb10-1 docker restart llama
-    ```
-
-    Exit 0. The router's `/models` then lists `gpt-oss-120b-MXFP4-set-a  unloaded`: the router
+12. **The `llama` restart on b11669**: the session, no root, 2026-11-03, in step 11's second call
+    (`docker restart llama; echo "exit $?"`). Exit 0. After `sleep 20`, the router's `/models`,
+    read as in step 4, lists `gpt-oss-120b-MXFP4-set-a  unloaded`: the router
     reads its preset only at start. Rollback: the same restart.
 13. **nvidia-spark-initcall-bl**: the architect, with root, 2026-11-03:
 
@@ -226,12 +265,29 @@ Run 2026-11-02 to 2026-11-03, in this order.
     ```
 
     1 upgraded; its postinst ran update-grub itself, finding 7.0.0-1024, 7.0.0-1019, and
-    6.17.0-1008, so the second `update-grub` was redundant. `dpkg-query -W` reads 1.0-2, and the
-    cfg now reads `... initcall_blacklist=tegra234_cbb_init,power_wrap_init`. The reboot was its
-    own, after the host's other changes and before the engine pass. Rollback, root:
+    6.17.0-1008, so the second `update-grub` was redundant. `dpkg-query -W nvidia-spark-initcall-bl`
+    (the architect's, on the host) reads 1.0-2, and the cfg now reads
+    `... initcall_blacklist=tegra234_cbb_init,power_wrap_init`. Before the reboot, the session
+    read, as run:
+
+    ```sh
+    ssh -o ConnectTimeout=10 gb10-1 'uptime -s; cat /proc/cmdline | grep -o "initcall_blacklist=[^ ]*"'
+    ```
+
+    Still booted 2026-10-30 08:44:22, with the old argument. The reboot was its own, after the
+    host's other changes and before the engine pass. Rollback, root:
     `sudo apt-get install nvidia-spark-initcall-bl=1.0-1 && sudo update-grub && sudo reboot`.
 
-**Read back** by the probe after the boot (the session, 2026-11-03):
+**Read back** by the probe after the boot (the session, 2026-11-03), with two reads beside it,
+as run (the probe's output saved, then grepped):
+
+```sh
+ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh
+ssh gb10-1 'cat /proc/cmdline | grep -o "initcall_blacklist=[^ ]*"; journalctl -k -b --no-pager 2>/dev/null | grep -iE "segfault|Xid|NVRM.*(error|fault)|Oops|BUG:|panic|initcall" | grep -v "drm panic" | head'
+curl -s http://gb10-1:8080/models | jq -r '.data[] | select(.id|test("set-a")) | "\(.id)  \(.status.value // .status)"'
+```
+
+The kernel log's match on `initcall` includes its command line, not reproduced here.
 
 - `== kernel ==`: running 7.0.0-1024-nvidia, booted 2026-11-03 07:25:38. The kernel log reads
   "blacklisting initcall tegra234_cbb_init" and "blacklisting initcall power_wrap_init", each
@@ -272,19 +328,31 @@ engine container or the kernel. It also read `update-notifier-crash` failed agai
     Serving needs no reboot, and the architect has ruled out further reboots of gb10-1 ("There
     should be no more reboots of gb10-1"), so the flag is closed as not needed.
 
-    Read back by the session: `llama` on b12063, up 39 minutes and healthy, the set's four models
-    loaded; the probe: kernel 7.0.0-1024-nvidia, booted 07:25:38, `reboot: pending
-    (/var/run/reboot-required)` (`== kernel ==`); 0 pending (`== updates ==`); no failed system
-    unit (`== units ==`). Rollback, root: `sudo apt-get install <package>=<old version>` per
-    package, from the archive; the old versions are the probe's "from" versions
+    Read back by the session, as run:
+
+    ```sh
+    ssh -o ConnectTimeout=10 gb10-1 'ls -l /var/run/reboot-required* 2>&1; cat /var/run/reboot-required.pkgs 2>&1; uptime -s; systemctl is-system-running; systemctl --failed --no-legend; systemctl --user --failed --no-legend; docker ps --format "{{.Names}} {{.Image}} {{.Status}}"'
+    ```
+
+    `llama` on b12063, up 39 minutes and healthy, the set's four models loaded; the probe: kernel
+    7.0.0-1024-nvidia, booted 07:25:38, `reboot: pending (/var/run/reboot-required)`
+    (`== kernel ==`); 0 pending (`== updates ==`); no failed system unit (`== units ==`).
+    Rollback, root: `sudo apt-get install <package>=<old version>` per package, from the
+    archive; the old versions are the probe's "from" versions
     (`.state/verify/gb10-1/probe-removals.txt`, `== updates ==`).
 15. **`update-notifier-crash`, again**: it failed 2026-11-03 07:30:45, five minutes after the
     reboot, when `/var/crash` changed (the directory's mtime 07:30; it is empty). The journal for
-    13:15–13:30 holds no crash. The cause is step 3's: whoopsie is absent. The session reset it
-    again, with no root:
+    13:15–13:30 holds no crash. The read, as run (step 14's read-back listed the failed user unit
+    first):
 
     ```sh
-    ssh gb10-1 'systemctl --user reset-failed update-notifier-crash.service'
+    ssh -o ConnectTimeout=10 gb10-1 'ls -la /var/crash; systemctl --user status update-notifier-crash.service --no-pager 2>&1 | sed -n 3,4p; journalctl --since "13:15" --until "13:30" --no-pager 2>/dev/null | grep -iE "segfault|core dump|apport|crash|traps:|Xid|NVRM" | head -15'
+    ```
+
+    The cause is step 3's: whoopsie is absent. The session reset it again, with no root, as run:
+
+    ```sh
+    ssh gb10-1 'systemctl --user reset-failed update-notifier-crash.service; echo "exit $?"'
     ```
 
     Exit 0; the probe then read no failed user unit (`== units ==`). It recurs on any change to
@@ -295,7 +363,11 @@ engine container or the kernel. It also read `update-notifier-crash` failed agai
 **The candidate**: b12063, the newest llama.cpp release at the session's start (published
 2026-11-03T01:39:05Z, [releases](https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=5),
 read 2026-11-02), by the architect's decision to take the newest cuda13 server image at the
-session's start (2026-11-02). The report named b12019, and the task's brief b12033.
+session's start (2026-11-02). The report named b12019, and the task's brief b12033. Its image, read
+by WebFetch of
+<https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp/versions?filters%5Bversion_type%5D=tagged>
+(2026-11-03): `server-cuda13-b12063` listed. The release list was read by WebFetch of the
+releases URL above.
 
 ### Gates
 
@@ -436,16 +508,31 @@ chat-template check is new.
 
 **Pass 1, a record only.** 2026-11-03, from this machine on the LAN: `tailscale ping -c 1 gb10-1`
 read a direct path in 2 ms, and the routing check passed (max connect 6.6 ms). Its two cells,
-b11669's anchors, at 12:33:17 UTC (results under `.state/verify/gb10-1/pass1/`):
+b11669's anchors, at 12:33:17 UTC (results under `.state/verify/gb10-1/pass1/`). The call, as
+run:
+
+```sh
+. <scratchpad>/pass.sh && stack b11669 && agent b11669
+```
+
+Its helpers were pass 2's (below) but for the pass directory, `S=.state/verify/gb10-1/pass1`,
+from a copy in the session's scratchpad, since cleared; pass 2's file makes the directory an
+argument, and `stack()`'s ping and props reads are unchanged.
 
 | Cell | Requests | Output tok/s | TTFT median ms | ITL median ms |
 |---|---|---|---|---|
 | Anchor A | 8/8 | 48.94 | 414 | 18.8 |
 | Anchor B | 32/32 | 80.78 | 1,837 | 43.8 |
 
-The session paused there while the architect left for the office. On return, this machine
-reached gb10-1 only through Tailscale's DERP relay, region iad, in 51–65 ms ("direct connection
-not established"). The routing check, as "Host stack", step 6 gives it, read `gb10-1.lan A:
+The session paused there while the architect left for the office. On return, the checks, as run:
+
+```sh
+ls .state/verify/gb10-1/pass1/; tailscale ping -c 3 gb10-1 2>&1 | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g'; ssh gb10-1 'uptime -s; uname -r'; curl -s http://gb10-1:8080/props | jq -r '.build_info'; curl -s http://gb10-1:8080/models | jq -c '[.data[]|select(.status.value!="unloaded")|.id]'
+```
+
+This machine reached gb10-1 only through Tailscale's DERP relay, region iad, in 51–65 ms ("direct
+connection not established"); booted 07:25:38, 7.0.0-1024-nvidia, build b11669-620d2225c, set A
+loaded. The routing check, as "Host stack", step 6 gives it, read `gb10-1.lan A:
 none`, `AAAA: none`; the bare name: tailnet; 50 connects, 0 failed, 50 over 50 ms, max
 0.247762 s. Its latency condition failed, which the skill makes a pause.
 
@@ -555,11 +642,11 @@ curl -s 'https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing
 ```
 
 32 rows, read 2026-11-03. Then the skill's step 7 program exactly (SKILL.md, "The verify mode",
-step 7), with `<host>` gb10-1, on each build's cell:
+step 7), with `<host>` gb10-1, on each build's cell, in one loop with the reasoning check
+("Reasoning"), as run (from the project root):
 
 ```sh
-jq --slurpfile refs .state/verify/gb10-1/librispeech-refs.json '<the step 7 program>' .state/verify/gb10-1/pass2/b11669-audio-b.json
-jq --slurpfile refs .state/verify/gb10-1/librispeech-refs.json '<the step 7 program>' .state/verify/gb10-1/pass2/b12063-audio-b.json
+S=.state/verify/gb10-1/pass2; for b in b11669 b12063; do jq -c --slurpfile refs .state/verify/gb10-1/librispeech-refs.json '<the step 7 program>' .state/verify/gb10-1/pass2/$b-audio-b.json; for c in audio-a audio-b; do echo -n "$b $c reasoning: "; jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' $S/$b-$c.json; done; done
 ```
 
 | Build | Pairs | Reference words | Word differences |
@@ -602,11 +689,9 @@ the build changes which clips it misreads, not how often.
 
 ### Reasoning
 
-The reasoning check, the skill's step 6 program exactly, on each build's two ASR cells:
-
-```sh
-jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' .state/verify/gb10-1/pass2/<build>-<cell>.json
-```
+The reasoning check, the skill's step 6 program exactly, on each build's two ASR cells: four
+invocations, the inner loop of the one "Transcripts" gives as run, after each build's
+transcripts.
 
 | Build | Cell | Replies | In the thought channel | In the text |
 |---|---|---|---|---|
@@ -639,11 +724,24 @@ No reply reasoned, in the channel or in the text, so there is no reply to quote.
 architect's words: "outside of legitimate broken behavior, we should prioritize staying on the
 latest version." The rule's figures stand beside the overrule.
 
-**The session's research on the regression** (2026-11-03). `gh search issues` and `gh search prs`
-on ggml-org/llama.cpp since 2026-10-14, for gemma 4 audio, mtmd audio, audio regression, gpt-oss
-performance regression, and cuda regression: no issue reports slower audio, gpt-oss, or CUDA.
-The commits to `tools/mtmd` and `ggml/src/ggml-cuda` between the builds' dates (GitHub's commits
-API, read 2026-11-03): none is a stated audio-performance change. The changes on the concurrency
+**The session's research on the regression** (2026-11-03). The searches on ggml-org/llama.cpp,
+as run:
+
+```sh
+for q in "gemma 4 audio" "mtmd audio" "gemma4 audio slow" "audio regression" "conformer" "gpt-oss performance regression" "cuda regression"; do echo "== $q"; gh search issues "$q" --repo ggml-org/llama.cpp --created ">=2026-10-14" --limit 6 --json number,title,state,createdAt --jq '.[] | "#\(.number) [\(.state)] \(.createdAt[0:10]) \(.title)"' 2>&1; gh search prs "$q" --repo ggml-org/llama.cpp --merged-at ">=2026-10-14" --limit 6 --json number,title,closedAt --jq '.[] | "PR #\(.number) \(.closedAt[0:10]) \(.title)"' 2>&1; done
+gh pr view 29510 --repo ggml-org/llama.cpp --json title,mergedAt,body,files
+for q in "flash_attn_ext_rows" "29510" "unified kv slower" "multi-seq slower" "parallel slower"; do gh search issues "$q" --repo ggml-org/llama.cpp --created ">=2026-11-01" --limit 5 --json number,title,state --jq '.[] | "#\(.number) [\(.state)] \(.title)"'; done
+```
+
+No issue reports slower audio, gpt-oss, or CUDA: the issues found are #31561 (open, a feature
+request for `mtmd_audio_stream` on Gemma 4 E2B and E4B) and #30968 (closed, a realtime commit
+bug); the pull requests, #30629, #31471, #31309, #30636, and #26603, add audio features, none a
+performance change; and no issue since #29510 reports it slower. The commits to `tools/mtmd` and
+`ggml/src/ggml-cuda` between the builds' dates, read by WebFetch (2026-11-03), the first ~100,000
+characters of each:
+<https://api.github.com/repos/ggml-org/llama.cpp/commits?path=tools/mtmd&since=2026-10-15T16:00:00Z&until=2026-11-03T02:00:00Z&per_page=100>
+and the same with `path=ggml/src/ggml-cuda`, 17 and 18 commits listed: none is a stated
+audio-performance change. The changes on the concurrency
 path include [#30804](https://github.com/ggml-org/llama.cpp/pull/30804) ("CUDA: chunk graphs to
 amortize graph launch", 2026-10-23) and [#29510](https://github.com/ggml-org/llama.cpp/pull/29510)
 (`flash_attn_ext_rows`, more efficient unified KV for multiple sequences, merged
@@ -668,8 +766,14 @@ TTFT under concurrency on GB10, from b12063".
 **The set on b12063**, the build that stays, the session, 2026-11-03, one model per purpose by the
 skill's step 6 rule: `unload_all`, then each loaded in turn, waiting for each to read loaded:
 `gpt-oss-120b-MXFP4-set-a`, `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0`,
-`ggml-org/gemma-4-E4B-it-GGUF:Q8_0`, and `mrutkows/granite-embedding-english-r2-GGUF:BF16`. The
-router's `/models` read all four loaded. MemAvailable 23,061,568 kB = 22.0 GiB of 121.6 GiB: the
+`ggml-org/gemma-4-E4B-it-GGUF:Q8_0`, and `mrutkows/granite-embedding-english-r2-GGUF:BF16`, as
+run:
+
+```sh
+. .state/verify/gb10-1/pass.sh pass2 && unload_all && for m in $A $V $Q8 mrutkows/granite-embedding-english-r2-GGUF:BF16; do api load "$m"; wait_for "$m" loaded; done; state; ssh gb10-1 "grep -E 'MemAvailable' /proc/meminfo"
+```
+
+The router's `/models` read all four loaded. MemAvailable 23,061,568 kB = 22.0 GiB of 121.6 GiB: the
 set takes ~99.6 GiB against the estimate's 95.4 to 98.8 ("Gates", "Fit"), and the 22.0 GiB free is
 above the policy's 12.2 GiB headroom.
 
@@ -683,7 +787,7 @@ Each by the decision in its row ("Decisions"), in the order run, 2026-11-03.
 1. **vLLM**: the session, no root, through the suite from the host's clone:
 
    ```sh
-   ssh gb10-1 'cd ~/repos/spike-model-engines && host/engines vllm uninstall; echo "exit $?"'
+   ssh gb10-1 'cd ~/repos/spike-model-engines && host/engines vllm uninstall; echo "exit $?"; docker ps -a --format "{{.Names}} {{.Image}} {{.Status}}"; docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}"; ls -d ~/.cache/vllm 2>&1'
    ```
 
    "removed container vllm", "removed image vllm/vllm-openai:v0.32.0", "removed compile cache
@@ -706,26 +810,48 @@ Each by the decision in its row ("Decisions"), in the order run, 2026-11-03.
    sudo rm /etc/sudoers.d/llama-router /etc/systemd/system/llama-router.service && sudo rm /etc/sudoers.d/vllm-server /etc/systemd/system/vllm-server.service && sudo systemctl daemon-reload && sudo rmdir /opt/llama.cpp /opt/vllm
    ```
 
-   No output. Read back: none of the four files or the two directories exists, and the probe
-   lists no unit. Rollback: the suite's `llama-native install` and `vllm-native install`, plus the
-   guides' root setup steps.
-3. **The six unused snapshots**: the dry run by the session, shown to the architect; the removal
-   by the architect on the host. Every repository in `/srv/models` links its files into the
-   shared `/srv/models/blobs` (190G, 120 files), so `hf cache rm` would remove only the links. The
-   dry runs, per repository:
+   No output. Read back by the session after the removals, with the probe
+   (`.state/verify/gb10-1/probe-removals.txt`); the same read also covers 3's space and 5's
+   module tree, as run:
 
    ```sh
-   MISE_ENV=host HF_HUB_CACHE=/srv/models mise exec -- hf cache rm model/<repo> --dry-run
+   ssh gb10-1 'find /lib/modules/6.17.0-1008-nvidia | head; du -sh /lib/modules/6.17.0-1008-nvidia; ls -d /opt/llama.cpp /opt/vllm /etc/systemd/system/llama-router.service /etc/systemd/system/vllm-server.service 2>&1; df -h /srv/models | tail -1; du -sh /srv/models'
+   ```
+
+   "No such file or directory" for the two unit files, the two directories, and the 6.17.0-1008
+   module tree; `/dev/nvme0n1p3 3.6T 165G 3.3T 5% /`; `113G /srv/models`. The probe lists no
+   unit. Rollback: the suite's `llama-native install` and `vllm-native install`, plus the
+   guides' root setup steps.
+3. **The six unused snapshots**: the dry run by the session, shown to the architect; the removal
+   by the architect on the host. The dry runs, run by the session from this machine over ssh, with
+   a first read of the store's layout, as run:
+
+   ```sh
+   ssh gb10-1 'cd ~/repos/spike-model-engines && for r in openai/gpt-oss-120b nvidia/Gemma-4-26B-A4B-NVFP4 nvidia/Gemma-4-31B-IT-NVFP4 google/gemma-4-E4B-it google/gemma-4-12B-it-qat-w4a16-ct google/gemma-4-E4B-it-qat-w4a16-ct; do echo "== $r"; MISE_ENV=host HF_HUB_CACHE=/srv/models mise exec -- hf cache rm model/$r --dry-run 2>&1 | tail -4; done; echo "== blobs layout"; ls /srv/models | head; find /srv/models/models--nvidia--Gemma-4-26B-A4B-NVFP4/blobs -maxdepth 1 -type l | head -2; echo "== kernel pkgs"; dpkg -l | awk "/6\.17\.0-1008/ {print \$1, \$2, \$3}"; df -h /srv/models | tail -1'
    ```
 
    `openai/gpt-oss-120b` 65.3G, `nvidia/Gemma-4-26B-A4B-NVFP4` 18.8G,
    `nvidia/Gemma-4-31B-IT-NVFP4` 32.7G, `google/gemma-4-E4B-it` 16.0G,
    `google/gemma-4-12B-it-qat-w4a16-ct` 10.3G, `google/gemma-4-E4B-it-qat-w4a16-ct` 11.5G
-   (154.6G). So the removal took the exclusive-blob method of spike-model-engines'
-   `docs/engines/vllm/uninstall.md`, extended to six repositories: the session listed every
-   `/srv/models/blobs` target linked from the six (`~/rm-blobs.txt`) and from the 8 kept
-   repositories (`~/keep-blobs.txt`); they share none, which leaves 27 files to delete, 143.9 GiB
-   (`~/rm-only.txt`). The removal, as the architect ran it:
+   (154.6G). The layout, read by the session the same way, as run:
+
+   ```sh
+   ssh gb10-1 'cd /srv/models; for d in models--*; do n=$(find $d/blobs -maxdepth 1 -type l 2>/dev/null | wc -l); [ $n -gt 0 ] && echo "$d: $n linked blobs -> $(find $d/blobs -maxdepth 1 -type l -exec readlink -f {} + | xargs -r du -ch 2>/dev/null | tail -1)"; done; echo "== shared /srv/models/blobs"; du -sh /srv/models/blobs; find /srv/models/blobs -type f | wc -l; echo "== other referrers of shared blobs"; for d in models--*; do find $d/snapshots -type l -exec readlink -f {} + 2>/dev/null | grep -c "^/srv/models/blobs/" | sed "s|^|$d snapshot links into shared: |"; done | grep -v ": 0$"'
+   ```
+
+   Every repository in `/srv/models` links its files into the shared `/srv/models/blobs` (190G,
+   120 files), so `hf cache rm` would remove only the links. So the removal took the
+   exclusive-blob method of spike-model-engines' `docs/engines/vllm/uninstall.md`, extended to six
+   repositories: the session listed every `/srv/models/blobs` target linked from the six
+   (`~/rm-blobs.txt`, in gb10-1's home) and from the 8 kept repositories (`~/keep-blobs.txt`), as
+   run:
+
+   ```sh
+   ssh gb10-1 'cd /srv/models; rm6="models--openai--gpt-oss-120b models--nvidia--Gemma-4-26B-A4B-NVFP4 models--nvidia--Gemma-4-31B-IT-NVFP4 models--google--gemma-4-E4B-it models--google--gemma-4-12B-it-qat-w4a16-ct models--google--gemma-4-E4B-it-qat-w4a16-ct"; keep=$(for d in models--*; do case " $rm6 " in *" $d "*) ;; *) echo $d;; esac; done); echo "keep: $(echo $keep | wc -w) repos"; for d in $rm6; do find $d -type l -exec readlink -f {} +; done | grep "^/srv/models/blobs/" | sort -u > ~/rm-blobs.txt; for d in $keep; do find $d -type l -exec readlink -f {} +; done | grep "^/srv/models/blobs/" | sort -u > ~/keep-blobs.txt; comm -12 ~/rm-blobs.txt ~/keep-blobs.txt | wc -l | sed "s/^/shared with a kept repo: /"; comm -23 ~/rm-blobs.txt ~/keep-blobs.txt > ~/rm-only.txt; wc -l < ~/rm-only.txt | sed "s/^/blob files to delete: /"; xargs -r du -cb < ~/rm-only.txt | tail -1 | awk "{printf \"size: %.1f GiB\n\", \$1/2^30}"; echo "kept repos: $keep" | tr "\n" " "; echo'
+   ```
+
+   They share none, which leaves 27 files to delete, 143.9 GiB (`~/rm-only.txt`). The removal, as
+   the architect ran it, in a shell on gb10-1:
 
    ```sh
    cd /srv/models && xargs -r rm -f -- < ~/rm-only.txt && rm -rf models--openai--gpt-oss-120b models--nvidia--Gemma-4-26B-A4B-NVFP4 models--nvidia--Gemma-4-31B-IT-NVFP4 models--google--gemma-4-E4B-it models--google--gemma-4-12B-it-qat-w4a16-ct models--google--gemma-4-E4B-it-qat-w4a16-ct && find /srv/models/blobs -mindepth 1 -type d -empty -delete && rm ~/rm-blobs.txt ~/keep-blobs.txt ~/rm-only.txt
@@ -739,7 +865,7 @@ Each by the decision in its row ("Decisions"), in the order run, 2026-11-03.
 4. **`hello-world:latest`**: the session, no root:
 
    ```sh
-   ssh gb10-1 'docker rmi hello-world:latest'
+   ssh gb10-1 'docker rmi hello-world:latest; echo "exit $?"; docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}"'
    ```
 
    "Untagged", "Deleted sha256:11a3eb15…", exit 0. Rollback: `docker pull hello-world`.
