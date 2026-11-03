@@ -283,6 +283,8 @@ Door          two-way:
 
 ## Progress
 
+- slice 1 committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds' reasons in their pin comments, currency.sh and context/README.md), spike-hosting-upgrades aadf6ce (the verify mode's engine item: steps 1-3 and 5-9 of SKILL.md). Both checks pass; engines currency reports only the three held pins. Demo (`/hosting-upgrades verify gb10-1`) next.
+
 ## Decisions
 
 - setup: evidence is six items (the skill; the dated ranked report; top upgrade verified per host
