@@ -16,7 +16,8 @@ machine, in the architect's view; "the architect" ran a step with root.
   (`Bash(tailscale ping -c 1 framework)`, `Bash(tailscale ping -c 1 gb10-1)`,
   `Edit(docs/findings/verify-*.md)`). The architect added them to `.claude/settings.json`
   (committed in 5c32f8d), and the mode went on.
-- **The probe:** run 2026-11-02, before any step of the session. Kernel 7.0.0-1024-nvidia running,
+- **The probe:** run 2026-11-02, before any step of the session, as every probe of the session
+  was run, from the project root: `ssh gb10-1 bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh`. Kernel 7.0.0-1024-nvidia running,
   booted 2026-10-30 08:44:22 (`== kernel ==`); driver 580.178.04 (`== gpu ==`); the CDI spec
   `/var/run/cdi/nvidia.yaml` modified 2026-11-02 17:53:48 (`== container-runtime ==`); the
   6.17.0-1008 image and module tree still installed (`== kernel ==`); apt's lists refreshed
@@ -139,14 +140,29 @@ Run 2026-11-02 to 2026-11-03, in this order.
    1.104.5. The upgrade restarts tailscaled, which drops Tailscale SSH sessions for a moment.
    Rollback, root: `sudo apt-get install tailscale=1.104.4`.
 6. **The routing check before the DHCP change**: the session, from this machine, 2026-11-03, the
-   skill's routing check (SKILL.md, "The verify mode", step 6). `gb10-1.lan A: PRESENT`,
+   skill's routing check (SKILL.md, "The verify mode", step 6), as run here and at steps 10 and
+   14:
+
+   ```sh
+   h=gb10-1; for ty in A AAAA; do echo "$h.lan $ty: $(resolvectl query -t $ty $h.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+   t=$(tailscale ip $h); echo "bare name: $(getent ahosts $h | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+   for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://$h:8080/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+   ```
+
+   It read `gb10-1.lan A: PRESENT`,
    `AAAA: PRESENT`; the bare name: tailnet; 50 connects, 0 failed, 0 over 50 ms, max 0.015100 s.
    So `gb10-1.lan` now had both records, where verify-framework's finding ("Routing") read no
    AAAA for it on 2026-11-02. During the session, three SSH connections to gb10-1 failed with
    `Permission denied (publickey)` while a retry succeeded: the name reached the LAN address,
    where OpenSSH answers, rather than Tailscale SSH on the tailnet. That is the routing fault
    itself.
-7. **NetworkManager's connections**: read by the session. `Wired connection 1` (enP7s7): ipv4
+7. **NetworkManager's connections**: read by the session, with no root:
+
+   ```sh
+   ssh gb10-1 'nmcli -t -f NAME,DEVICE,STATE con show --active; for c in "Wired connection 1" netplan-enP2p1s0f0np0 netplan-enp1s0f0np0; do d=$(nmcli -g GENERAL.DEVICES con show "$c"); echo "$c ($d): $(nmcli -g ipv4.method,ipv6.method con show "$c" | paste -sd" ") carrier=$(cat /sys/class/net/$d/carrier 2>/dev/null)"; done; ip route show default | sed -E "s/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<addr>/g"'
+   ```
+
+   `Wired connection 1` (enP7s7): ipv4
    auto, ipv6 auto, and it carries the default route. `netplan-enP2p1s0f0np0` and
    `netplan-enp1s0f0np0` (the ConnectX-7): ipv4 manual, ipv6 ignore. Then tailscale0, docker0,
    and lo. Each had `dhcp-send-hostname` yes for IPv4 and IPv6. The GB10s have no Wi-Fi, so
