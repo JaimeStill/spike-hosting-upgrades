@@ -398,11 +398,19 @@ four gates under the policy as it read 2026-11-02, by the session's gate check. 
   budget of 109.5 GiB.
 - **The chat-template check**, byte for byte, the session, 2026-11-02: each GGUF's embedded
   template from the Hub's API against the publisher's `chat_template.jinja`, compared with `cmp`.
-  The reads, as run:
+  The reads, as run, for the three pairs (the session ran them in a shell loop in its
+  scratchpad; these are the loop's commands, pair by pair):
 
   ```sh
-  curl -sf "https://huggingface.co/api/models/<repo>?expand[]=gguf" | jq -j '.gguf.chat_template'
-  curl -sfL https://huggingface.co/<publisher>/raw/main/chat_template.jinja
+  curl -sf "https://huggingface.co/api/models/ggml-org/gpt-oss-120b-GGUF?expand[]=gguf" | jq -j '.gguf.chat_template' > gptoss.raw
+  curl -sfL "https://huggingface.co/openai/gpt-oss-120b/raw/main/chat_template.jinja" > gptoss.pub
+  cmp gptoss.raw gptoss.pub
+  curl -sf "https://huggingface.co/api/models/google/gemma-4-26B-A4B-it-qat-q4_0-gguf?expand[]=gguf" | jq -j '.gguf.chat_template' > g26.raw
+  curl -sfL "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-unquantized/raw/main/chat_template.jinja" > g26.pub
+  cmp g26.raw g26.pub
+  curl -sf "https://huggingface.co/api/models/ggml-org/gemma-4-E4B-it-GGUF?expand[]=gguf" | jq -j '.gguf.chat_template' > e4b.raw
+  curl -sfL "https://huggingface.co/google/gemma-4-E4B-it/raw/main/chat_template.jinja" > e4b.pub
+  cmp e4b.raw e4b.pub
   ```
 
   A first comparison with `jq -r` showed one extra trailing newline for the Gemmas: jq's own
@@ -512,12 +520,12 @@ b11669's anchors, at 12:33:17 UTC (results under `.state/verify/gb10-1/pass1/`).
 run:
 
 ```sh
-. <scratchpad>/pass.sh && stack b11669 && agent b11669
+cd ~/experiments/spike-hosting-upgrades && . /tmp/claude-1000/-home-jaime-experiments-spike-hosting-upgrades/77aee5dc-bbd6-4762-aff2-7ee445a2e98e/scratchpad/pass.sh && stack b11669 && agent b11669
 ```
 
-Its helpers were pass 2's (below) but for the pass directory, `S=.state/verify/gb10-1/pass1`,
-from a copy in the session's scratchpad, since cleared; pass 2's file makes the directory an
-argument, and `stack()`'s ping and props reads are unchanged.
+That `pass.sh`, in the session's scratchpad, has since been cleared. Its text matched pass 2's
+`pass.sh` (below) but for the pass directory, `S=.state/verify/gb10-1/pass1`; pass 2's file makes
+the directory an argument, and `stack()`'s ping and props reads are unchanged.
 
 | Cell | Requests | Output tok/s | TTFT median ms | ITL median ms |
 |---|---|---|---|---|
@@ -641,12 +649,25 @@ The audio model's ASR B on each build, by the skill's step 7. The references, as
 curl -s 'https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=32' > .state/verify/gb10-1/librispeech-refs.json
 ```
 
-32 rows, read 2026-11-03. Then the skill's step 7 program exactly (SKILL.md, "The verify mode",
-step 7), with `<host>` gb10-1, on each build's cell, in one loop with the reasoning check
-("Reasoning"), as run (from the project root):
+32 rows, read 2026-11-03. Then, on each build's cell, in one loop with the reasoning check
+("Reasoning"), as run (from the project root): the skill's step 7 command (SKILL.md, "The verify
+mode", step 7), its jq program verbatim, with `-c` added (compact output), `<host>` as gb10-1, so
+the references at `.state/verify/gb10-1/librispeech-refs.json`, and the cell
+`.state/verify/gb10-1/pass2/$b-audio-b.json`:
 
 ```sh
-S=.state/verify/gb10-1/pass2; for b in b11669 b12063; do jq -c --slurpfile refs .state/verify/gb10-1/librispeech-refs.json '<the step 7 program>' .state/verify/gb10-1/pass2/$b-audio-b.json; for c in audio-a audio-b; do echo -n "$b $c reasoning: "; jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' $S/$b-$c.json; done; done
+S=.state/verify/gb10-1/pass2; for b in b11669 b12063; do jq -c --slurpfile refs .state/verify/gb10-1/librispeech-refs.json '
+  def words: ascii_downcase | gsub("[^a-z0-9\\s]"; "") | [splits("\\s+")] | map(select(length > 0));
+  def lev($a; $b): reduce range(0; $a | length) as $i ([range(0; ($b | length) + 1)];
+    . as $p | reduce range(0; $b | length) as $j ([$i + 1];
+      . + [[$p[$j + 1] + 1, .[$j] + 1, $p[$j] + (if $a[$i] == $b[$j] then 0 else 1 end)] | min]))
+    | .[-1];
+  [$refs[0].rows[].row.text] as $r
+  | [.benchmarks[0].requests.successful | sort_by(.info.timings.queued)[] | (.output // "")] as $o
+  | if ($o | length) != ($r | length) then error("\($o | length) replies for \($r | length) references") else . end
+  | [range(0; $r | length) | {r: ($r[.] | words), o: ($o[.] | words)} | {n: (.r | length), d: lev(.r; .o)}]
+  | {pairs: length, reference_words: (map(.n) | add), word_differences: (map(.d) | add), per_pair: map(.d)}
+' .state/verify/gb10-1/pass2/$b-audio-b.json; for c in audio-a audio-b; do echo -n "$b $c reasoning: "; jq -c '.benchmarks[0].requests.successful | {replies: length, reasoned_in_channel: (map(select((.reasoning_output // "") != "")) | length), reasoned_in_text: (map(select((.output // "") | test("The user wants me to|Thinking Process"; "i"))) | length)}' $S/$b-$c.json; done; done
 ```
 
 | Build | Pairs | Reference words | Word differences |

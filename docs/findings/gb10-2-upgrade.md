@@ -12,9 +12,9 @@ no root, over Tailscale SSH or from the machine its sessions run on; "the archit
 step that needs root.
 
 **What this report doesn't know**, and so doesn't guess: gb10-2's NetworkManager connection
-names, the port spike-ai-pipeline's engine serves on (`<port>` below; gb10-1's is 8080), and the
-names of spike-ai-pipeline's pin files and host-update. Where a step needs one, it gives the read
-that finds it, and it names the pin by its role ("its llama.cpp pin").
+names. Where a step needs them, it gives the read that finds them. spike-ai-pipeline's engine
+serves on port 8080, as its host-update reads the router (`scripts/host-update.sh`,
+`router=http://$host:8080`), the same port as gb10-1's.
 
 ## What already matches gb10-1
 
@@ -26,13 +26,13 @@ that finds it, and it names the pin by its role ("its llama.cpp pin").
 ## The routing check
 
 The skill's routing check (`.claude/skills/hosting-upgrades/SKILL.md`, "The verify mode", step
-6), as gb10-1's finding ran it, with the host gb10-2 and spike-ai-pipeline's port. The session
+6), as gb10-1's finding ran it, with the host gb10-2 and spike-ai-pipeline's port, 8080. The session
 runs it from the machine its measurements run from, with no root:
 
 ```sh
 h=gb10-2; for ty in A AAAA; do echo "$h.lan $ty: $(resolvectl query -t $ty $h.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
 t=$(tailscale ip $h); echo "bare name: $(getent ahosts $h | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
-for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://$h:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://$h:8080/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
 ```
 
 It passes when `gb10-2.lan` has no A and no AAAA record, the bare name resolves to the tailnet
@@ -89,20 +89,55 @@ Run in this order. Each gives who runs it, its rollback, and the routing check t
    another DHCP server on the LAN, which found none. Rollback: none needed; a lease renews on its
    own if the host sends its name again. Then the routing check, the session, as above; it should
    read `gb10-2.lan A: none`, `AAAA: none`.
-6. **llama.cpp b11669 to b12063**: gb10-1 adopted b12063 (below). spike-ai-pipeline owns its pins
-   and its host-update, and this report edits neither. The change: **its llama.cpp pin, from
-   b11669 to b12063**, applied by its own host-update. gb10-1 runs
+6. **llama.cpp b11669 to b12063**: gb10-1 adopted b12063 (below), and gb10-1 runs
    `ghcr.io/ggml-org/llama.cpp:server-cuda13-b12063`, digest
-   `sha256:83faadeff67447144770f9b91b4c6694ce2ea2a218efa82f77092ebc29b0c31f`.
-   - **Finding the pin**, the session, no root, in spike-ai-pipeline's checkout:
-     `git grep -n b11669`. The lines it prints name the pin's file.
-   - **Who runs it**: the session, if its host-update needs no root, as gb10-1's equivalent (the
-     engines suite's `llama update`) doesn't; the architect, if it needs root.
-   - **Read back**, the session: `curl -s http://gb10-2:<port>/props | jq -r '.build_info'`, which
-     on gb10-1 reads `b12063-2cbca389f`.
-   - **Rollback**: the pin back to b11669, and its host-update. On gb10-1 the suite's update removed
-     every other build's image, so its rollback pulls b11669's again; spike-ai-pipeline's
-     host-update may differ.
+   `sha256:83faadeff67447144770f9b91b4c6694ce2ea2a218efa82f77092ebc29b0c31f`. spike-ai-pipeline
+   pins llama.cpp in `host/llama.env` (`LLAMA_BUILD=b11669`, and
+   `LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda13-$LLAMA_BUILD`), and every file in its
+   `host/` but its README and `llama-preset/models.ini` is a byte-identical copy of
+   spike-model-engines' `host/` at commit `d285b06`, never edited there: a change comes as a new
+   copy from a later commit (its `host/README.md`). b12063 is gb10's pin in spike-model-engines
+   from its verify-gb10 pull request on, so the step is a new copy from that pull request's merge
+   commit. This report and task change nothing in spike-ai-pipeline; it runs the step as its own
+   work.
+   - **Before the copy works**: spike-ai-pipeline's scripts read two names the new `host/llama.env`
+     no longer has. That `llama.env` replaces `LLAMA_BUILD` with one pin per host class,
+     `LLAMA_BUILD_GB10=b12063` and `LLAMA_BUILD_STRIX_HALO=b11960`, which `host/llama-release.sh`'s
+     `llama_pin` reads for the class `host/llama.sh` sets from the flavor (gb10 for cuda13); and
+     `LLAMA_IMAGE` left spike-model-engines' `host/llama.env` in `e2f0146`, a commit after
+     `d285b06`, for `LLAMA_REPOSITORY=ghcr.io/ggml-org/llama.cpp`. spike-ai-pipeline's
+     `scripts/host-update-lib.sh` (`clone_router_state`, `echo "pin $LLAMA_IMAGE"`) and
+     `scripts/currency.sh` (`[ "$latest" = "$LLAMA_BUILD" ]`) each read one of them under
+     `set -u`, so on the new copy each fails on an unbound variable. They need spike-ai-pipeline's
+     own change first; until then its pin can't move by copy.
+   - **The copy**, the session, no root, in spike-ai-pipeline's checkout, with spike-model-engines
+     checked out beside it at the merge commit of spike-model-engines' verify-gb10 pull request
+     (`<merge>` below, which doesn't exist yet). The files are those `host/README.md` lists:
+
+     ```sh
+     for f in engines engines.sh engines-llama-install engines-llama-update engines-llama-uninstall llama.env llama.sh llama-release.sh; do
+       git -C ../spike-model-engines show <merge>:host/$f > host/$f
+     done
+     ```
+
+     Then `host/README.md`'s commit, `d285b06`, becomes `<merge>`, in its prose and in its check
+     loop, and the check loop prints nothing. The copy is committed and reaches gb10-2's clone as
+     spike-ai-pipeline delivers any commit: host-update fast-forwards a branch with an upstream,
+     and a task branch is delivered by push (its `scripts/host-update.sh`, step 2).
+   - **The update**, the session: `mise run host-update`, from the laptop. It needs no root on
+     gb10-2 and runs nothing that does (`scripts/host-update.sh`); it moves the router to the pin
+     in `host/llama.env` with the copied `host/engines llama update`. Its preflight stops it, the
+     router untouched, when gb10-2 has pending apt upgrades, a stale CDI spec, or a pending reboot,
+     and prints the root commands for those, which are the architect's.
+   - **Read back**, the session: `curl -s http://gb10-2:8080/props | jq -r '.build_info'`, which
+     on gb10-1 reads `b12063-2cbca389f`; host-update prints the build too (its step 6).
+   - **Rollback**: host-update takes no version; it reads the pin from `host/llama.env`. So the
+     rollback is the copy from `d285b06` again (the loop above with `d285b06` for `<merge>`, and
+     `host/README.md` back to `d285b06`), then `mise run host-update`, the session. The copied
+     `host/engines llama update` takes a version (`host/engines llama update b11669` on gb10-2), but
+     the next host-update moves the router back to the pin, so it serves only until then. On gb10-1
+     the suite's update removed every other build's image, and so does the copied update, so the
+     rollback pulls b11669's image again.
    - Then the routing check, the session, as above, before any measurement on the new build.
 
 **What gb10-2 takes on with b12063.** gb10-1 measured both builds on one kernel and one boot, from
@@ -144,6 +179,12 @@ for none of them.
 |---|---|---|---|
 | gb10-1's verification finding, "Host stack" and "Engine pass" | the finding | [`docs/findings/verify-gb10-1.md`](verify-gb10-1.md) | 2026-11-03 |
 | framework's verification finding, "Verdict" (E4B QAT's reasoning) | the finding | [`docs/findings/verify-framework.md`](verify-framework.md) | 2026-11-03 |
+| spike-ai-pipeline's pin | local read | spike-ai-pipeline, `host/llama.env` | 2026-11-03 |
+| spike-ai-pipeline's copies, their source commit and file list | local read | spike-ai-pipeline, `host/README.md` | 2026-11-03 |
+| spike-ai-pipeline's host-update: the task, no root, no version, port 8080 | local read | spike-ai-pipeline, `mise.toml` (`[tasks.host-update]`) and `scripts/host-update.sh` | 2026-11-03 |
+| spike-ai-pipeline's reads of `LLAMA_IMAGE` and `LLAMA_BUILD` | local read | spike-ai-pipeline, `scripts/host-update-lib.sh` (`clone_router_state`) and `scripts/currency.sh` | 2026-11-03 |
+| spike-model-engines' per-class pins | local read | spike-model-engines, branch verify-gb10, `host/llama.env`, and `host/llama-release.sh` (`llama_pin`, `llama_build`) and `host/llama.sh` (`llama_flavor`) | 2026-11-03 |
+| `LLAMA_IMAGE`'s removal | local read | spike-model-engines, commit `e2f0146`, `host/llama.env` | 2026-11-03 |
 | The skill's routing check | the skill | [`.claude/skills/hosting-upgrades/SKILL.md`](../../.claude/skills/hosting-upgrades/SKILL.md), "The verify mode", step 6 | 2026-11-03 |
 | llama.cpp #30804, "CUDA: chunk graphs to amortize graph launch" (through the finding, "Verdict") | primary | <https://github.com/ggml-org/llama.cpp/pull/30804> | 2026-11-03 (the finding) |
 | llama.cpp #29510, `flash_attn_ext_rows` (through the finding, "Verdict") | primary | <https://github.com/ggml-org/llama.cpp/pull/29510> | 2026-11-03 (the finding) |
