@@ -12,202 +12,273 @@
 4. [ ] screen
 5. [ ] answer
 
-## Task brief · verify-framework
+## Task brief · verify-gb10
 
 ```
-Problem       framework's 2026-10-30-2 report ranks one verify item, Gemma 4 E4B
-              QAT Q4_0 as the audio model, and ten hold items, but nothing has
-              been measured or applied. The skill finds and ranks upgrades, and
-              has no way to take one to a decision, so a verified upgrade leaves
-              no record. The answer task's convention needs that record: what
-              was measured, against what claim, and what each item came to. This
-              task gives the skill a verification mode and uses it on framework.
-              It verifies E4B QAT with anchors A and B and settles every hold.
+Problem       gb10-1's 2026-10-31 report has one verify item: llama.cpp
+              b11669 → a newer cuda13 server image. Two attributed GB10
+              prefill gains (+17.2% MoE, +7.1% dense) and a Gemma 4 memory
+              fix back it. The report also has three hardware holds and ten
+              debt holds, and nothing has been measured or applied. The
+              verify mode can only measure a model swap on one engine build.
+              It has no rule for a change of build, so an engine upgrade
+              leaves no record. Since the report, framework has found that
+              E4B QAT, gb10-1's declared audio model, writes its reasoning
+              into its replies.
+              This task does four things. It gives the verify mode an
+              engine item and uses it on gb10-1. It settles every gb10-1
+              item and carries out the decided removals. It gives the gb10
+              host class its own llama.cpp pin in spike-model-engines.
+              Finally, it writes gb10-2's alignment steps as a report for
+              spike-ai-pipeline, which applies them.
+              No new tool: GuideLLM 0.8.1, the engines suite, hf, nmcli,
+              and fwupdmgr have all been walked before.
 
 Behaviors
-  The verify mode
-  1.  `/hosting-upgrades verify <host>` reads the host's last report (the
-      newest date, and within that date the highest -N). It stops, saying
-      why, when the host has no descriptor or no report, or the project has
-      no policy.
-  2.  It runs the readiness check and the read-only probe first. It names
-      every report item whose state the probe shows has moved since the
-      report, such as an update now on the host's channel.
-  3.  It lists every verify, take, and hold item in the report. For each, it
-      asks for the architect's decision (apply, remove, or close with a
-      reason) and records the decision with its date.
-  4.  For each item to apply or remove, it prints:
-      - the exact commands
-      - which steps need root, which are the architect's, and which the
-        session may run without root
-      - the rollback, and whether a reboot is needed
-      The mode itself runs nothing that changes the host. An offered update
-      with no known rollback, such as a firmware update fwupd lists, is an
-      escalation. Once approved, it gets a reboot of its own, after the
-      host's other changes have booted cleanly.
-  5.  Before the verify item is measured, the mode re-checks the item's gates
-      under the current policy: origin, artifact integrity (the
-      chat-template check included), the quantization floor, and fit. If a
-      gate fails, it stops and names that gate.
-  6.  It prints the agreed cells:
-      - anchors A and B before and after the change, on one engine build and
-        one kernel
-      - the item's cells beside its role's incumbent, at the same shapes
-      Each run has a 10-minute cap. Every pass records the engine version,
-      the host stack, and `tailscale ping`. The first anchors are set beside
-      the host's last earlier readings, and a move beyond run noise is a
+  The verify mode's engine item
+  1.  When the item `/hosting-upgrades verify <host>` names is an
+      engine build, the mode prints one pass across two builds:
+      - the incumbent build's cells
+      - the move to the candidate build through the engines suite,
+        with the version as its argument
+      - the same cells on the candidate build
+      Every cell runs on one kernel. A kernel change partway, or a
+      third build, restarts the pass.
+  2.  The engine verdict rule. Adopt only when all four hold:
+      - every cell on the candidate is within 1.4% of the same cell on
+        the incumbent, or ahead of it (output tok/s, or audio seconds
+        a second for an ASR cell)
+      - every cell holds its full request count
+      - the ASR B word differences on the candidate are within the
+        incumbent's total plus 1.4% of the reference words
+      - the reasoning check on the candidate's ASR cells counts no more
+        replies than on the incumbent's
+      Otherwise roll back. A gain needn't exceed run noise, since
+      engines stay current. The finding states what the rule gave on
+      each condition, and any overrule by the architect.
+  3.  The published claim is set beside each cell's TTFT median: 512
+      prompt tokens for the anchors and the vision cells. Output
+      tok/s goes beside it.
+  4.  After an adopted engine move, the mode prints the rollback
+      exactly: the suite's update to the earlier build, which pulls
+      that build's images again, since the update removes every other
+      build's images.
+  gb10-1, the host stack
+  5.  The session reads back the architect's apt state of 2026-11-02:
+      - 0 upgraded: kernel 7.0.0-1024, driver 580.178.04
+      - autoremove took three 6.17.0-1008 packages
+      - the CDI spec was regenerated (spec 0.7.0)
+      The finding records each command as it was run.
+  6.  The architect refreshes fwupd's metadata, and the get-updates
+      result is recorded. Any offered update is an escalation, with a
+      reboot of its own if it is approved.
+  7.  gb10-1 stops sending its hostname in DHCP (IPv4 and IPv6) on each
+      of its NetworkManager connections, and the connections come up
+      again. This is the architect's root step. Its rollback is the
+      same command with `yes`. If the LAN publishes `gb10-1.lan`, the
+      architect clears the router's lease names. Afterwards the
+      routing check passes:
+      - no `gb10-1.lan` A or AAAA record
+      - the bare name resolves to the tailnet address only
+      - 50 connects to `/health`, none failed, none over 50 ms
+  8.  gb10-1's spike-model-engines clone is brought to main (no root),
+      so its preset carries set A's agent section. The probe then reads
+      the preset's sections.
+  9.  gb10-1's set becomes:
+      - agent: set A's gpt-oss-120b section (4 slots sharing 131,072
+        tokens, so a session can reach 131,072)
+      - vision: Gemma 4 26B-A4B QAT Q4_0
+      - audio: E4B Q8_0, following framework's finding
+      - embedding: granite BF16
+      E4B QAT's files stay in the store until Google publishes a
+      revision that fixes its reasoning.
+  10. Seven items close with no action, each with its reason:
+      - kernel 1024: no symptom on gb10-1, and a hold would stop the
+        every-session update. 1019 stays installed. An unexpected boot
+        seen at the session start's probe is an escalation.
+      - display reserved memory: it frees memory, not speed, the set
+        leaves headroom, and Dell's support is untested.
+      - driver 580.196.07: not on the host's channel.
+      - the boot-order remedy: present for IPv4. IPv6 waits on
+        tailscale#1152.
+      - the preset's sections beyond the set: shared with framework,
+        and they cost nothing while unloaded.
+      - Docker 29.9.2: not on the host's channel.
+      - the 8,192-token gpt-oss sections: measurement sections that no
+        agent loads.
+      The report's engine candidates (`--cache-ram 0`, vLLM, SGLang,
+      TensorRT-LLM) are listed by name as left for later.
+  11. The failed user unit update-notifier-crash: the session reads
+      its cause from the user journal and the /var/crash listing (no
+      root), then resets it (no root). A crash in the kernel, the
+      driver, or the engine is an escalation. Reading a root process's
+      crash report is the architect's step.
+  gb10-1, the engine pass
+  12. Before any run, the mode re-checks that each model the cells
+      load is gated under today's policy, chat-template check included:
+      gpt-oss-120b MXFP4, 26B-A4B QAT, and E4B Q8_0.
+      It then prints the agreed cells and runs them a step at a time,
+      in the architect's view.
+      Common to every cell:
+      - tool: GuideLLM 0.8.1, from this machine, targeting
+        `http://gb10-1:8080`
+      - each run is capped at 10 minutes
+      - one model per purpose; each model's cells run once from a fresh
+        load
+      - the pass records the probe, the build, and `tailscale ping`
+      The six cells, run on b11669 and then on the candidate build
+      (the newest cuda13 server image at session start; b12033 when
+      planned):
+      | Cell     | Model, configuration       | Load                 | ~Time | Informs                     |
+      | Anchor A | gpt-oss-120b MXFP4, 4-slot | 1 stream × 8,        | 1 min | agent decode, TTFT          |
+      |          | section                    | 512 in / 256 out     |       |   (prefill claim)           |
+      | Anchor B | gpt-oss-120b MXFP4, 4-slot | 4 streams × 32,      | 2 min | agent concurrency           |
+      |          | section                    | 512 / 256            |       |                             |
+      | Vision A | 26B-A4B QAT Q4_0, its      | 1 × 8, 512 / 256,    | 1 min | MoE prefill (#31188), TTFT; |
+      |          | section                    |   thinking on        |       |   Gemma 4 fix (#31394)      |
+      | Vision B | 26B-A4B QAT Q4_0           | 4 × 32, 512 / 256    | 1 min | the same, under concurrency |
+      | ASR A    | E4B Q8_0, its section      | 1 × 8 LibriSpeech    | 1 min | audio speed, #31394         |
+      |          |                            |   clips, ≤256 out    |       |                             |
+      | ASR B    | E4B Q8_0                   | 4 × 32 clips,        | 1 min | audio speed, transcripts    |
+      |          |                            |   ≤256 out           |       |   (word differences),       |
+      |          |                            |                      |       |   reasoning check           |
+      The first anchors are set beside gb10-1's earlier readings
+      (A 50.0, B 80.9 tok/s, b11669, 2026-10-26). A move beyond 1.4%
+      is a finding. The verdict follows behavior 2.
+  13. On adopt, gb10-1 runs the candidate build, and the walkthrough
+      loads set A on it. On roll back, the suite returns gb10-1 to
+      b11669, set A as above, and nothing changes in spike-model-engines.
+  14. Removals, each read back by the probe as gone:
+      - the vllm container, every vLLM image, and the compile cache,
+        through the suite (session, no root). Rollback: the suite's
+        install.
+      - both bare-metal units, llama-router and vllm-server:
+        - the suite's two native uninstalls (session, no root)
+        - then the architect removes the unit files, /opt/llama.cpp,
+          /opt/vllm, and their sudoers rules, as the uninstall guides
+          give them (root)
+        - rollback: the native installs plus the guides' root steps
+      - the six unused snapshots (~146G: openai gpt-oss-120b, both
+        NVFP4 Gemmas, gemma-4-E4B-it, both w4a16-ct), dry run first,
+        shown to the architect (session). ibm-granite's safetensors
+        and ggml-org's E4B Q8_0 stay. Rollback: `hf download`.
+      - hello-world:latest (session, no root). Rollback: a pull.
+      - the 6.17.0-1008 kernel image and modules (the architect, root,
+        apt; the packages are confirmed at session start). 1019 stays.
+        Rollback: reinstall.
+      b11669's full image leaves with the suite's update on adopt.
+  spike-model-engines
+  15. Its currency reports only held items: huggingface_hub 2.4.0 is
+      taken; bench python 3.14.10, vLLM v0.32.0, and native vLLM's
+      Python 3.12 are held (Decisions). On adopt, the engines suite
+      pins llama.cpp per host class:
+      - gb10 (cuda13) at the adopted build
+      - strix-halo (rocm, vulkan) at b11960, so framework doesn't move
+      With no version given, install and update take the host class's
+      pin. The currency command reports a class's pin only when it is
+      behind the newest release's build. The pull request cites the
       finding.
-  7.  The verdict rule. Adopt only when all three hold:
-      - anchors A and B after the change are within 1.4% of before
-      - no candidate cell is behind the incumbent by more than 1.4%
-      - for a transcription purpose, the candidate's word differences from
-        the references are within the incumbent's total plus 1.4% of the
-        reference words
-      Otherwise roll back. The finding states what the rule gave, and any
-      overrule by the architect.
-  8.  It writes one dated verification finding per host. The finding holds:
-      - every command, exactly as run
-      - each item's decision and its outcome
-      - the published claim beside the anchors
-      - on adoption, a "where <retired model> still lives" table of every
-        place the mode didn't change, addressed to whatever comes to own
-        the host tooling
-  9.  `setup` prints the verify mode's readiness rules beside the run's. A
-      report run is unchanged and stays read-only. The verify mode is the
-      skill's only change.
-  framework
-  10. Host stack, with no anchors:
-      - The architect refreshes fwupd's metadata. This is fwupdmgr's first
-        walk, and fwupdmgr is the task's one new tool. The get-updates
-        result is recorded.
-      - The boot-order sysctl is set to 1 before the reboot.
-      - `omarchy update` brings linux-omarchy to 7.2.15-1.
-      - After one reboot, the probe shows the new kernel running and llama
-        up, with its tailnet port published.
-  11. Mesa 26.2.6, linux-firmware 20261019, the TTM ceiling, and the two
-      gpt-oss measurement sections are closed with no action. The finding
-      gives each one's reason: not on the host's channel; not on the host's
-      channel; headroom met; measurement sections that no agent loads.
-  12. The model pass, all on 7.2.15:
-      - anchors A and B before the swap, on gpt-oss-120b's 4-slot section
-      - E4B Q8_0 and E4B QAT, each at shape A, shape B, ASR A, and ASR B
-      - the ASR B transcripts of both, paired with their LibriSpeech
-        references and compared by word differences
-      - anchors A and B after the swap
-      The verdict follows behavior 7.
-  13. On adopt, framework's router serves E4B QAT as the audio model and
-      Q8_0 is unloaded. The architect refreshes Pi's model list. The Q8_0
-      files leave the store only after the walkthrough confirms QAT. On
-      roll back, Q8_0 is served again and QAT is unloaded.
-  14. The vLLM container and its images are removed through the `engines`
-      suite. The six unused safetensors snapshots are removed, after a dry
-      run. The docker build cache is cleared in full. The probe reads back
-      all three as gone.
-  15. The shape and ASR scenarios are copied into the spike's bench
-      scenarios beside anchors A and B.
+  The record
+  16. One dated verification finding for gb10-1, in the verify mode's
+      layout:
+      - every command exactly as run
+      - each item's decision and outcome
+      - the claim beside the TTFT and tok/s figures
+      - the verdict
+  17. A dated report addressed to spike-ai-pipeline's agent, with
+      gb10-2's alignment steps exactly as that spike would run them.
+      For each step it gives who runs it (root is the architect's),
+      the rollback, and the routing check:
+      - the DHCP hostname setting, and the lease clearing if needed
+      - on adopt, moving its own llama.cpp pin from b11669 to the
+        adopted build through its host-update
+      It also names:
+      - what already matches gb10-1: the IPv4 sysctl and audio Q8_0
+      - what gb10-2 doesn't take: E4B QAT, and gb10-1's debt
+      - that any change to gb10-2's model configuration stays an
+        escalation in that spike
+      It changes nothing on gb10-2.
 
-Test seams    One: `/hosting-upgrades verify <host>` and the finding it writes.
-              The host's end state is read back by the skill's own probe. The
-              project check covers the scenarios and links (shellcheck, link
-              resolution).
+Test seams    Two. In spike-hosting-upgrades, `/hosting-upgrades verify
+              gb10-1` and the finding it writes, with the host's end state
+              read back by the skill's probe. In spike-model-engines, the
+              suite's `llama update` with no version on a gb10 host (reads
+              "already runs" the adopted build) and its currency command
+              (only held items). Both projects' checks pass (shellcheck,
+              links).
 
 Slices
-  1. The verify mode and the bench copies (behaviors 1-9, 15): the verify
-     mode, its readiness rules in `setup`, the finding's layout, and the four
-     copied scenarios.
-     Demo: `/hosting-upgrades verify framework`:
-     - lists the report's eleven items with their recommended actions
-     - names linux-omarchy 7.2.15-1 as moved since the report
-     - re-checks E4B QAT's gates, the chat-template check included
-     - changes nothing on the host
+  1. Upgrade and the engine item (behaviors 1-4, and 15's currency
+     part):
+     - spike-model-engines takes huggingface_hub 2.4.0 and logs its
+       three holds
+     - the verify mode gains the engine item
+     Demo:
+     - spike-model-engines' currency reports only held items, and its
+       check passes
+     - `/hosting-upgrades verify gb10-1`:
+       - lists every report item with its decision
+       - names what moved (the apt state, autoremove)
+       - re-checks the three models' gates
+       - prints the 12 cells and the engine rule
+       - changes nothing on the host
      The project check passes.
-  2. The host stack (behaviors 10, 11; the architect's root steps, and the
-     session's no-root steps in the architect's view):
-     - fwupd refresh and get-updates (fwupdmgr's first walk); any offer is
-       an escalation
-     - the sysctl
-     - `omarchy update`
-     - the reboot
-     - a probe
-     - the four closures
-     Demo: the finding's stack section, and the probe showing 7.2.15-1
-     running with llama's port published.
-  3. The model pass (behaviors 12-14; the session, in the architect's view):
-     - anchors A+B before
-     - the eight cells
-     - the transcripts
-     - adopt or roll back
-     - anchors A+B after
-     - on adopt, QAT served and the "where Q8_0 still lives" table
-     - the vLLM, snapshot, and build-cache removals
-     Demo: the finding's model section, with the claim beside the anchors
-     and the verdict.
+  2. The host stack and the set (behaviors 5-11). The architect runs
+     the root steps; the session runs the rest in the architect's view:
+     - the apt read-back
+     - fwupd refresh and get-updates (any offer is an escalation)
+     - the DHCP hostname setting and the routing check
+     - the clone pulled to main
+     - the failed unit read and reset
+     - the seven closures
+     Demo: the finding's stack section; the probe reads the set A
+     section and no failed unit; the routing check passes.
+  3. The engine pass (behaviors 12-14, 15's pin, 16, 17), the session
+     in the architect's view:
+     - six cells on b11669, the move, six cells on the candidate
+     - the verdict, then adopt or roll back
+     - the removals, with the snapshots' dry run first and the
+       architect's root steps
+     - on adopt, the per-class pin and currency-check pull request
+     - the gb10-2 report
+     Demo: the finding's engine section, with the claim beside the
+     TTFT figures and the verdict; the probe showing the removals gone;
+     the gb10-2 report.
   4. Walkthrough (the architect), from the finding:
-     - rerun anchor A and ASR A on the end state
-     - check what the router serves
-     - refresh Pi's model list
+     - the routing check
+     - load set A one model per purpose on the end-state build, waiting
+       for each unload, and read `/models`
+     - rerun anchor A and ASR A
+     - `engines llama update` with no version
+     - spike-model-engines' currency (only held items)
      - review each closure and removal
-     - then remove the Q8_0 files from framework's store with `hf cache rm`,
-       dry run first
+     - read the gb10-2 report
 
-Out of scope  - A fresh report run (the answer task's second report).
-              - gb10-1 and its holds (verify-gb10).
-              - The pool screen, BFCL, and tool reliability (screen).
-              - Mesa or linux-firmware from outside the host's channel.
-              - A firmware update that isn't approved at its escalation.
-              - Any edit to a reference repository: spike-model-engines'
-                preset and guides, spike-harness-driver, personal-agents,
-                spike-model-hosting, spike-ai-pipeline.
-              - Q8_0 on gb10-1 and gb10-2.
-              - Changing the gpt-oss sections.
-              - The future owner of the host scripts (a pending edit).
+Out of scope  - Any change on gb10-2 (spike-ai-pipeline applies the report).
+              - Edits to spike-ai-pipeline's pins or scripts.
+              - framework: it stays on b11960.
+              - E4B QAT on gb10-1 (revisited on Google's revision, or in
+                screen), and deleting its files.
+              - The pool screen and BFCL (screen); a fresh report run
+                (answer).
+              - The engine candidates: `--cache-ram 0`, vLLM, SGLang,
+                TensorRT-LLM; removing vLLM's pins from spike-model-engines.
+              - llama-bench, and embedding cells.
+              - Changing the 4-slot or 16-slot sections.
+              - Dual-stack serving.
+              - Kernel-argument workarounds; a display-memory change.
+              - The host tooling's later repository.
 
 Door          two-way:
-              - The kernel rolls back from the cache or the fallback kernel.
-              - The sysctl rolls back by removing its file.
-              - The audio swap rolls back by a section load. After the Q8_0
-                removal, it rolls back by an 8.1G download.
-              - The vLLM, snapshot, and cache removals roll back by re-pull,
-                re-download, or rebuild.
+              - The build rolls back by the suite's update to b11669 (a
+                pull).
+              - The pin pull request reverts.
+              - The DHCP setting rolls back with `yes`.
+              - The set changes roll back by section loads.
+              - The removals roll back by re-pull, re-download,
+                reinstall, or the native installs with their root steps.
               Only a firmware update approved at its escalation would be
               one-way, and none is planned. Nothing is released.
-```
-
-### Revision 1 · routing, approved 2026-11-02 (escalation in slice 3)
-
-```
-Added         framework stops sending its hostname in DHCP (IPv4 and IPv6) on
-              its LAN connections, so the LAN router stops publishing
-              framework.lan and the bare name `framework` resolves only
-              through MagicDNS (the architect's root step, rollback: the same
-              with `yes`). Before each pass, the verify mode checks that the
-              target name resolves to the tailnet address only and connects
-              in the path's time; a failed check is a pause.
-Changed       The model pass is discarded and runs again once routing is
-              settled, against `http://framework:8080`: anchors before, the
-              eight cells, transcripts, anchors after, verdict. The removals
-              stand. Slice 4's walkthrough follows the new pass.
-Unchanged     Every other behavior, slice, and the door.
-```
-
-### Revision 2 · E4B QAT with reasoning off, approved 2026-11-02 (after run 3)
-
-```
-Added         Run 4 of the model pass: E4B Q8_0 and E4B QAT, every cell sending
-              `reasoning_budget_tokens: 0` (scenario variants `bench/*-budget0.yaml`),
-              after a one-request smoke check, with anchors before and after.
-              Adopt only when the verdict rule holds and no QAT reply reasoned.
-              On adoption, QAT is served with reasoning off for every consumer
-              through one key in spike-model-engines' preset
-              (`reasoning-budget = 0` in the
-              `[google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0]` section), a pull
-              request this task opens and merges with its own; then the swap
-              and Q8_0's retirement as decided. If budget 0 still lets a reply
-              reason or empties a transcript, stop and carry it to screen.
-Changed       This task touches spike-model-engines (branch `verify-framework`),
-              by the architect's decision that experiment.hosting owns it.
-              Slice 4's walkthrough follows run 4.
-Unchanged     Every other behavior, slice, and the door.
 ```
 
 ## Progress
@@ -676,26 +747,26 @@ Unchanged     Every other behavior, slice, and the door.
   connection>`, and the Docs standard extends to LAN identifiers (`STANDARDS.md`, "Docs"). The
   branch history is rewritten before publishing, so no commit holds the name (architect,
   2026-11-02).
+- verify-gb10: gb10-2 is brought in line with gb10-1 by spike-ai-pipeline, from a dated report verify-gb10 writes to that spike's agent with the exact gb10-2 steps; verify-gb10 borrows no gb10-2 time (architect, 2026-11-02).
+- verify-gb10: the three coordinator pending edits (verify-gb10's summary, experiment.hosting owning spike-model-engines' `host/`, dual-stack deferred) land now through the plan pull request; the catalog is the coordinator's root `references.toml` (architect, 2026-11-02).
+- verify-gb10: the verify item is the newest llama.cpp cuda13 server image at session start (b12033 when planned); any build from b12019 on carries #31188, #29948 and #31394 (architect, 2026-11-02).
+- verify-gb10: the engine verdict rule adopts when no cell on the candidate trails the same cell on b11669 by more than 1.4%, all cells are full, ASR B's word differences are within the incumbent's plus 1.4%, and the reasoning check counts no more replies; a gain needn't exceed noise. The verify mode gains this engine item (architect, 2026-11-02).
+- verify-gb10: the engine pass is 12 cells (anchors A and B, vision shape A and B on 26B-A4B QAT, ASR A and B on the audio model), each on both builds under `timeout 10m`; no embedding cells (architect, 2026-11-02).
+- verify-gb10: the prefill claims sit beside the cells' TTFT medians; no llama-bench cell (architect, 2026-11-02).
+- verify-gb10: on adopt, spike-model-engines pins llama.cpp per host class (gb10 at the adopted build, strix-halo at b11960) through a pull request citing the finding, which also makes its currency check report a class only when its pin is behind; framework stays on b11960 (architect, 2026-11-02).
+- verify-gb10: gb10-1's audio model becomes E4B Q8_0, following framework's finding; E4B QAT's files stay until Google publishes a fix (architect, 2026-11-02).
+- verify-gb10: gb10-1's agent purpose is served by set A's section once its spike-model-engines clone is pulled to main; the 8,192-token sections close as measurement sections (architect, 2026-11-02).
+- verify-gb10: kernel 7.0.0-1024 stays and its hold closes; 1019 stays installed; an unexpected boot at session start is an escalation (architect, 2026-11-02).
+- verify-gb10: five items close with no action: display memory, driver 580.196.07, the boot-order remedy, the preset's extra sections, and Docker 29.9.2, each for its reason in the brief (architect, 2026-11-02).
+- verify-gb10: the six unused snapshots (~146G) are removed with `hf cache rm`, dry run first, keeping ibm-granite's safetensors and ggml-org's E4B Q8_0; rollback is `hf download` (architect, 2026-11-02).
+- verify-gb10: hello-world:latest is removed by the session, and the 6.17.0-1008 kernel image and modules by the architect (root, apt); autoremove already took three 6.17.0-1008 packages on 2026-11-02 (architect, 2026-11-02).
+- verify-gb10: the session reads update-notifier-crash's cause without root, then runs `systemctl --user reset-failed`; a crash in the kernel, driver or engine is an escalation (architect, 2026-11-02).
+- verify-gb10: spike-model-engines joins the goal's repos with a `[workspace.paths]` entry, and verify-gb10 branches there; experiment.hosting owns its `host/` until the intake (Decisions :642) (architect, 2026-11-02).
+- verify-gb10: held python at 3.14.10 in spike-model-engines' bench environment: torchcodec 0.17.0 has no cp315 wheel (architect, 2026-11-02).
+- verify-gb10: held vLLM at v0.32.0: v0.33.0rc3 is a release candidate, and vLLM is being removed from both hosts (architect, 2026-11-02).
+- verify-gb10: held native vLLM's Python at 3.12: native vLLM is retired on both hosts (architect, 2026-11-02).
+- verify-gb10: spike-model-engines' upgrade work folds into slice 1, keeping four slices (architect, 2026-11-02).
 
 ## Pending edits
 
-- coordinator · `context/references.toml` and `context/ai-hosting.md`, "Experiment:
-  experiment.hosting": experiment.hosting owns spike-model-engines until its intake. Its spikes
-  may change the repository's `host/` (scripts and presets) through pull requests, each citing
-  the finding behind it, so the host tooling stays in step with the findings; every other
-  reference stays read-only. After the intake, the de facto management repository for the
-  workstations is established in `~/architecture`, from spike-model-engines' `host/` as it then
-  stands. The lean for its shape: one repository that adapts to its host through an explicit
-  host-class profile (strix-halo, gb10), checked against what the host detects, with the
-  per-platform parts kept to those profiles (dotfiles' `platforms/<class>/` pattern). This
-  answers the architect's question of 2026-11-02 on the scripts' owner (architect, 2026-11-02).
-- coordinator · `context/roadmap.toml`, verify-gb10's summary: after gb10-1's verification,
-  gb10-2 is brought in line with gb10-1 (the same host settings, the DHCP hostname, any adopted
-  model), and the findings are relayed to spike-ai-pipeline, whose host gb10-2 is; who changes
-  gb10-2 (verify-gb10 itself, or spike-ai-pipeline from verify-gb10's steps) is for the `plan`
-  session that stages verify-gb10 (architect, 2026-11-02).
-- coordinator · `context/ai-hosting.md`, beside the ownership entry above: dual-stack serving
-  (the router published on tailnet IPv4 and IPv6, `net.ipv6.ip_nonlocal_bind = 1` beside the
-  IPv4 key, on framework and the GB10s), to take up once MagicDNS serves AAAA records for
-  dual-stack nodes (tailscale#1152, open); until then the hosts keep their bare names
-  tailnet-only by sending no hostname in DHCP (architect, 2026-11-02).
+(none)
