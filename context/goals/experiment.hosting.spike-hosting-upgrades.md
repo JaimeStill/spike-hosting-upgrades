@@ -1,14 +1,14 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
-- **Task:** verify-gb10
-- **Branch:** verify-gb10 (spike-hosting-upgrades, spike-model-engines)
+- **State:** idle
+- **Task:** none
+- **Branch:** none
 
 ## Tasks
 
 1. [x] skill
 2. [x] verify-framework
-3. [ ] verify-gb10
+3. [x] verify-gb10
 4. [ ] screen
 5. [ ] answer
 
@@ -282,100 +282,6 @@ Door          two-way:
 ```
 
 ## Progress
-
-- **Position (2026-11-03):** slices 1-3 are committed in both repositories, and the standards,
-  round, and spec reviews are done. Left: slice 4, the walkthrough, which the architect runs from
-  the finding; then BRIEF. The verify-gb10 branch of spike-model-engines is pushed to gb10-1's
-  clone and checked out (now ad754b7, the branch head after the editor pass, by a temporary branch and a fast-forward; it resolves gb10 to b12063; preset unchanged). The editor pass is committed: 3d4447e here, ad754b7 in spike-model-engines. Slice 4, the walkthrough, ran (the architect, 2026-11-03, DERP(nyc)): routing check 0 failed (latency overruled); the set loaded on b12063; anchor A 48.127 tok/s (pass 2 48.136, -0.02%); ASR A 8.826 audio s/s (pass 2 6.751, +30.7%), a finding: the audio cells' spread far exceeds the engine rule's 1.4%, a question for `answer`; `engines llama update` with no version: already runs b12063; currency only held items. Recorded in the finding (13b67ff). Session brief at .claude/briefs/experiment.hosting.spike-hosting-upgrades.md.
-- **Slice 1**, committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds'
-  reasons in their pin comments, currency.sh, and context/README.md); spike-hosting-upgrades
-  aadf6ce (the verify mode's engine item, SKILL.md steps 1-3 and 5-9) and 5c32f8d (the routing
-  check reads `cut` and `$NF`, since Claude Code replaces numbered awk fields with the skill's
-  arguments at load; the verify mode's three readiness rules). Both checks pass; the engines
-  currency reports only the three held pins. Demo shown (2026-11-02): 14 items with their
-  decisions, what moved, the three models' gates all passing (templates byte-identical to their
-  publishers'), the 12 cells and the engine rule; nothing changed on the host.
-- **Slice 2** (2026-11-03), committed bd1e793 and fd060d4: gb10-1's finding,
-  `docs/findings/verify-gb10-1.md`, through "Host stack" and the engine pass's "Gates" (all three
-  models pass; templates byte-identical).
-  - update-notifier-crash: whoopsie is absent, so the helper's `set -e` exits 1 at `which
-    whoopsie` whenever /var/crash changes; no kernel, driver, or engine crash since 2026-10-19.
-    The session reset it.
-  - The clone fast-forwarded to a89afc5 (set A's section in the preset).
-  - The architect upgraded tailscale to 1.104.5, set `Wired connection 1` (the only DHCP
-    connection; the ConnectX-7 netplan connections are manual) to send no hostname and brought it
-    up (07:18:42), and cleared gb10-1 from the router's odhcpd and dnsmasq leases. The routing
-    check passes (no gb10-1.lan record, bare name tailnet, 50/0/0, max 5.9 ms); the probe reads
-    no failed unit.
-  - The session restarted the llama container on b11669 so the router lists set A's section
-    (agreed at the escalation).
-  - The architect upgraded nvidia-spark-initcall-bl to 1.0-2 (it adds `power_wrap_init` to
-    `initcall_blacklist`), ran update-grub, and rebooted (boot 2026-11-03 07:25:38). The probe
-    reads kernel 7.0.0-1024, both blacklisted initcalls, no failed unit, llama b11669 healthy and
-    published, 0 pending; the routing check passes again (max 6.6 ms).
-  - b12063's server-cuda13 image is published on ghcr.io.
-- **Slice 3, pass 1** (2026-11-03, a record only): boot 07:25:38, kernel 7.0.0-1024,
-  b11669-620d2225c, direct path; results in .state/verify/gb10-1/pass1/. Anchor A (set A
-  section) 8/8, 48.94 tok/s, TTFT median 414 ms, ITL 18.8 ms; anchor B 32/32, 80.78 tok/s, TTFT
-  1,837 ms, ITL 43.8 ms (12:33Z). Against 2026-10-26's readings (A 50.0, B 80.9, b11669, on the
-  32,768-token 4-slot section): A -2.1% (beyond 1.4%, a finding; the section, the boot, and the
-  initcall blacklist differ), B -0.15%. The architect paused after the anchors.
-- **Slice 3, pass 2** (2026-11-03, 17:35Z-17:58Z, boot 07:25:38, kernel 7.0.0-1024): from the
-  office, this machine reaches gb10-1 only through DERP(iad), 51-65 ms, so the routing check
-  failed its latency condition (50 connects, 0 failed, 50 over 50 ms, max 248 ms). The architect
-  overruled it, and the pass restarted from the anchors with all 12 cells over the relayed path.
-  Helpers at .state/verify/gb10-1/pass.sh. Every cell full. b11669-620d2225c / b12063-2cbca389f,
-  figure (TTFT median ms):
-  - anchor A 48.74 (499) / 48.14 (495), -1.2%; anchor B 80.84 (1,858) / 79.33 (1,847), -1.9%
-  - shape A 65.25 (384) / 68.06 (373), +4.3%; shape B 140.08 (1,028) / 140.47 (995), +0.3%
-  - ASR A 7.016 (970) / 6.751 (1,021) audio s/s, -3.8%; ASR B 16.103 (964) / 14.321 (1,188),
-    -11.1%
-  - ASR B word differences 46 / 45 of 568 reference words (limit 46 + 7.95); reasoning check 0/0
-    channel and text on both builds' ASR cells.
-
-  The engine rule: condition 1 fails (anchor B, ASR A, ASR B beyond 1.4% behind), conditions 2-4
-  hold, so roll back. The architect overruled it and adopted b12063. The move ran 17:42:37Z, exit
-  0, and removed b11669's server and full images; gb10-1 serves b12063. Research on the
-  regression: no issue since b11669 reports slower audio, gpt-oss, or CUDA; ASR B's loss is TTFT
-  (964 to 1,188 ms) with ITL unchanged, anchor B's is ITL (+1.8%), both only under 4 streams;
-  #30804 and #29510 are candidates by inference, not attributed. Proposed: a descriptor watch
-  item for audio TTFT under concurrency from b12063. The set is loaded on b12063 one model per
-  purpose (MemAvailable 22.0 GiB after).
-- **Slice 3, removals and updates** (2026-11-03), each read back gone by the probe:
-  - The session ran `host/engines vllm uninstall` (container vllm, image
-    vllm/vllm-openai:v0.32.0, compile cache ~/.cache/vllm), `host/engines llama-native
-    uninstall` (/opt/llama.cpp current, preset, b11669), `host/engines vllm-native uninstall`
-    (/opt/vllm current, v0.32.0, row, python, cache), and `docker rmi hello-world:latest`; each
-    exit 0.
-  - Snapshots: every repository in /srv/models links into the shared /srv/models/blobs (190G), so
-    `hf cache rm` frees almost nothing (its per-repo dry run: 154.6G). The session's dry run by
-    the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md found 27 blob
-    files, 143.9 GiB, none shared with the 8 kept repos; the architect ran the removal (root fs
-    309G to 165G).
-  - The architect ran both units' root steps (unit files, /opt dirs, sudoers; the sudoers read
-    back absent) and the 6.17.0-1008 purge.
-  - The architect applied the 20 security updates (20 upgraded; needrestart restarted tailscaled
-    among 22 services; reboot-required names only gnome-shell, closed as not needed).
-    update-notifier-crash recurred at 07:30:45 after the reboot (same cause) and was reset again.
-- **Slice 3 commits:** spike-model-engines 204105b (llama.cpp pinned per host class, gb10 b12063,
-  strix-halo b11960; `llama_flavor` sets the class; currency reports a class only when behind the
-  newest release, read live, v0.8.0 = b11960 today) and 3293312 (setup step 3 at b12063, its
-  `--version` read from gb10-1's container); spike-hosting-upgrades 3294310 (the finding's engine
-  pass, verdict with the overrule, removals, Decisions) and 7b2505a (the gb10-2 report, then at
-  docs/reports/gb10-2/2026-11-03.md). uv 0.13.7 taken: 73e45ee here, 9496a18 in
-  spike-model-engines; both currencies report only held items.
-- **Reviews:**
-  - Standards: 2ae5f0b here, a92d962 in spike-model-engines (update.md's API build string at
-    b12063, `b12063-2cbca389f`, as `/props` build_info read on gb10-1, 2026-11-03 17:43Z); the
-    commands as run filled in by 059358a.
-  - Round settled (Decisions); 36af665 moves the gb10-2 report to
-    docs/findings/gb10-2-upgrade.md and names the verify mode's finding in STANDARDS.md.
-  - Spec (2026-11-03): seven gaps, closed by cd7af79 (the gb10-2 report's pin step as
-    spike-ai-pipeline copies host/ and runs `mise run host-update`, port 8080, and its
-    LLAMA_BUILD/LLAMA_IMAGE incompatibility named as that spike's work; the literal commands),
-    43a2be6 (the snapshot method's decision), and d427e91 (the CDI command, the architect's:
-    `nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml`). The stale GB10 b11960 quotes in
-    spike-model-engines' setup.md and models.md went to the editor pass.
 
 ## Decisions
 
