@@ -845,8 +845,14 @@ Each by the decision in its row ("Decisions"), in the order run, 2026-11-03.
 
    "No such file or directory" for the two unit files, the two directories, and the 6.17.0-1008
    module tree; `/dev/nvme0n1p3 3.6T 165G 3.3T 5% /`; `113G /srv/models`. The probe lists no
-   unit. Rollback: the suite's `llama-native install` and `vllm-native install`, plus the
-   guides' root setup steps.
+   unit. The sudoers rules, read back by the session later the same day, as run:
+
+   ```sh
+   ssh gb10-1 'ls -l /etc/sudoers.d/ 2>&1 | grep -E "llama-router|vllm-server" || echo "no llama-router or vllm-server sudoers file"'
+   ```
+
+   `no llama-router or vllm-server sudoers file`. Rollback: the suite's `llama-native install`
+   and `vllm-native install`, plus the guides' root setup steps.
 3. **The six unused snapshots**: the dry run by the session, shown to the architect; the removal
    by the architect on the host. The dry runs, run by the session from this machine over ssh, with
    a first read of the store's layout, as run:

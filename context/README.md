@@ -81,10 +81,17 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 - **The verify mode:** `/hosting-upgrades verify <host>`, which takes a host's last report to a
   decision on each verify, take, and hold item, re-checks the verify item's gates, prints the
   commands, rollbacks, and cells, and writes the host's verification finding. Like a run, it
-  changes nothing on the host itself.
-- **The verification findings:** `docs/findings/verify-<host>.md`, one per host, with each item's
-  decision and outcome, the anchors before and after, and the verdict; framework's is
-  `docs/findings/verify-framework.md`.
+  changes nothing on the host itself. The verify item is a model or an engine build. An engine
+  item measures the host's set on the incumbent build, moves the host to the candidate through
+  the `engines` suite, and measures the same cells again, all on one kernel. The engine rule (the
+  verify mode's step 8) then gives adopt or roll back, and the finding records any overrule by
+  the architect beside what the rule gave.
+- **The verification findings:** `docs/findings/verify-<host>.md` (named in `STANDARDS.md`), one
+  per host, with each item's decision and outcome, the cells on both sides of the change, and the
+  verdict: framework's is `docs/findings/verify-framework.md` and gb10-1's is
+  `docs/findings/verify-gb10-1.md`.
+- **The gb10-2 alignment report:** `docs/findings/gb10-2-upgrade.md`, the steps that bring gb10-2
+  in line with gb10-1, each with who runs it and its rollback, for spike-ai-pipeline to apply.
 - **The screened pool:** the pool's candidates, kept or dropped per host class.
 - **The convention:** the method and its cadence.
 

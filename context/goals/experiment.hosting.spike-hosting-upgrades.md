@@ -283,13 +283,99 @@ Door          two-way:
 
 ## Progress
 
-- slice 1 committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds' reasons in their pin comments, currency.sh and context/README.md), spike-hosting-upgrades aadf6ce (the verify mode's engine item: steps 1-3 and 5-9 of SKILL.md). Both checks pass; engines currency reports only the three held pins. Gap closed in 5c32f8d: the routing check's awk read numbered fields, which Claude Code replaces with the skill's arguments at load; it now reads `cut` and `$NF`; the three verify-mode readiness rules committed.
-- slice 1 demo shown (2026-11-02): 14 items with their decisions, what moved, the three models' gates all passing (templates byte-identical to their publishers'), the 12 cells and the engine rule; nothing changed on the host. Slice 2 next.
-- slice 2 in progress (2026-11-03): update-notifier-crash read (whoopsie absent, so the helper's `set -e` exits 1 at `which whoopsie` whenever /var/crash changes; no kernel, driver, or engine crash since 2026-10-19) and reset by the session; the clone fast-forwarded to a89afc5 (set A's section in the preset); the architect upgraded tailscale to 1.104.5, set `Wired connection 1` (the only DHCP connection; the ConnectX-7 netplan connections are manual) to send no hostname and brought it up (07:18:42), and cleared gb10-1 from the router's odhcpd and dnsmasq leases; the routing check passes (no gb10-1.lan record, bare name tailnet, 50/0/0, max 5.9 ms); the probe reads no failed unit. The session restarted the llama container on b11669 so the router lists set A's section (agreed at the escalation). The architect upgraded nvidia-spark-initcall-bl to 1.0-2 (it adds `power_wrap_init` to `initcall_blacklist`), ran update-grub, and rebooted (boot 2026-11-03 07:25:38); the probe reads kernel 7.0.0-1024, both blacklisted initcalls, no failed unit, llama b11669 healthy and published, 0 pending; the routing check passes again (max 6.6 ms). Slice 2 committed: bd1e793 and fd060d4, gb10-1's finding `docs/findings/verify-gb10-1.md` through Host stack and the engine pass's Gates (all three models pass; templates byte-identical). b12063's server-cuda13 image is published on ghcr.io. Slice 3 next: the engine pass b11669 to b12063, anchors on the set A section.
-- slice 3 in progress (2026-11-03): pass 1 on boot 2026-11-03 07:25:38, kernel 7.0.0-1024, b11669-620d2225c; results in .state/verify/gb10-1/pass1/; helpers in the session's scratchpad pass.sh (agent/vision/audio functions, fresh load each). Done: b11669 anchor A (set A section) 8/8, 48.94 tok/s, TTFT median 414 ms, ITL 18.8 ms; anchor B 32/32, 80.78 tok/s, TTFT 1,837 ms, ITL 43.8 ms (12:33Z). Against 2026-10-26's readings (A 50.0, B 80.9, b11669, on the 32,768-token 4-slot section): A -2.1% (beyond 1.4%, a finding; the section, the boot, and the initcall blacklist differ), B -0.15%. Paused by the architect after the anchors; set A left loaded. Next: vision (shape A, B) and audio (ASR A, B) on b11669, then the move to b12063 and its six cells. A reboot before the pass ends restarts it.
-- slice 3, pass 2 (2026-11-03): from the office, this machine reaches gb10-1 only through DERP(iad), 51-65 ms, no direct connection; the routing check failed its latency condition (50 connects, 0 failed, 50 over 50 ms, max 248 ms). The architect overruled it: pass 2 restarts from the anchors, all 12 cells over the relayed path, recorded; pass 1's two direct-path anchors stand as a record only. Helpers now at .state/verify/gb10-1/pass.sh (the scratchpad was cleared).
-- slice 3, pass 2 complete (2026-11-03, 17:35Z-17:58Z, boot 07:25:38, kernel 7.0.0-1024, DERP(iad)): every cell full. b11669-620d2225c / b12063-2cbca389f, figure (TTFT median ms): anchor A 48.74 (499) / 48.14 (495), -1.2%; anchor B 80.84 (1,858) / 79.33 (1,847), -1.9%; shape A 65.25 (384) / 68.06 (373), +4.3%; shape B 140.08 (1,028) / 140.47 (995), +0.3%; ASR A 7.016 (970) / 6.751 (1,021) audio s/s, -3.8%; ASR B 16.103 (964) / 14.321 (1,188), -11.1%. ASR B word differences 46 / 45 of 568 reference words (limit 46 + 7.95). Reasoning check 0/0 channel and text on both builds' ASR cells. The engine rule: condition 1 fails (anchor B, ASR A, ASR B beyond 1.4% behind); conditions 2-4 hold; so roll back. The architect overruled it: adopt b12063. The move ran 17:42:37Z, exit 0, and removed b11669's server and full images; gb10-1 serves b12063. Research on the regression: no issue since b11669 reports slower audio, gpt-oss, or CUDA; ASR B's loss is TTFT (964 to 1,188 ms) with ITL unchanged, anchor B's is ITL (+1.8%), both only under 4 streams; candidates by inference #30804 and #29510, not attributed. Proposed: a descriptor watch item for audio TTFT under concurrency from b12063. Set loaded on b12063 one model per purpose (MemAvailable 22.0 GiB after). Removals by the session: `host/engines vllm uninstall` (container vllm, image vllm/vllm-openai:v0.32.0, compile cache ~/.cache/vllm), `host/engines llama-native uninstall` (/opt/llama.cpp current, preset, b11669), `host/engines vllm-native uninstall` (/opt/vllm current, v0.32.0, row, python, cache), `docker rmi hello-world:latest`; each exit 0. Snapshots: every repository in /srv/models links into the shared /srv/models/blobs (190G), so `hf cache rm` frees almost nothing; the dry run (`hf cache rm --dry-run` per repo: 154.6G; the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md: 27 blob files, 143.9 GiB, 0 shared with the 8 kept repos) awaits the architect. Open: the snapshot removal, the architect's root steps (both units' files, /opt dirs, sudoers; the 6.17.0-1008 packages), the per-class pin PR, the gb10-2 report, the finding's engine sections.
-- slice 3 (2026-11-03): the architect ran the six snapshots' removal (27 blobs, 143.9 GiB; root fs 309G to 165G), both units' root steps, and the 6.17.0-1008 purge; the probe reads each gone. The architect applied the 20 security updates (20 upgraded; needrestart restarted tailscaled among 22 services; reboot-required names only gnome-shell, closed as not needed). update-notifier-crash recurred at 07:30:45 after the reboot (same cause) and was reset again. Slice 3 committed: spike-model-engines 204105b (llama.cpp pinned per host class, gb10 b12063, strix-halo b11960; `llama_flavor` sets the class; currency reports a class only when behind the newest release, read live, v0.8.0 = b11960 today) and 3293312 (setup step 3 at b12063, its `--version` read from gb10-1's container); spike-hosting-upgrades 3294310 (the finding's engine pass, verdict with the overrule, removals, Decisions) and 7b2505a (the gb10-2 report, docs/reports/gb10-2/2026-11-03.md). uv 0.13.7 taken: 73e45ee here, 9496a18 in spike-model-engines; both currencies report only held items. Standards reviews committed: 2ae5f0b here, a92d962 in spike-model-engines; the commands as run filled in, 059358a. Round settled (Decisions); 36af665 moves the gb10-2 report to docs/findings/gb10-2-upgrade.md and names the verify mode's finding in STANDARDS.md. Spec review (2026-11-03): seven gaps; closed by cd7af79 (the gb10-2 report's pin step as spike-ai-pipeline copies host/ and runs `mise run host-update`, port 8080, and its LLAMA_BUILD/LLAMA_IMAGE incompatibility named as that spike's work; the literal commands), 43a2be6 (the snapshot method's decision), and the CDI command (the architect's: `nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml`); the stale GB10 b11960 quote in spike-model-engines' setup.md goes to the editor. The verify-gb10 branch is pushed to gb10-1's clone and checked out (a92d962; resolves gb10 b12063; preset unchanged). Open: the spec review's second round, the editor, the walkthrough and the editor; then the walkthrough. For the editor: update.md's API build string at b12063 reads `b12063-2cbca389f` (`/props` build_info, gb10-1, 2026-11-03 17:43Z).
+- **Position (2026-11-03):** slices 1-3 are committed in both repositories, and the standards,
+  round, and spec reviews are done. Left: slice 4, the walkthrough, which the architect runs from
+  the finding; then BRIEF. The verify-gb10 branch of spike-model-engines is pushed to gb10-1's
+  clone and checked out (a92d962; it resolves gb10 to b12063; preset unchanged).
+- **Slice 1**, committed: spike-model-engines 34ac38c (huggingface_hub 2.4.0; the three holds'
+  reasons in their pin comments, currency.sh, and context/README.md); spike-hosting-upgrades
+  aadf6ce (the verify mode's engine item, SKILL.md steps 1-3 and 5-9) and 5c32f8d (the routing
+  check reads `cut` and `$NF`, since Claude Code replaces numbered awk fields with the skill's
+  arguments at load; the verify mode's three readiness rules). Both checks pass; the engines
+  currency reports only the three held pins. Demo shown (2026-11-02): 14 items with their
+  decisions, what moved, the three models' gates all passing (templates byte-identical to their
+  publishers'), the 12 cells and the engine rule; nothing changed on the host.
+- **Slice 2** (2026-11-03), committed bd1e793 and fd060d4: gb10-1's finding,
+  `docs/findings/verify-gb10-1.md`, through "Host stack" and the engine pass's "Gates" (all three
+  models pass; templates byte-identical).
+  - update-notifier-crash: whoopsie is absent, so the helper's `set -e` exits 1 at `which
+    whoopsie` whenever /var/crash changes; no kernel, driver, or engine crash since 2026-10-19.
+    The session reset it.
+  - The clone fast-forwarded to a89afc5 (set A's section in the preset).
+  - The architect upgraded tailscale to 1.104.5, set `Wired connection 1` (the only DHCP
+    connection; the ConnectX-7 netplan connections are manual) to send no hostname and brought it
+    up (07:18:42), and cleared gb10-1 from the router's odhcpd and dnsmasq leases. The routing
+    check passes (no gb10-1.lan record, bare name tailnet, 50/0/0, max 5.9 ms); the probe reads
+    no failed unit.
+  - The session restarted the llama container on b11669 so the router lists set A's section
+    (agreed at the escalation).
+  - The architect upgraded nvidia-spark-initcall-bl to 1.0-2 (it adds `power_wrap_init` to
+    `initcall_blacklist`), ran update-grub, and rebooted (boot 2026-11-03 07:25:38). The probe
+    reads kernel 7.0.0-1024, both blacklisted initcalls, no failed unit, llama b11669 healthy and
+    published, 0 pending; the routing check passes again (max 6.6 ms).
+  - b12063's server-cuda13 image is published on ghcr.io.
+- **Slice 3, pass 1** (2026-11-03, a record only): boot 07:25:38, kernel 7.0.0-1024,
+  b11669-620d2225c, direct path; results in .state/verify/gb10-1/pass1/. Anchor A (set A
+  section) 8/8, 48.94 tok/s, TTFT median 414 ms, ITL 18.8 ms; anchor B 32/32, 80.78 tok/s, TTFT
+  1,837 ms, ITL 43.8 ms (12:33Z). Against 2026-10-26's readings (A 50.0, B 80.9, b11669, on the
+  32,768-token 4-slot section): A -2.1% (beyond 1.4%, a finding; the section, the boot, and the
+  initcall blacklist differ), B -0.15%. The architect paused after the anchors.
+- **Slice 3, pass 2** (2026-11-03, 17:35Z-17:58Z, boot 07:25:38, kernel 7.0.0-1024): from the
+  office, this machine reaches gb10-1 only through DERP(iad), 51-65 ms, so the routing check
+  failed its latency condition (50 connects, 0 failed, 50 over 50 ms, max 248 ms). The architect
+  overruled it, and the pass restarted from the anchors with all 12 cells over the relayed path.
+  Helpers at .state/verify/gb10-1/pass.sh. Every cell full. b11669-620d2225c / b12063-2cbca389f,
+  figure (TTFT median ms):
+  - anchor A 48.74 (499) / 48.14 (495), -1.2%; anchor B 80.84 (1,858) / 79.33 (1,847), -1.9%
+  - shape A 65.25 (384) / 68.06 (373), +4.3%; shape B 140.08 (1,028) / 140.47 (995), +0.3%
+  - ASR A 7.016 (970) / 6.751 (1,021) audio s/s, -3.8%; ASR B 16.103 (964) / 14.321 (1,188),
+    -11.1%
+  - ASR B word differences 46 / 45 of 568 reference words (limit 46 + 7.95); reasoning check 0/0
+    channel and text on both builds' ASR cells.
+
+  The engine rule: condition 1 fails (anchor B, ASR A, ASR B beyond 1.4% behind), conditions 2-4
+  hold, so roll back. The architect overruled it and adopted b12063. The move ran 17:42:37Z, exit
+  0, and removed b11669's server and full images; gb10-1 serves b12063. Research on the
+  regression: no issue since b11669 reports slower audio, gpt-oss, or CUDA; ASR B's loss is TTFT
+  (964 to 1,188 ms) with ITL unchanged, anchor B's is ITL (+1.8%), both only under 4 streams;
+  #30804 and #29510 are candidates by inference, not attributed. Proposed: a descriptor watch
+  item for audio TTFT under concurrency from b12063. The set is loaded on b12063 one model per
+  purpose (MemAvailable 22.0 GiB after).
+- **Slice 3, removals and updates** (2026-11-03), each read back gone by the probe:
+  - The session ran `host/engines vllm uninstall` (container vllm, image
+    vllm/vllm-openai:v0.32.0, compile cache ~/.cache/vllm), `host/engines llama-native
+    uninstall` (/opt/llama.cpp current, preset, b11669), `host/engines vllm-native uninstall`
+    (/opt/vllm current, v0.32.0, row, python, cache), and `docker rmi hello-world:latest`; each
+    exit 0.
+  - Snapshots: every repository in /srv/models links into the shared /srv/models/blobs (190G), so
+    `hf cache rm` frees almost nothing (its per-repo dry run: 154.6G). The session's dry run by
+    the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md found 27 blob
+    files, 143.9 GiB, none shared with the 8 kept repos; the architect ran the removal (root fs
+    309G to 165G).
+  - The architect ran both units' root steps (unit files, /opt dirs, sudoers; the sudoers read
+    back absent) and the 6.17.0-1008 purge.
+  - The architect applied the 20 security updates (20 upgraded; needrestart restarted tailscaled
+    among 22 services; reboot-required names only gnome-shell, closed as not needed).
+    update-notifier-crash recurred at 07:30:45 after the reboot (same cause) and was reset again.
+- **Slice 3 commits:** spike-model-engines 204105b (llama.cpp pinned per host class, gb10 b12063,
+  strix-halo b11960; `llama_flavor` sets the class; currency reports a class only when behind the
+  newest release, read live, v0.8.0 = b11960 today) and 3293312 (setup step 3 at b12063, its
+  `--version` read from gb10-1's container); spike-hosting-upgrades 3294310 (the finding's engine
+  pass, verdict with the overrule, removals, Decisions) and 7b2505a (the gb10-2 report, then at
+  docs/reports/gb10-2/2026-11-03.md). uv 0.13.7 taken: 73e45ee here, 9496a18 in
+  spike-model-engines; both currencies report only held items.
+- **Reviews:**
+  - Standards: 2ae5f0b here, a92d962 in spike-model-engines (update.md's API build string at
+    b12063, `b12063-2cbca389f`, as `/props` build_info read on gb10-1, 2026-11-03 17:43Z); the
+    commands as run filled in by 059358a.
+  - Round settled (Decisions); 36af665 moves the gb10-2 report to
+    docs/findings/gb10-2-upgrade.md and names the verify mode's finding in STANDARDS.md.
+  - Spec (2026-11-03): seven gaps, closed by cd7af79 (the gb10-2 report's pin step as
+    spike-ai-pipeline copies host/ and runs `mise run host-update`, port 8080, and its
+    LLAMA_BUILD/LLAMA_IMAGE incompatibility named as that spike's work; the literal commands),
+    43a2be6 (the snapshot method's decision), and d427e91 (the CDI command, the architect's:
+    `nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml`). The stale GB10 b11960 quotes in
+    spike-model-engines' setup.md and models.md went to the editor pass.
 
 ## Decisions
 
@@ -769,7 +855,7 @@ Door          two-way:
 - verify-gb10: the six unused snapshots (~146G) are removed with `hf cache rm`, dry run first, keeping ibm-granite's safetensors and ggml-org's E4B Q8_0; rollback is `hf download` (architect, 2026-11-02).
 - verify-gb10: hello-world:latest is removed by the session, and the 6.17.0-1008 kernel image and modules by the architect (root, apt); autoremove already took three 6.17.0-1008 packages on 2026-11-02 (architect, 2026-11-02).
 - verify-gb10: the session reads update-notifier-crash's cause without root, then runs `systemctl --user reset-failed`; a crash in the kernel, driver or engine is an escalation (architect, 2026-11-02).
-- verify-gb10: spike-model-engines joins the goal's repos with a `[workspace.paths]` entry, and verify-gb10 branches there; experiment.hosting owns its `host/` until the intake (Decisions :642) (architect, 2026-11-02).
+- verify-gb10: spike-model-engines joins the goal's repos with a `[workspace.paths]` entry, and verify-gb10 branches there; experiment.hosting owns its `host/` until the intake (verify-framework's decision) (architect, 2026-11-02).
 - verify-gb10: held python at 3.14.10 in spike-model-engines' bench environment: torchcodec 0.17.0 has no cp315 wheel (architect, 2026-11-02).
 - verify-gb10: held vLLM at v0.32.0: v0.33.0rc3 is a release candidate, and vLLM is being removed from both hosts (architect, 2026-11-02).
 - verify-gb10: held native vLLM's Python at 3.12: native vLLM is retired on both hosts (architect, 2026-11-02).
@@ -787,7 +873,7 @@ Door          two-way:
 - verify-gb10: spike-model-engines' currency keeps comparing each class's llama.cpp pin with the build the newest semver release names (v0.8.0 = b11960 today), so gb10 at b12063 reads current until a semver release passes it; the skill's runs find newer builds per host; whether currency should compare with the newest build goes to the intake; rejected changing it in this task (architect, 2026-11-03).
 - verify-gb10: gb10-1's finding keeps the verify mode's name, `docs/findings/verify-gb10-1.md`, and STANDARDS.md names it beside `<task>.md`; rejected renaming it to verify-gb10.md (architect, 2026-11-03).
 - verify-gb10: the gb10-2 alignment report lives at `docs/findings/gb10-2-upgrade.md`, not under `docs/reports/gb10-2/`, which holds the skill's runs (architect, 2026-11-03).
-- verify-gb10: the six snapshots are removed by the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md, not `hf cache rm`, since every repository in /srv/models links into the shared /srv/models/blobs and `hf cache rm` would free almost nothing; the session's dry run (27 files, 143.9 GiB, none shared with the 8 kept) was shown, and the architect ran the removal on the host (architect, 2026-11-03).
+- verify-gb10: the six snapshots are removed by the exclusive-blob method of spike-model-engines' docs/engines/vllm/uninstall.md, not `hf cache rm` (superseding the method of the 2026-11-02 decision above), since every repository in /srv/models links into the shared /srv/models/blobs and `hf cache rm` would free almost nothing; the session's dry run (27 files, 143.9 GiB, none shared with the 8 kept) was shown, and the architect ran the removal on the host (architect, 2026-11-03).
 - verify-gb10: for the walkthrough, the session pushes spike-model-engines' verify-gb10 branch straight to gb10-1's clone over ssh (no GitHub push) and checks it out there, so `engines llama update` with no version reads the per-class pin; the clone returns to main and pulls once the pull request merges; rejected running the update only after the merge (architect, 2026-11-03).
 - verify-gb10: the walkthrough runs over the relayed path from the office; the overrule of the routing check's latency condition extends to it, recorded in the finding; rejected waiting for the LAN (architect, 2026-11-03).
 - verify-gb10: the gb10-2 report reaches spike-ai-pipeline by the architect pointing that spike at `docs/findings/gb10-2-upgrade.md`; no coordinator note; rejected a roadmap pending edit (architect, 2026-11-03).
