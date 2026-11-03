@@ -937,7 +937,10 @@ script that changes a host: the commands are the host's own tools (the package m
    sections by reference (a kernel's row and its reboot item, say) is one item. The engine and
    model rows the report ranks verify or hold, other than the one "Verify next" names, are
    candidates rather than the host's items: the mode lists them by name, as left for a later
-   verification or a fresh run, and asks no decision on them.
+   verification or a fresh run, and asks no decision on them. The verify item is of one of two
+   kinds, and the steps below say where they differ: a **model item** (a model in place of its
+   purpose's incumbent) or an **engine item** (a build of the engine the host serves in place of
+   the build it runs, the report's engine verdict).
 5. Read the host's last earlier anchor readings: the findings the descriptor lists under
    "Measurements", and the host's earlier verification finding, if there is one. Step 6 sets the
    first anchors beside them.
@@ -952,8 +955,11 @@ script that changes a host: the commands are the host's own tools (the package m
    section that shows it: an update now on the host's channel that wasn't (`== updates ==`), an
    item that is gone (a container, an image, a snapshot), a unit or a container whose state
    changed, a kernel now running or newly installed, a setting now at another value. An item that
-   hasn't moved says so. The mode doesn't research again: a moved item goes to the architect's
-   decision with its movement beside it, and a change that would alter its verdict is a pause.
+   hasn't moved says so. Ask the architect what they ran on the host since the report (an update,
+   an autoremove, a regenerated spec), and name each step as they report it, beside the probe
+   section that reads it back, or with "not visible to the probe" when none does. The mode doesn't
+   research again: a moved item goes to the architect's decision with its movement beside it, and a
+   change that would alter its verdict is a pause.
 
 For example, on framework against its 2026-10-30-2 report:
 
@@ -977,7 +983,8 @@ section), each with its report verdict, the report's recommendation, and its mov
 
 Record each decision with its date, as the architect's. Applying the verify item is measured:
 its gates are re-checked (step 5), its cells run (step 6), and the verdict (step 8) settles
-whether it stays or rolls back.
+whether it stays or rolls back. An engine item's verdict is the engine rule, and its rollback is
+the suite's update to the earlier build (step 8).
 
 ### 4. What each decision takes
 
@@ -1008,7 +1015,9 @@ item's pass (step 6), then the removals, each read back by the probe.
 ### 5. Re-check the verify item's gates
 
 Before the verify item is measured, re-check its gates under the policy as it reads today, as a
-run's step 7 gates a model, by [models.md](models.md):
+run's step 7 gates a model, by [models.md](models.md). For an engine item, the gated models are
+every model its pass loads, one per purpose with cells (step 6, "An engine item"), each gated as
+below, since a pass loads each of them under today's policy:
 
 1. **Origin** ("Origin"): the evidence chain, read fresh, with the screening-list script
    (`.claude/skills/hosting-upgrades/scripts/screen.sh "<name>" ...`).
@@ -1027,7 +1036,8 @@ run's step 7 gates a model, by [models.md](models.md):
 
 Each gate cites what it read, with its date, as "Citing" (step 4) says. If a gate fails, stop
 the item's verification and name the gate and what failed it: the item isn't measured, and the
-finding records the gate.
+finding records the gate. For an engine item, a model that fails a gate is a pause: its purpose's
+cells can't run until the architect names another model for it.
 
 ### 6. The cells
 
@@ -1038,7 +1048,8 @@ other, through the engine (a router's `/models/unload` and `/models/load`, read 
 `/models`). Never load a candidate beside its purpose's incumbent. A router holds a cap on loaded
 models (llama.cpp's `--models-max`, 4 by default), and a load that arrives before an unload has
 finished takes it over the cap, so the router evicts its least recently used model, another
-purpose's, unseen. The cells are:
+purpose's, unseen. For a model item, the cells are the following; an engine item's pass spans two
+builds instead ("An engine item", below):
 
 - **Anchors A and B before the change**, on the anchor section the host's earlier readings used,
   loaded beside the incumbent of the item's purpose, with any section that would compete for the
@@ -1055,8 +1066,8 @@ reports it unloaded, load it, then run its cells, each once. Never rerun a cell 
 GuideLLM's synthetic prompts are the same on every run, so a second run in one load hits the
 router's prompt cache and reads faster than the first.
 
-Every cell of the pass runs on one engine build and one kernel; a pass whose build or kernel
-changes partway starts again. Each run is capped at 10 minutes (`timeout 10m`). Each pass
+Every cell of a model item's pass runs on one engine build and one kernel; a pass whose build or
+kernel changes partway starts again. An engine item's pass runs on one kernel and its two builds. Each run is capped at 10 minutes (`timeout 10m`). Each pass
 records the engine build and the host stack (a probe), and the network path:
 
 ```sh
@@ -1112,7 +1123,8 @@ failed cell, rerun once from a fresh load of its model, and then a pause.
 
 **The reasoning check**, on each of the candidate's cells whose requests don't ask for reasoning
 (the ASR cells; the shape cells ask for it by design, `enable_thinking: true`), and on the
-incumbent's beside them: count the replies that reasoned in the thought channel (a non-empty
+incumbent's beside them (for an engine item, the candidate build's ASR cells and the incumbent
+build's): count the replies that reasoned in the thought channel (a non-empty
 `reasoning_output`), and the replies whose text speaks about the task instead of answering it
 ("The user wants me to ...", "Thinking Process"). Read the replies the second count flags, to
 confirm each:
@@ -1132,7 +1144,69 @@ verify-framework's run 4 it did, on 2 of E4B QAT's 40 replies, and the text coun
 beyond run noise, 1.4%, the widest the workspace has recorded, is a finding: the finding names
 it, with both readings and what changed between them (the engine build, the kernel, the
 firmware), and the comparison within the pass goes on, since only cells of one session are
-compared.
+compared. In an engine item's pass, the first anchors are the incumbent build's.
+
+#### An engine item
+
+An engine item's pass measures the host's set on two builds of the engine, in one pass, in this
+order:
+
+1. **The incumbent build's cells**, on the build the probe shows serving.
+2. **The move to the candidate build**, through spike-model-engines' `engines` suite, run from
+   the host's clone of it, with the candidate's version as its argument (the session's step, no
+   root):
+
+   ```sh
+   ssh <host> 'cd <clone> && host/engines <engine> update <candidate build>; echo "exit $?"'
+   ```
+
+   `<engine>` is the suite's name for how the host runs the engine (`llama` for llama.cpp in a
+   container). The update pulls the candidate's image before it replaces the container, so a
+   failed pull leaves the incumbent serving, and it refuses while another engine serves. The new
+   container starts with no model loaded. Read back the build it runs, by the probe's `==
+   engines ==` and the engine's own report of its build.
+3. **The same cells on the candidate build**, in the same order, each model from a fresh load.
+
+The candidate is the build the item names, or a newer build of the same image, newest at the
+session's start, when the architect takes it in its place; the finding names which, and why.
+
+**The cells.** One pair per purpose the host serves whose load the project's `bench/` has
+scenarios for, on the model that serves the purpose in the host's set (with the host stack's
+decisions applied, step 3), each model gated (step 5):
+
+- agent: anchors A and B (`anchor-a.yaml`, `anchor-b.yaml`), on the agent purpose's section;
+- vision: shape A and B (`shape-a.yaml`, `shape-b.yaml`), on the vision purpose's model;
+- audio: ASR A and B (`audio-a.yaml`, `audio-b.yaml`), on the audio purpose's model;
+- a purpose with no scenario (embedding) has no cells, and the finding says so.
+
+Each model's cells run with only that model loaded, from a fresh load, by the rule above, so the
+two builds' cells differ only by the build. Every cell of the pass runs on one kernel: a kernel
+change partway, or a move to a third build, starts the pass again from the incumbent's cells.
+
+**The figures beside each cell.** Each cell's row gives, for both builds: its request count, its
+figure (output tok/s, or audio seconds a second for an ASR cell) and the change, and its TTFT
+median and the change, with the published claim the report cited for the build set beside the
+TTFT median: the claim that applies to the cell's model (a prefill gain measured on an MoE beside
+an MoE's cells, a dense model's beside a dense model's, a fix beside the family it names). The
+anchors and the vision cells send 512 prompt tokens, so their TTFT median is where a prefill
+claim shows; an ASR cell's prompt is its clip, so the claim beside it is context, not a test.
+Output tok/s goes beside the claim, since a prefill gain claims nothing about decode.
+
+Print the pass before it runs. For example, on gb10-1 against its 2026-10-31 report:
+
+```text
+Engine pass: llama.cpp b11669 -> b12033 (server-cuda13), kernel 7.0.0-1024, one pass.
+Each cell: GuideLLM 0.8.1 from this machine, http://gb10-1:8080, timeout 10m, fresh load.
+  b11669   1 Anchor A  gpt-oss-120b MXFP4, agent section    1 x 8, 512 / 256
+           2 Anchor B  gpt-oss-120b MXFP4, agent section    4 x 32, 512 / 256
+           3 Vision A  Gemma 4 26B-A4B QAT Q4_0             1 x 8, 512 / 256, thinking on
+           4 Vision B  Gemma 4 26B-A4B QAT Q4_0             4 x 32, 512 / 256, thinking on
+           5 ASR A     Gemma 4 E4B Q8_0                     1 x 8 LibriSpeech clips, <=256 out
+           6 ASR B     Gemma 4 E4B Q8_0                     4 x 32 clips, <=256 out
+  move     ssh gb10-1 'cd <clone> && host/engines llama update b12033; echo "exit $?"'
+  b12033   7-12 the same six cells
+Embedding: no cells (no scenario). Verdict: the engine rule (step 8).
+```
 
 ### 7. Transcripts
 
@@ -1167,11 +1241,12 @@ jq --slurpfile refs .state/verify/<host>/librispeech-refs.json '
 ```
 
 The finding gives each model's total, the reference words, and each pair's count, and quotes any
-pair whose count differs between the two models by more than a word.
+pair whose count differs between the two models by more than a word. For an engine item, the two
+are the audio model's ASR B cell on each build.
 
 ### 8. The verdict
 
-Adopt only when all four hold:
+For a model item, adopt only when all four hold:
 
 - anchors A and B after the change are each within 1.4% of before
 - no candidate cell is behind the incumbent's cell at the same shape by more than 1.4%
@@ -1185,6 +1260,35 @@ outcome. The architect may overrule it; the finding records the overrule and its
 what the rule gave. On adoption, the incumbent the item replaces is retired: the engine serves
 the item, and the incumbent is unloaded. Its files leave the store only once the walkthrough
 confirms the item, with their rollback (a download) printed.
+
+**The engine rule.** For an engine item, adopt the candidate build only when all four hold:
+
+- every cell on the candidate is within 1.4% of the same cell on the incumbent, or ahead of it,
+  by the cell's figure (output tok/s, or audio seconds a second for an ASR cell)
+- every cell of the pass, on both builds, holds its full request count
+- the audio model's ASR B word differences on the candidate are within the incumbent's total
+  plus 1.4% of the reference words
+- the reasoning check on the candidate's ASR cells counts no more replies than on the
+  incumbent's, for each of its two counts (the thought channel, the text)
+
+Otherwise roll back. A gain need not exceed run noise: engines stay current (the experiment's
+rule), so a candidate that holds every cell is adopted. State what the rule gave on each
+condition, with the figures, then the outcome; the architect may overrule it, and the finding
+records the overrule and its reason beside what the rule gave.
+
+**On adopt**, the candidate serves, and the mode prints its rollback exactly: the suite's update
+to the incumbent build, the session's step, no root:
+
+```sh
+ssh <host> 'cd <clone> && host/engines <engine> update <incumbent build>; echo "exit $?"'
+```
+
+The rollback pulls the incumbent build's image again, since the update to the candidate removed
+every image of every other build, server and full, in every flavor, and every untagged image
+(spike-model-engines `host/engines-llama-update`, `llama_remove_images` in `host/llama.sh`). Forward
+again is the same update with the candidate build. **On roll back**, the session runs that same
+update now, and the probe reads the incumbent build back as serving. Either way, the host's set
+is then loaded on the build that stays, one model per purpose, by step 6's rule.
 
 ### 9. Write the finding
 
@@ -1248,6 +1352,41 @@ with its repository and path, addressed to whatever comes to own the host toolin
 
 ## Sources
 Every source cited, with its tier, URL, and read date.
+```
+
+For an engine item, one section takes the place of the sections from "Gates" through "The claim
+beside the anchors", and "Where <retired model> still lives" is left out, since no model retires.
+It sits after "Host stack", and its parts, in order:
+
+```markdown
+## Engine pass: <engine> <incumbent build> to <candidate build>
+The candidate and why it was chosen (the item's build, or the newest at the session's start).
+
+### Gates
+Each model the pass loads, one per purpose with cells, through the four gates under today's
+policy, each with what it read and its citation.
+
+### Cells
+The pass's routing check, its kernel and host stack, from the probe, and `tailscale ping -c 1`.
+Every command exactly as run: the incumbent build's cells, the move through the suite with its
+output and the build read back, the candidate build's cells. One row per cell: its requests on
+each build, its figure on each build and the change, its TTFT median on each build and the
+change, and the published claim beside the TTFT, with output tok/s beside it. The first anchors
+beside the host's last earlier readings, and any move beyond run noise, named as a finding.
+A purpose with no cells, named with its reason.
+
+### Transcripts
+The audio model's ASR B on each build: the command as run, each build's word differences, the
+reference words, and the pairs that differ.
+
+### Reasoning
+The reasoning check on each build's ASR cells, with both counts, each flagged reply quoted by its
+opening.
+
+### Verdict
+The engine rule, what it gave on each of its four conditions with its figures, the outcome (adopt
+or roll back), and any overrule by the architect with its reason. On adopt, the rollback exactly
+as printed; on roll back, the update as run and the probe reading the incumbent back.
 ```
 
 ## What a run writes
