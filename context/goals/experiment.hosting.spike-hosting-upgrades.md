@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** idle
-- **Task:** none
-- **Branch:** none
+- **State:** building
+- **Task:** verify-gb10
+- **Branch:** verify-gb10 (spike-hosting-upgrades, spike-model-engines)
 
 ## Tasks
 
