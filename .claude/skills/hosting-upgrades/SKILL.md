@@ -1080,7 +1080,9 @@ tailscale ping -c 1 <host>
 - the bare host name resolves to the tailnet address only;
 - 50 connects to the router's `/health` with none failed and none over 50 ms.
 
-It reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It guards
+The commands name no numbered field (a dollar sign and a digit): Claude Code replaces those in a
+skill with the skill's arguments when it loads it, so a field is read by `cut` or by `$NF`. It
+reads the resolver as it stands, with no cache flush, so it sees what GuideLLM will. It guards
 against a LAN record for the bare name: the resolver tries the search domain too, so when the LAN
 router publishes `<host>.lan` from the host's DHCP leases, a connection can take the LAN address,
 where the host's firewall drops the engine's port, and the client waits out its connect timeout
@@ -1089,8 +1091,8 @@ address:
 
 ```sh
 for ty in A AAAA; do echo "<host>.lan $ty: $(resolvectl query -t $ty <host>.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
-t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | awk '{print $1}' | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
-for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($1=="FAIL")f++; else if($1>0.05)s++; if($1>m)m=$1} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
 ```
 
 The fix the verify-framework finding records ("Routing") keeps the LAN from answering for the
