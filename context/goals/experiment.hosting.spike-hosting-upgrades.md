@@ -346,6 +346,7 @@ Door          two-way:
 
 - Slice 1 committed (spike-hosting-upgrades edacd60, spike-model-engines b020ed2): the screen mode, the Pool sections, the speed floors, two conform profiles (both valid), the scenarios, the 16 × 131,072 agent section on spike-model-engines' `screen` branch, and the closures. Its demo, the screen run up to its cells on both hosts, is next.
 - Slice 1 demo, 2026-11-04: both hosts probed (set A served on each; framework b11960, gb10-1 b12063, 6 apt updates pending and a reboot pending for gnome-shell). The pool's research is in ignored `.state/screen/research-{agent,other,origin}.md`. The demo's escalation (Gemma 4's unnamed teacher, and five rule edges) was answered at its recs on 2026-11-04 (Decisions).
+- Slice 1 demo done: the gated pool for each host is in ignored `.state/screen/<host>/gated-pool.md`. Neither host keeps a candidate. The outcomes match on both hosts: agent 17 hold, 14 drop; vision 10 hold, 7 drop; audio 5 hold, 7 drop; embedding 5 hold, 12 drop. Seventeen agents need measurement. The session settled the assembler's open points by the policy as written: probes set the incumbents, a kept candidate must be measured, reward models, judges and hard-negative miners aren't teachers (their outputs aren't reproduced), and dataset sizes aren't mixture weights. The skill's hardcoded needs-measurement names were removed (d145c30). Slice 2, framework's pass, is next and needs the architect.
 
 ## Decisions
 
