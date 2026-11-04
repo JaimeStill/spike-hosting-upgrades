@@ -1513,8 +1513,8 @@ be split as "Research" says: its agent-models, other-models, and origin parts, w
 
 List the agent candidates the gates leave at "needs measurement", by name, each with what it
 needs: the BFCL category with no card figure, the tool-reliability check, or a speed floor's
-cell. On 2026-11-04 these were Muse-Glimmer-30B, Flint, granite-switch-4.1-30b, Gemma 4 31B QAT,
-and LFM2.5-24B-A2B, wherever each reaches Gate 4; the list is the screen's own, read fresh. Only
+cell. The list is the screen's own, read fresh from the gates, never carried from a report: a
+report's held agents that the pool doesn't name aren't on it. Only
 the candidate step 1 names is measured; the others wait for a later screen.
 
 ### 5. Before any load
