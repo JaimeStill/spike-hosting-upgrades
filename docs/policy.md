@@ -266,6 +266,40 @@ published equivalent: no card or benchmark reports it, so only a local run measu
   has run and passed clears the bar; one whose check fails, or that an open parser report
   covers, fails it: skip.
 
+## Speed floors
+
+A candidate for a purpose must be fast enough for the purpose's work, whatever it scores: a run
+and a screen gate each candidate by its purpose's floor, after the agent quality bar (the
+architect's decision, 2026-11-04). The floors are spike-model-hosting's role floors
+(spike-model-hosting `evaluation/floors.toml`, read 2026-11-04), absolute and task-based: what the
+purpose's work needs, not a fraction of any model's score.
+
+| Purpose | Measure | Floor |
+|---|---|---|
+| agent | single-stream decode | at least 20 tok/s |
+| agent | single-stream prefill of an 8,192-token prompt | at least 500 tok/s, with TTFT at most 20 s at the client |
+| agent | decode of each of N agentic streams in flight, an 8,192-token prompt and 512 out | at least 10 tok/s each |
+| vision | one image question answered, about 100 tokens out, wall time at the client | at most 10 s, alone and each of N in flight |
+| audio | transcription speed, audio seconds over wall seconds (RTFx), single stream | at least 5 |
+| embedding | throughput of one batch, prompt tokens a second at the client | at least 4,300 tok/s |
+
+N is the model's slots in the section the host would serve it from. Each of the N is judged by
+the floor, never their sum.
+
+**Reading the floors.** This is the rule; the skill applies it and points here.
+
+- A measured figure, or an attributed benchmark's, on the host's class and backend, for the file
+  the host would load, under its purpose's floor fails the gate: skip, with the floor, the figure,
+  and its source.
+- A paper estimate alone holds the candidate: a ceiling from bandwidth, a figure scaled from
+  another model's, a stand-in from another quantization, or a figure from another host class.
+  The row says "needs measurement" and names the floor the measurement must clear.
+- A measured or attributed figure at or over the floor passes the gate.
+
+The pool's other floors are not this gate: its memory floor (the headroom below holds a set's
+memory), audio's per-stream RTFx, and embedding's 32-token query time, which the gate as decided
+doesn't name.
+
 ## Agent session context
 
 Each agent session must reach at least **32,768 tokens** of context, and the aim is the model's

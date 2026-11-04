@@ -35,3 +35,12 @@
      session. Write "None." or delete the section if there are none. -->
 
 - <reference name> `<path to a dated finding>`
+
+## Pool
+
+<!-- Optional. Another spike's model pool document, the candidate list the skill's screen mode
+     gates for this host's class: the repository's reference name plus its path, as Measurements
+     gives a finding. Only the screen mode reads it; a run and the verify mode take no other
+     spike's pool. Delete the section if the host has no pool to screen. -->
+
+- <reference name> `<path to the pool document>`

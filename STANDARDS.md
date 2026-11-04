@@ -37,6 +37,9 @@ The architecture pages that apply, in the architecture repository:
 - A report is per host and dated, `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md`
   (`-2`, `-3`, ...) for a later run on a date that already has one, and is never edited once
   written; a later run writes a new report.
+- A screen record, the screen mode's, is per host and dated the same way,
+  `docs/screens/<host>/<YYYY-MM-DD>.md` or `<YYYY-MM-DD>-N.md`, and is never edited once written;
+  a later screen writes a new record.
 - A finding, under `docs/findings/<task>.md` (or the verify mode's `verify-<host>.md`), says what
   was measured, when, on which engine version, host stack, and network path, and stays dated.
 - Every command a session or the architect runs appears in a finding exactly as run. No tailnet

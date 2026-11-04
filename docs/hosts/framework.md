@@ -44,3 +44,10 @@ it. Each is the reference name (the coordinator's `references.toml`) plus its pa
 
 - spike-model-engines `docs/findings/llama-strix-rocm.md`
 - spike-model-engines `docs/findings/vllm-strix.md`
+
+## Pool
+
+The model pool the screen mode (`/hosting-upgrades screen`) gates for this host's class, as the
+reference name (the coordinator's `references.toml`) plus its path. No other mode reads it.
+
+- spike-model-hosting `docs/pool.md`

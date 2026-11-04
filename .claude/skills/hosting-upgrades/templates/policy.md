@@ -181,6 +181,24 @@ states.>
 
 **Reading the bar.** <The verdict for each outcome.>
 
+## Speed floors
+
+<!-- Optional. The speed each purpose's work needs, as absolute floors, with where they come from:
+     for an agent, single-stream decode, a long prompt's prefill and TTFT, and each concurrent
+     stream's decode; for vision, an image answered in a time; for audio, an RTFx; for embedding,
+     a throughput. The skill gates each candidate by its purpose's floor after the agent quality
+     bar. Under "Reading the floors", say which figures count (a measured or attributed figure on
+     the host's class fails a candidate under its floor) and what a paper estimate alone gives
+     (hold, needing measurement). Delete the section if no purpose has a floor. -->
+
+| Purpose | Measure | Floor |
+|---|---|---|
+| <purpose> | <measure> | <floor> |
+
+<Where the floors come from, and what N is for a per-stream floor.>
+
+**Reading the floors.** <Which figures count against a floor, and the verdict for each outcome.>
+
 ## Agent session context
 
 <!-- Optional, for a host with an agent purpose. The least context one agent session must reach,
