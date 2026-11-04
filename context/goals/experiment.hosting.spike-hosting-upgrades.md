@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** handoff
+- **State:** building
 - **Task:** screen
 - **Branch:** screen
 
@@ -364,14 +364,7 @@ Door          two-way:
 - Slice 3 phase 2, 16 slots: cold start 8.4 s, 16 slots of n_ctx 131,072, smoke test 3/3. Shape A 67.3 and B 137.2 tok/s; long A 49.3 tok/s, TTFT 2.85 s; long B 78.7 tok/s, TTFT 10.0 s, ITL 30.9 ms; the Gemma set's MemAvailable 28.56 GiB (set A's 16.29); the sweep's ITL stays ≤100 ms at all four levels (57.4 ms at 16, 62.4 ms at 32, where TTFT is 23 s); vision A 34.1, B 61.4 tok/s, max latency 4.83 s, reasoning 8/8 and 32/32 in the channel. Next: the architect's first walk of BFCL (single, multi) and conform, on one fresh load.
 - The architect's first walk: BFCL single-turn 0.800 on 100 (floor 0.630), 10:05; BFCL multi-turn exit 124 at its cap (8/20, 5 passing). An escalation set its rerun (Decisions). Conform's first walk hit its 10-minute cap after one clean trial. Both reruns are decided (Decisions) and run in the background: BFCL multi into `bfcl-multi-2/`, conform into `conform-2/`.
 - Multi-turn rerun: 16 of 20 at its 45-minute cap (6 passing), about 2.9 minutes a sample. The router's log over 3 minutes showed 150 idle-slot saves to the prompt cache (290-370 MiB each, about 1.7 s apart), 26 context checkpoints of 200 MiB, and decode swinging between 4.6 and 22.6 tok/s. The architect judged 7-8 tok/s unacceptable for any agent and chose to diagnose and fix (Decisions). The job was stopped (conform had begun, and its partial is in `conform-2/`). gb10-1 serves set A again; its clone is on `screen` at eed8a33 (16 slots); framework's clone is on `screen` at 31b00eb.
-
-## Handoff
-
-- **Next move:** wait for the architect to say they are ready (they were driving home on 2026-11-04). Then run behavior 19's A/B on gb10-1, from 3R · RESUME. Print the plan of runs first: the 4-sample list, built from `tiers/agent-bfcl-multi.txt`'s first 4 IDs into `.state/screen/gb10-1/`; the four runs (Gemma 16-slot default, Gemma with `cache-ram = 0`, set A's gpt-oss default, set A with `cache-ram = 0`), each from a fresh load with the router's log read after; and the preset keys tried on spike-model-engines' `screen` branch, pushed to gb10-1's clone as `screen-next` and fast-forwarded, with a router restart.
-- **Then:** land the winner on the branch. Rerun BFCL multi-turn (`timeout 45m`, into `bfcl-multi-3/`) and conform (`timeout 45m`, into `conform-3/`) on one fresh load of Gemma's section. Apply the keep rule. Restore set A. Write gb10-1's record at `docs/screens/gb10-1/2026-11-04.md` (or the date it finishes, -N if needed), from `.state/screen/gb10-1/` (`lib.sh`, `p1-*`, `p2-*`, `bfcl-single/`, the partials, the A/B). Decide the PR (merge with the preset fix, citing the records) or drop the Gemma section. Return both clones to main or to the merged state, and restart.
-- **Then BUILD's loop:** the standards review, the spec review, the editor, validation, then slice 4's walkthrough and BRIEF. The session brief's proposals include a watch item on framework's descriptor for llama.cpp #25584 and #29221.
-- **WIP:** none uncommitted in either repository; spike-model-engines' `screen` is at eed8a33 and unpushed to GitHub.
-- **No escalation is waiting.**
+- Resumed 2026-11-04 after the architect's root steps on gb10-1: 8 security updates (apt, libsnmp, python3-pil, python3-twisted, linux-firmware-amd-graphics) and the deferred reboot (booted 16:02; kernel 1024, driver 580.178.04, b12063; the two SQLite updates were held back by phasing). The A/B's temporary sections are on spike-model-engines' screen at 4f40b62 (cram0 for both agents, plus a third arm the session added, Gemma with --no-cache-idle-slots), and the router's arguments read them back. The five-arm A/B runs in the background (`.state/screen/gb10-1/ab.sh`, its output in `ab.out`).
 
 ## Decisions
 
