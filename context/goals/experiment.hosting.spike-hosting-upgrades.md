@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** idle
-- **Task:** none
-- **Branch:** none
+- **State:** building
+- **Task:** screen
+- **Branch:** screen
 
 ## Tasks
 
@@ -12,273 +12,334 @@
 4. [ ] screen
 5. [ ] answer
 
-## Task brief · verify-gb10
+## Task brief · screen
 
 ```
-Problem       gb10-1's 2026-10-31 report has one verify item: llama.cpp
-              b11669 → a newer cuda13 server image. Two attributed GB10
-              prefill gains (+17.2% MoE, +7.1% dense) and a Gemma 4 memory
-              fix back it. The report also has three hardware holds and ten
-              debt holds, and nothing has been measured or applied. The
-              verify mode can only measure a model swap on one engine build.
-              It has no rule for a change of build, so an engine upgrade
-              leaves no record. Since the report, framework has found that
-              E4B QAT, gb10-1's declared audio model, writes its reasoning
-              into its replies.
-              This task does four things. It gives the verify mode an
-              engine item and uses it on gb10-1. It settles every gb10-1
-              item and carries out the decided removals. It gives the gb10
-              host class its own llama.cpp pin in spike-model-engines.
-              Finally, it writes gb10-2's alignment steps as a report for
-              spike-ai-pipeline, which applies them.
-              No new tool: GuideLLM 0.8.1, the engines suite, hf, nmcli,
-              and fwupdmgr have all been walked before.
+Problem       spike-model-hosting's pool document lists 47 open-weight
+              models for the four purposes. It is a paper survey of
+              2026-10-19 for Strix Halo at b11734, judged by an origin
+              rule that has since been replaced and by speed floors our
+              policy doesn't state. Nothing in it is judged for GB10. The
+              skill can't read it, since its report and verify modes take
+              no other spike's pool.
+              The one agent candidate faster than gpt-oss-120b on both
+              hosts, Gemma 4 26B-A4B QAT, is on hold for both hosts'
+              reports: no card gives it a BFCL figure for the floors'
+              categories, and the tool-reliability check has never run
+              on it. Its only section gives a session 8,192 tokens.
+              Already the vision model, it could serve agent and vision
+              as one model, with gpt-oss-120b unloaded. That frees most
+              of the memory pool and gives more sessions, each with the
+              full context. It is a win if it performs nearly as well as
+              an agent, even if it is not faster.
+              This task gives the skill a screen mode. The mode gates the
+              pool for each host class under today's policy, with the
+              pool's speed floors added as a gate. On each host it then
+              weighs Gemma serving both roles against set A in one
+              session: capability, speed against floors, capacity, and
+              memory. Each host keeps only what both the sources and its
+              own checks support. No served set changes.
+              One new tool: spike-model-hosting's agent tiers, run
+              read-only from its clone.
+              - What it is: BFCL through Inspect AI 0.3.281 and
+                inspect_evals 0.24.0's stock task, plus clutch's conform
+                through Pi 1.3.0.
+              - What it provides: the agent bar's BFCL samples (100
+                single-turn and 20 multi-turn, Gorilla dac44e7, seed
+                20261016) and its harness-fit check (pass^5).
+              - How it is set up: spike-model-hosting's consumers mise
+                environment and its synced suites project, with outputs
+                and state directed into this spike's ignored state.
+              The architect walks it first, on framework.
 
 Behaviors
-  The verify mode's engine item
-  1.  When the item `/hosting-upgrades verify <host>` names is an
-      engine build, the mode prints one pass across two builds:
-      - the incumbent build's cells
-      - the move to the candidate build through the engines suite,
-        with the version as its argument
-      - the same cells on the candidate build
-      Every cell runs on one kernel. A kernel change partway, or a
-      third build, restarts the pass.
-  2.  The engine verdict rule. Adopt only when all four hold:
-      - every cell on the candidate is within 1.4% of the same cell on
-        the incumbent, or ahead of it (output tok/s, or audio seconds
-        a second for an ASR cell)
-      - every cell holds its full request count
-      - the ASR B word differences on the candidate are within the
-        incumbent's total plus 1.4% of the reference words
-      - the reasoning check on the candidate's ASR cells counts no more
-        replies than on the incumbent's
-      Otherwise roll back. A gain needn't exceed run noise, since
-      engines stay current. The finding states what the rule gave on
-      each condition, and any overrule by the architect.
-  3.  The published claim is set beside each cell's TTFT median: 512
-      prompt tokens for the anchors and the vision cells. Output
-      tok/s goes beside it.
-  4.  After an adopted engine move, the mode prints the rollback
-      exactly: the suite's update to the earlier build, which pulls
-      that build's images again, since the update removes every other
-      build's images.
-  gb10-1, the host stack
-  5.  The session reads back the architect's apt state of 2026-11-02:
-      - 0 upgraded: kernel 7.0.0-1024, driver 580.178.04
-      - autoremove took three 6.17.0-1008 packages
-      - the CDI spec was regenerated (spec 0.7.0)
-      The finding records each command as it was run.
-  6.  The architect refreshes fwupd's metadata, and the get-updates
-      result is recorded. Any offered update is an escalation, with a
-      reboot of its own if it is approved.
-  7.  gb10-1 stops sending its hostname in DHCP (IPv4 and IPv6) on each
-      of its NetworkManager connections, and the connections come up
-      again. This is the architect's root step. Its rollback is the
-      same command with `yes`. If the LAN publishes `gb10-1.lan`, the
-      architect clears the router's lease names. Afterwards the
-      routing check passes:
-      - no `gb10-1.lan` A or AAAA record
-      - the bare name resolves to the tailnet address only
-      - 50 connects to `/health`, none failed, none over 50 ms
-  8.  gb10-1's spike-model-engines clone is brought to main (no root),
-      so its preset carries set A's agent section. The probe then reads
-      the preset's sections.
-  9.  gb10-1's set becomes:
-      - agent: set A's gpt-oss-120b section (4 slots sharing 131,072
-        tokens, so a session can reach 131,072)
-      - vision: Gemma 4 26B-A4B QAT Q4_0
-      - audio: E4B Q8_0, following framework's finding
-      - embedding: granite BF16
-      E4B QAT's files stay in the store until Google publishes a
-      revision that fixes its reasoning.
-  10. Seven items close with no action, each with its reason:
-      - kernel 1024: no symptom on gb10-1, and a hold would stop the
-        every-session update. 1019 stays installed. An unexpected boot
-        seen at the session start's probe is an escalation.
-      - display reserved memory: it frees memory, not speed, the set
-        leaves headroom, and Dell's support is untested.
-      - driver 580.196.07: not on the host's channel.
-      - the boot-order remedy: present for IPv4. IPv6 waits on
-        tailscale#1152.
-      - the preset's sections beyond the set: shared with framework,
-        and they cost nothing while unloaded.
-      - Docker 29.9.2: not on the host's channel.
-      - the 8,192-token gpt-oss sections: measurement sections that no
-        agent loads.
-      The report's engine candidates (`--cache-ram 0`, vLLM, SGLang,
-      TensorRT-LLM) are listed by name as left for later.
-  11. The failed user unit update-notifier-crash: the session reads
-      its cause from the user journal and the /var/crash listing (no
-      root), then resets it (no root). A crash in the kernel, the
-      driver, or the engine is an escalation. Reading a root process's
-      crash report is the architect's step.
-  gb10-1, the engine pass
-  12. Before any run, the mode re-checks that each model the cells
-      load is gated under today's policy, chat-template check included:
-      gpt-oss-120b MXFP4, 26B-A4B QAT, and E4B Q8_0.
-      It then prints the agreed cells and runs them a step at a time,
-      in the architect's view.
-      Common to every cell:
-      - tool: GuideLLM 0.8.1, from this machine, targeting
-        `http://gb10-1:8080`
-      - each run is capped at 10 minutes
-      - one model per purpose; each model's cells run once from a fresh
-        load
-      - the pass records the probe, the build, and `tailscale ping`
-      The six cells, run on b11669 and then on the candidate build
-      (the newest cuda13 server image at session start; b12033 when
-      planned):
-      | Cell     | Model, configuration       | Load                 | ~Time | Informs                     |
-      | Anchor A | gpt-oss-120b MXFP4, 4-slot | 1 stream × 8,        | 1 min | agent decode, TTFT          |
-      |          | section                    | 512 in / 256 out     |       |   (prefill claim)           |
-      | Anchor B | gpt-oss-120b MXFP4, 4-slot | 4 streams × 32,      | 2 min | agent concurrency           |
-      |          | section                    | 512 / 256            |       |                             |
-      | Vision A | 26B-A4B QAT Q4_0, its      | 1 × 8, 512 / 256,    | 1 min | MoE prefill (#31188), TTFT; |
-      |          | section                    |   thinking on        |       |   Gemma 4 fix (#31394)      |
-      | Vision B | 26B-A4B QAT Q4_0           | 4 × 32, 512 / 256    | 1 min | the same, under concurrency |
-      | ASR A    | E4B Q8_0, its section      | 1 × 8 LibriSpeech    | 1 min | audio speed, #31394         |
-      |          |                            |   clips, ≤256 out    |       |                             |
-      | ASR B    | E4B Q8_0                   | 4 × 32 clips,        | 1 min | audio speed, transcripts    |
-      |          |                            |   ≤256 out           |       |   (word differences),       |
-      |          |                            |                      |       |   reasoning check           |
-      The first anchors are set beside gb10-1's earlier readings
-      (A 50.0, B 80.9 tok/s, b11669, 2026-10-26). A move beyond 1.4%
-      is a finding. The verdict follows behavior 2.
-  13. On adopt, gb10-1 runs the candidate build, and the walkthrough
-      loads set A on it. On roll back, the suite returns gb10-1 to
-      b11669, set A as above, and nothing changes in spike-model-engines.
-  14. Removals, each read back by the probe as gone:
-      - the vllm container, every vLLM image, and the compile cache,
-        through the suite (session, no root). Rollback: the suite's
-        install.
-      - both bare-metal units, llama-router and vllm-server:
-        - the suite's two native uninstalls (session, no root)
-        - then the architect removes the unit files, /opt/llama.cpp,
-          /opt/vllm, and their sudoers rules, as the uninstall guides
-          give them (root)
-        - rollback: the native installs plus the guides' root steps
-      - the six unused snapshots (~146G: openai gpt-oss-120b, both
-        NVFP4 Gemmas, gemma-4-E4B-it, both w4a16-ct), dry run first,
-        shown to the architect (session). ibm-granite's safetensors
-        and ggml-org's E4B Q8_0 stay. Rollback: `hf download`.
-      - hello-world:latest (session, no root). Rollback: a pull.
-      - the 6.17.0-1008 kernel image and modules (the architect, root,
-        apt; the packages are confirmed at session start). 1019 stays.
-        Rollback: reinstall.
-      b11669's full image leaves with the suite's update on adopt.
-  spike-model-engines
-  15. Its currency reports only held items: huggingface_hub 2.4.0 is
-      taken; bench python 3.14.10, vLLM v0.32.0, and native vLLM's
-      Python 3.12 are held (Decisions). On adopt, the engines suite
-      pins llama.cpp per host class:
-      - gb10 (cuda13) at the adopted build
-      - strix-halo (rocm, vulkan) at b11960, so framework doesn't move
-      With no version given, install and update take the host class's
-      pin. The currency command reports a class's pin only when it is
-      behind the newest release's build. The pull request cites the
-      finding.
-  The record
-  16. One dated verification finding for gb10-1, in the verify mode's
-      layout:
+  The screen mode
+  1.  `/hosting-upgrades screen <host>` reads the host's descriptor, the
+      policy, and the pool its descriptor's new Pool section names (a
+      reference key and a path, as Measurements does). It runs the
+      readiness check and the read-only probe as a run does, and changes
+      nothing on the host itself.
+  2.  For each pool row, the mode names the exact repository, file, and
+      projector the host would load today. It then gates the row for the
+      host's class by the skill's model gates, in order:
+      - origin, artifact integrity, and the quantization floor, under
+        the policy as it reads today
+      - fit in the probed memory
+      - the host's engine and build
+      - for the agent purpose, the agent bar
+      - the speed floor (behavior 4)
+      Each row ends kept-candidate, hold (naming the measurement that
+      would place it), or drop (naming the gate and its source). Every
+      claim is cited with its URL and read date. A row the pool excluded
+      on the old origin rule is judged again under today's.
+  3.  The mode lists the agent candidates left at "needs measurement" by
+      name, each with what it needs (Muse-Glimmer-30B, Flint,
+      granite-switch-4.1-30b, Gemma 4 31B QAT, LFM2.5-24B-A2B, if any
+      reach that gate). Only 26B-A4B QAT is measured in this task.
+  4.  The policy gains the pool's role speed floors as a gate, which runs
+      apply too:
+      - agent: single-stream decode of 20 tok/s; 8k prefill of 500 tok/s
+        with TTFT of 20 s; each of N agentic streams at 10 tok/s
+      - vision: an image question in 10 s, alone and each of N
+      - audio: RTFx of 5
+      - embedding: 4,300 tok/s
+      A measured or attributed figure under a floor drops the row. A
+      paper estimate alone holds it. The skill's model gates state the
+      gate and point to the policy.
+  5.  The mode cites the verify mode's cell rules rather than restating
+      them:
+      - one model per purpose: unload, wait until unloaded, then load
+      - fresh loads
+      - full request counts
+      - the probe, the build, and `tailscale ping`, with the routing
+        check before the pass
+      It prints every cell with its command, who runs it, and its cap
+      before any load.
+  6.  The mode writes one dated screen record per host, in a directory of
+      its own. A later screen the same day writes `-N`, and a record is
+      never edited. STANDARDS names the record beside the report form,
+      and README's Capabilities point to it. The record holds:
+      - the gated pool
       - every command exactly as run
-      - each item's decision and outcome
-      - the claim beside the TTFT and tok/s figures
-      - the verdict
-  17. A dated report addressed to spike-ai-pipeline's agent, with
-      gb10-2's alignment steps exactly as that spike would run them.
-      For each step it gives who runs it (root is the architect's),
-      the rollback, and the routing check:
-      - the DHCP hostname setting, and the lease clearing if needed
-      - on adopt, moving its own llama.cpp pin from b11669 to the
-        adopted build through its host-update
-      It also names:
-      - what already matches gb10-1: the IPv4 sysctl and audio Q8_0
-      - what gb10-2 doesn't take: E4B QAT, and gb10-1's debt
-      - that any change to gb10-2's model configuration stays an
-        escalation in that spike
-      It changes nothing on gb10-2.
+      - the cells, with earlier published or measured claims beside them
+      - BFCL and conform
+      - the memory read-outs
+      - the verdict, condition by condition, with any overrule by the
+        architect beside what the rule gave
+  The instruments
+  7.  Two conform profiles are committed in this spike, one per host:
+      strix-halo for framework and nvidia-cuda for gb10-1. Each names its
+      router's model IDs: chat and vision on 26B-A4B QAT's agent section,
+      audio on E4B Q8_0, embedding on granite BF16. spike-model-hosting's
+      profile loader validates both, run from its clone (session, no
+      root).
+  8.  The scenarios:
+      - spike-model-engines' vision A and B and its concurrency sweep
+        (1, 4, 16 and 32 streams, 512 / 256, 60 s a level), copied into
+        this spike
+      - a new long-prompt scenario, 8,192 in and 512 out, at 1 stream × 4
+        requests and 4 streams × 16
+  9.  spike-model-engines' preset gains a 26B-A4B QAT agent section on a
+      branch: 16 slots of 131,072 tokens each, KV not unified
+      (c 2,097,152), card sampling (temperature 1.0, top-p 0.95,
+      top-k 64, min-p 0).
+      - The session pushes the branch straight to each host's clone over
+        ssh and restarts the llama container so the router reads it (no
+        root).
+      - The pull request merges only if a host keeps the candidate, and
+        it cites the record.
+      - Otherwise the branch is dropped, and both clones return to main
+        and are restarted.
+  The pass, per host
+  10. Before any load, the session re-checks 26B-A4B QAT's gates under
+      today's policy, the chat-template check included. A failed gate
+      stops the pass.
+  11. Common to every cell:
+      - tool: GuideLLM 0.8.1 from this machine, against the host's router
+      - caps: `timeout 10m` for every cell, 15 minutes for each BFCL tier
+      - builds: framework strix-halo b11960 (Vulkan), gb10-1 gb10 b12063
+        (CUDA)
+      - set A as served: agent gpt-oss-120b, vision 26B-A4B QAT's vision
+        section, audio E4B Q8_0, embedding granite BF16
+      - each section's cells run from a fresh load, except that BFCL
+        single, BFCL multi, and conform share one
+      Phase 1 runs on set A. Phase 2 runs on the Gemma set: the agent
+      section serving agent and vision, with gpt-oss-120b and the vision
+      section unloaded, and E4B Q8_0 and granite loaded. Set A is
+      restored at the end.
+      | Cell        | Model, section           | Load                 | ~Time  | Informs                  |
+      | Phase 1, set A                                                                                |
+      | Anchor A    | gpt-oss, the host's      | 1 × 8, 512 / 256     | 1 min  | incumbent decode, TTFT   |
+      |             |   anchor section *       |                      |        |                          |
+      | Anchor B    | the same                 | 4 × 32, 512 / 256    | 2 min  | incumbent concurrency    |
+      | Long A      | gpt-oss, set A's section | 1 × 4, 8,192 / 512   | 2 min  | prefill, TTFT beside     |
+      |             |                          |                      |        |   Gemma's                |
+      | Long B      | the same, set loaded     | 4 × 16, 8,192 / 512  | 5 min  | streams at agent prompt  |
+      |             |                          |                      |        |   size; set A's memory   |
+      |             |                          |                      |        |   read after             |
+      | Sweep       | gpt-oss, 16-slot section | 1/4/16/32 streams,   | 5 min  | capacity [R5-2]          |
+      |             |                          |   60 s a level       |        |                          |
+      | Vision A, B | 26B-A4B QAT, vision      | 1 × 8 / 4 × 32,      | 2 min  | reasoning count; vision  |
+      |             |   section                |   720p + 200 / 64    |        |   baseline [R5-4]        |
+      | Phase 2, the Gemma set                                                                        |
+      | Cold start  | 26B-A4B QAT, agent       | API load from        | <1 min | local-only               |
+      |             |   section                |   unloaded, timed    |        |                          |
+      | Shape A, B  | the same                 | 1 × 8 / 4 × 32,      | 2 min  | decode floor [R5-1];     |
+      |             |                          |   512 / 256,         |        |   beside anchors A and B |
+      |             |                          |   thinking on        |        |                          |
+      | Long A      | the same                 | 1 × 4, 8,192 / 512   | 2 min  | prefill, TTFT floors     |
+      |             |                          |                      |        |   [R5-1]                 |
+      | Long B      | the same, set loaded     | 4 × 16, 8,192 / 512  | 3 min  | stream floor [R5-1];     |
+      |             |                          |                      |        |   memory read after      |
+      |             |                          |                      |        |   [R5-3]                 |
+      | Sweep       | the same                 | 1/4/16/32 streams,   | 5 min  | capacity [R5-2]          |
+      |             |                          |   60 s a level       |        |                          |
+      | Vision A, B | the same                 | 1 × 8 / 4 × 32,      | 2 min  | vision floor, reasoning  |
+      |             |                          |   720p + 200 / 64    |        |   [R5-4]                 |
+      | BFCL single | the same, one fresh load | 100 samples,         | 7 min  | floor 0.630              |
+      |             |                          |   4 in flight [R5-6] |        |                          |
+      | BFCL multi  | the same load            | 20 samples,          | 11 min | floor 0.325              |
+      |             |                          |   4 in flight        |        |                          |
+      | Conform     | the same load            | Pi, k = 5,           | 5 min  | tool reliability, API    |
+      |             |                          |   9 capabilities     |        |   surface                |
+      Per host: about 55 minutes of cells plus about 10 minutes of loads,
+      so about 65 minutes. The caps bound it at about 2 h 35 min.
+      * framework: the 4-slot section, with set A's agent unloaded
+        meanwhile. gb10-1: set A's section. Each is the section the
+        host's earlier anchors used. framework's 4-slot section can't
+        hold an 8,192-token prompt, so the long cells run on set A's
+        section on both hosts.
+      BFCL and conform run at the router's defaults (the card's sampling,
+      the template's default reasoning) with parallel tool calls allowed.
+      gpt-oss-120b's BFCL doesn't run.
+  12. The local-only checks, each recorded with its command:
+      - cold start, as in the cell above
+      - each set's memory, read warmed after its 4-stream long-prompt
+        cell: MemAvailable on gb10-1, GTT on framework
+      - each Gemma slot's context, read back from the router
+      - API surface: chat completions with tools under `tool_choice`
+        `required`, `response_format` `json_schema`, and image input each
+        answer without error, read from conform's recordings and one
+        request each
+      - whether a feature works: images on the agent section, and
+        replies with no unprompted reasoning
+  13. The reasoning check runs on all four vision cells. It counts the
+      replies that reasoned in the thought channel and in the text.
+  14. The keep rule, for Gemma serving agent and vision with gpt-oss-120b
+      unloaded. Keep only when every condition holds [R5-5]; otherwise
+      drop. The record states what the rule gave on each condition, and
+      any overrule by the architect beside it.
+      - Gates: every gate passes, and no open tracker report has the
+        engine's parser rejecting the model's tool calls.
+      - Capability: BFCL single-turn at least 0.630 and multi-turn at
+        least 0.325, each on its whole list.
+      - Tool reliability: conform through Pi passes every applicable
+        capability 5 of 5, with 0 invalid requests.
+      - Completeness: every cell holds its full request count.
+      - Speed [R5-1]:
+        - shape A at least 20 output tok/s
+        - long A prefill at least 500 tok/s, with TTFT median at most
+          20 s
+        - long B ITL median at most 100 ms (each stream at least
+          10 tok/s)
+        gpt-oss's same-session figures go beside them.
+      - Capacity [R5-2]: the highest sweep level where Gemma's ITL median
+        stays at 100 ms or less is at least gpt-oss's, and every Gemma
+        slot holds 131,072 tokens.
+      - Memory [R5-3]: the Gemma set leaves the policy's headroom and
+        uses no more than set A's same-session reading.
+      - Vision [R5-4]: on the agent section, every vision A and B request
+        is answered within 10 s, and no more replies reasoned than on
+        the vision section.
+  15. A keep is recorded, not adopted. The session leaves the host
+      serving set A as it found it, read back by the router's `/models`
+      and the probe. A BFCL tier that hits 15 minutes, or any other cell
+      that hits 10, is an escalation.
+  Closures
+  16. Closed with no action, each with its reason in the record:
+      - E4B QAT's logit-bias ban on `<|channel>`: its reasoning was in
+        plain text, and Google has published no revision
+      - 12B QAT and 31B QAT's reasoning check: neither serves a purpose
+        nor is a measured candidate
+  Who runs what
+  17. The architect runs every root step: the session-start host
+      updates, and any reboot (with the probe after it). The architect
+      also runs the first walk of BFCL (both tiers) and of conform, on
+      framework.
+      The session runs everything else, without root, in the
+      architect's view:
+      - the probe, the routing check, the branch push, and the container
+        restart
+      - loads, unloads, readiness waits, and the cells
+      - the memory reads
+      - gb10-1's BFCL and conform
+  18. Currency: both repositories report only held items, and so do
+      spike-model-engines' after its pull request. Both projects' checks
+      pass, and so does spike-model-hosting's profile validation of the
+      two profiles.
 
-Test seams    Two. In spike-hosting-upgrades, `/hosting-upgrades verify
-              gb10-1` and the finding it writes, with the host's end state
-              read back by the skill's probe. In spike-model-engines, the
-              suite's `llama update` with no version on a gb10 host (reads
-              "already runs" the adopted build) and its currency command
-              (only held items). Both projects' checks pass (shellcheck,
-              links).
+Test seams    One: `/hosting-upgrades screen <host>` and the dated
+              record it writes, with the host's end state read back by
+              the skill's probe and the router's `/models`. Around it:
+              - spike-model-hosting's profile loader passes both conform
+                profiles
+              - spike-model-engines' check passes on its branch
+              - both projects' checks pass (shellcheck, links)
 
 Slices
-  1. Upgrade and the engine item (behaviors 1-4, and 15's currency
-     part):
-     - spike-model-engines takes huggingface_hub 2.4.0 and logs its
-       three holds
-     - the verify mode gains the engine item
+  1. The screen mode and its instruments (behaviors 1-9, 16):
+     - the mode, the Pool sections and the template
+     - the policy's speed floors and the skill's gate
+     - the two conform profiles, validated
+     - the copied vision and sweep scenarios, and the new long-prompt
+       scenario
+     - the 16 × 131,072 agent-section branch in spike-model-engines
+     - the closures
      Demo:
-     - spike-model-engines' currency reports only held items, and its
-       check passes
-     - `/hosting-upgrades verify gb10-1`:
-       - lists every report item with its decision
-       - names what moved (the apt state, autoremove)
-       - re-checks the three models' gates
-       - prints the 12 cells and the engine rule
-       - changes nothing on the host
-     The project check passes.
-  2. The host stack and the set (behaviors 5-11). The architect runs
-     the root steps; the session runs the rest in the architect's view:
-     - the apt read-back
-     - fwupd refresh and get-updates (any offer is an escalation)
-     - the DHCP hostname setting and the routing check
-     - the clone pulled to main
-     - the failed unit read and reset
-     - the seven closures
-     Demo: the finding's stack section; the probe reads the set A
-     section and no failed unit; the routing check passes.
-  3. The engine pass (behaviors 12-14, 15's pin, 16, 17), the session
-     in the architect's view:
-     - six cells on b11669, the move, six cells on the candidate
-     - the verdict, then adopt or roll back
-     - the removals, with the snapshots' dry run first and the
-       architect's root steps
-     - on adopt, the per-class pin and currency-check pull request
-     - the gb10-2 report
-     Demo: the finding's engine section, with the claim beside the
-     TTFT figures and the verdict; the probe showing the removals gone;
-     the gb10-2 report.
-  4. Walkthrough (the architect), from the finding:
-     - the routing check
-     - load set A one model per purpose on the end-state build, waiting
-       for each unload, and read `/models`
-     - rerun anchor A and ASR A
-     - `engines llama update` with no version
-     - spike-model-engines' currency (only held items)
-     - review each closure and removal
-     - read the gb10-2 report
+     - `/hosting-upgrades screen framework` and `screen gb10-1` print the
+       gated pool for each class, the "needs measurement" list, and the
+       cells with their caps, then stop before any load, changing
+       nothing
+     - both profiles validate
+     - both checks pass
+  2. framework's pass (behaviors 10-15, 17). The architect runs the root
+     host updates and the first walk of both BFCL tiers and conform; the
+     session runs the rest in the architect's view:
+     - the branch pushed and the router restarted
+     - the gate re-check
+     - phase 1 on set A, then phase 2 on the Gemma set, and the memory
+       reads
+     - the keep rule, and set A restored
+     - framework's dated screen record
+     Demo: the record's gated pool, the two phases' cells, BFCL, conform,
+     the memory read-outs and the verdict, condition by condition; the
+     probe and `/models` reading set A.
+  3. gb10-1's pass, the same, with the session running BFCL and conform
+     (behaviors 10-15, 17, 18):
+     - on a keep on either host, spike-model-engines' pull request cites
+       the records; otherwise the branch is dropped
+     - both clones return to main and are restarted
+     - gb10-1's dated screen record
+     Demo: the record; set A read back; spike-model-engines' currency
+     showing only held items.
+  4. Walkthrough (the architect), from the two records:
+     - the routing check on each host
+     - on one host, rerun anchor A, and shape A on Gemma's agent section
+       with gpt-oss and the vision section unloaded, each from a fresh
+       load
+     - rerun BFCL single-turn on the agent section, against the pass's
+       figure
+     - restore set A and read `/models`
+     - validate both profiles
+     - `/hosting-upgrades screen gb10-1` up to its cells
+     - review each condition's outcome, each row's verdict, the
+       closures, and the hold list
 
-Out of scope  - Any change on gb10-2 (spike-ai-pipeline applies the report).
-              - Edits to spike-ai-pipeline's pins or scripts.
-              - framework: it stays on b11960.
-              - E4B QAT on gb10-1 (revisited on Google's revision, or in
-                screen), and deleting its files.
-              - The pool screen and BFCL (screen); a fresh report run
-                (answer).
-              - The engine candidates: `--cache-ram 0`, vLLM, SGLang,
-                TensorRT-LLM; removing vLLM's pins from spike-model-engines.
-              - llama-bench, and embedding cells.
-              - Changing the 4-slot or 16-slot sections.
-              - Dual-stack serving.
-              - Kernel-argument workarounds; a display-memory change.
-              - The host tooling's later repository.
+Out of scope  - Changing any served set or adopting a kept candidate
+                (the answer task's report ranks it); Pi's model list.
+              - Measuring any other agent candidate locally;
+                gpt-oss-120b's BFCL; re-baselining the floors.
+              - Harness fit through Claude Code or OpenCode.
+              - E4B QAT, 12B QAT and 31B QAT cells.
+              - Engine moves: framework stays on b11960 and gb10-1 on
+                b12063.
+              - Edits to spike-model-hosting (pool, pins, profiles) and
+                its `evaluate sweep`.
+              - A GB10 pool document; embedding cells.
+              - gb10-2.
+              - The engine rule's audio margin, the second report, and
+                the cadence (answer).
 
 Door          two-way:
-              - The build rolls back by the suite's update to b11669 (a
-                pull).
-              - The pin pull request reverts.
-              - The DHCP setting rolls back with `yes`.
-              - The set changes roll back by section loads.
-              - The removals roll back by re-pull, re-download,
-                reinstall, or the native installs with their root steps.
-              Only a firmware update approved at its escalation would be
-              one-way, and none is planned. Nothing is released.
+              - The skill, policy, descriptor, profile, and scenario
+                changes revert.
+              - spike-model-engines' branch is dropped, or its pull
+                request reverts, and the clones return to main with a
+                restart.
+              - Every load is undone by section loads, and set A is
+                restored as found.
+              Nothing is removed or released. Root is limited to the
+              routine host updates.
 ```
 
 ## Progress
@@ -783,7 +844,42 @@ Door          two-way:
 - verify-gb10: for the walkthrough, the session pushes spike-model-engines' verify-gb10 branch straight to gb10-1's clone over ssh (no GitHub push) and checks it out there, so `engines llama update` with no version reads the per-class pin; the clone returns to main and pulls once the pull request merges; rejected running the update only after the merge (architect, 2026-11-03).
 - verify-gb10: the walkthrough runs over the relayed path from the office; the overrule of the routing check's latency condition extends to it, recorded in the finding; rejected waiting for the LAN (architect, 2026-11-03).
 - verify-gb10: the gb10-2 report reaches spike-ai-pipeline by the architect pointing that spike at `docs/findings/gb10-2-upgrade.md`; no coordinator note; rejected a roadmap pending edit (architect, 2026-11-03).
+- screen: the pool is screened by a new skill mode, `/hosting-upgrades screen <host>`, which takes spike-model-hosting's pool document as its candidate list, runs the skill's gates under today's policy per host class, and leaves a record of its own; "no other spike's pool is an input" is narrowed to the report and verify modes; rejected a report run with the pool's rows added, and the session judging by hand (architect, 2026-11-04).
+- screen: the one new tool is spike-model-hosting's agent tiers run read-only from its clone (BFCL single 100 and multi 20 through agent_quality.py on Inspect AI 0.3.281, inspect_evals 0.24.0, its seeded tier lists, Gorilla dac44e7; and `evaluate conform -consumers pi -k 5`), with outputs and state in this spike's ignored `.state`; its first walk is the architect's; rejected pinning Inspect AI and inspect_evals here, a second new tool beside conform (architect, 2026-11-04).
+- screen: 26B-A4B QAT's BFCL and tool-reliability check run on both framework and gb10-1, since the check is "on the host's engine" and the hosts differ in build and backend; rejected gb10-1 alone (architect, 2026-11-04).
+- screen: 26B-A4B QAT is measured as an agent on a new spike-model-engines preset section, planned in the brief so it is no escalation (its shape is round 4's); rejected the 4 × 8,192 vision section, under the 32,768-token minimum (architect, 2026-11-04).
+- screen: each BFCL tier runs its whole list under a 15-minute cap (gpt-oss multi-turn took 10m26s on framework at b11715); every other cell keeps 10 minutes; rejected 10 minutes with a cap hit as an escalation (architect, 2026-11-04).
+- screen: BFCL is judged against the policy's fixed floors (0.630, 0.325) with no same-session gpt-oss-120b baseline; rejected a same-session baseline (architect, 2026-11-04).
+- screen: only 26B-A4B QAT is measured locally as an agent; the screened pool names what each other agent candidate needs (Muse-Glimmer-30B, Flint, granite-switch-4.1-30b, Gemma 4 31B QAT, LFM2.5-24B-A2B); rejected measuring every "needs measurement" candidate (architect, 2026-11-04).
+- screen: cold start is a router API load from unloaded, timed until loaded (the session's step, no root); rejected a timed router restart (architect, 2026-11-04).
+- screen: a candidate both the sources and the local checks support is recorded as kept in the screened pool, and no served set changes; the answer task's report ranks it; rejected serving it in place of its incumbent (architect, 2026-11-04).
+- screen: the pool's four role speed floors become a policy gate for screens and runs: a measured or attributed figure under a floor fails, a paper estimate alone holds; rejected speed as a sort only (architect, 2026-11-04).
+- screen: the logit-bias ban on `<|channel>` for E4B QAT is closed with no action: its reasoning showed in plain text, which a channel-token ban can't reach, and E4B QAT is revisited only on a Google revision, none published (sha 4b4a2c1d, 2026-07-17) (architect, 2026-11-04).
+- screen: the Gemma QAT reasoning check runs on 26B-A4B QAT alone, on vision A and B copied from spike-model-engines into `bench/`; 12B and 31B QAT are named as not checked (architect, 2026-11-04).
+- screen: the screen mode carries the local measurement too, citing the verify mode's cell rules rather than restating them; the verify mode is untouched; rejected an agent-bar step in the verify mode (architect, 2026-11-04).
+- screen: the screen record is dated per host, `docs/screens/<host>/<YYYY-MM-DD>.md` (`-N` the same day), never edited; STANDARDS.md "Docs" names it and README Capabilities point to it; rejected `docs/findings/screen-<host>.md` (architect, 2026-11-04).
+- screen: the screen mode finds the pool through a new "Pool" section in each host descriptor and the template, as Measurements does; rejected a fixed reference path in the skill (architect, 2026-11-04).
+- screen: conform's profiles are committed here, one per host (strix-halo, nvidia-cuda), naming each router's model IDs, validated by spike-model-hosting's profile loader before any pass; rejected profiles in ignored state (architect, 2026-11-04).
+- screen: in the conform profiles, 26B-A4B QAT's agent section serves chat and vision, as a keep would; rejected keeping the vision section loaded for vision (architect, 2026-11-04).
+- screen: framework's pass runs first, with the architect's first walk of BFCL and conform there; rejected gb10-1 first (architect, 2026-11-04).
+- screen: the 26B-A4B agent section reaches each host's clone on a branch pushed over ssh, and its pull request merges only on a keep, citing the record; otherwise the branch is dropped and the clones return to main; rejected merging an unloaded section anyway (architect, 2026-11-04).
+- screen: vision A and B run on both of 26B-A4B QAT's sections, the agent section and the vision section (the incumbent), each from a fresh load (architect, 2026-11-04).
+- screen: the keep rule weighs capability, the memory pool, capacity (more concurrent sessions at the same or a larger context each), and speed, with Gemma serving agent and vision and gpt-oss-120b unloaded; rejected the verify mode's 1.4% speed margin (the architect's redirect) (architect, 2026-11-04).
+- screen: BFCL single, BFCL multi, and conform share one fresh load of the agent section; every other cell runs from its own (architect, 2026-11-04).
+- screen: the walkthrough reruns BFCL single-turn on the agent section against the pass's figure (architect, 2026-11-04).
+- screen: Gemma's agent section is 16 slots of 131,072 tokens each, KV not unified (c 2,097,152, about 59 GiB estimated), so every concurrent session holds gpt-oss-120b's full trained context; it supersedes round 1's set A shape; rejected set A's shape and 8 slots (architect, 2026-11-04).
+- screen: capacity is measured by spike-model-engines' concurrency sweep (1/4/16/32 streams, 512 / 256, 60 s a level), copied into `bench/` and run in one session on gpt-oss-120b's 16-slot section and on Gemma's section; rejected spike-model-hosting's `evaluate sweep`, which rewrites a host's preset (architect, 2026-11-04).
+- screen: long-prompt cells of 8,192 in / 512 out at 1 × 4 and 4 × 16 run on both models, from a new scenario in `bench/`; rejected 512-token cells alone (architect, 2026-11-04).
+- screen: "nearly as well as gpt-oss-120b" means the fixed BFCL floors, gpt-oss's own two runs less their spread; rejected a margin against its recorded 0.65 and 0.40, and a same-session baseline (architect, 2026-11-04).
+- screen: the keep rule's speed condition is the pool's absolute agent floors read on Gemma's own cells (shape A at least 20 tok/s; long A prefill at least 500 tok/s with TTFT median at most 20 s; long B ITL median at most 100 ms), with gpt-oss-120b's same-session figures beside them; rejected aggregate output at 16 streams, and parity within a margin (architect, 2026-11-04).
+- screen: the capacity condition: Gemma's highest sweep level with ITL median at most 100 ms is at least gpt-oss-120b's, and every Gemma slot holds 131,072 tokens as the router reports; rejected aggregate output at 32 streams, and capacity recorded with no condition (architect, 2026-11-04).
+- screen: the memory condition: the Gemma set, read warmed after its long B cell, leaves the policy's headroom and uses no more than set A read the same way in the same session; rejected headroom alone (architect, 2026-11-04).
+- screen: the vision condition on the agent section: every vision A and B request answered within 10 s, and no more replies reasoned than on the vision section; rejected 1.4% of the vision section's tok/s (architect, 2026-11-04).
+- screen: a keep needs every condition, any failure is a drop, and an overrule by the architect is recorded beside what the rule gave; rejected a table weighed each time (architect, 2026-11-04).
+- screen: Gemma's BFCL tiers run 4 requests in flight, the count the floors were measured at; rejected 16 (architect, 2026-11-04).
+- screen: gpt-oss-120b's long-prompt cells run on set A's section on both hosts (framework's 4-slot section gives 8,192 tokens a slot), and each set's memory is read after its long B cell (approved with the brief) (architect, 2026-11-04).
 
 ## Pending edits
 
 - Coordinator roadmap (`standards-lab/context/roadmap.toml`), experiment.hosting's intake: a note that spike-model-engines' currency compares each host class's llama.cpp pin with the newest semver release's build, so a class pinned past it (gb10 at b12063) reads current until the next semver release; the intake decides whether currency should compare with the newest build release (verify-gb10, Decisions).
+- Coordinator roadmap, experiment.hosting's intake, beside the note above: framework runs strix-halo b11960 while the newest llama.cpp build is b12078 (2026-11-03), and spike-model-engines' currency doesn't report it, since it compares with the newest semver release's build (screen, PLAN).
