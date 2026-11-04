@@ -55,15 +55,15 @@ vision = "gemma-4-26B-A4B-QAT-Q4_0-agent"
 audio = "ggml-org/gemma-4-E4B-it-GGUF:Q8_0"
 embedding = "mrutkows/granite-embedding-english-r2-GGUF:BF16"
 
-# Estimated, never measured here: the agent section about 59 GiB with its weights (the screen
-# brief's estimate: 40 GiB of full-attention KV at 20,480 bytes a token over c = 2097152, and
+# Estimated, never measured here: the agent section about 56 GiB with its weights (the screen
+# brief's estimate: 37.5 GiB of full-attention KV at 20,480 bytes a token over c = 1966080, and
 # 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and granite about 1.5 GiB (spike-model-
-# hosting docs/pool.md's budgets). 59 + 9.7 + 1.5 = 70.2 GiB, 71,885 MiB. The pool is framework's
+# hosting docs/pool.md's budgets). 56 + 9.7 + 1.5 = 67.2 GiB, 68,813 MiB. The pool is framework's
 # GTT, 112.0 GiB (docs/reports/framework/2026-10-30-2.md, Inventory). The screen's memory read
 # after the long B cell is the measurement; it is recorded in the screen record, not here.
 [sets.memory_budget]
 pool_mib = 114688
-estimated_mib = 71885
+estimated_mib = 68813
 source = "the screen brief (context/goals, 2026-11-04); spike-model-hosting docs/pool.md"
 
 [[models]]
@@ -83,12 +83,12 @@ c = 131072
 c_reason = """
 One slot's context: gpt-oss-120b's trained context, so each agent session reaches what set A's
 agent model gives one. The section, spike-model-engines' [gemma-4-26B-A4B-QAT-Q4_0-agent], loads
-google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 and its projector at c = 2097152 over 16 slots,
+google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 and its projector at c = 1966080 over 15 slots,
 split.
 """
-slots = 16
+slots = 15
 slots_reason = """
-Each slot is one agent session or image request at once, 16 in all, each with its own KV cache.
+Each slot is one agent session or image request at once, 15 in all, each with its own KV cache.
 """
 
 [models.sampling]

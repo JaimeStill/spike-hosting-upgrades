@@ -120,8 +120,8 @@ Behaviors
       - a new long-prompt scenario, 8,192 in and 512 out, at 1 stream × 4
         requests and 4 streams × 16
   9.  spike-model-engines' preset gains a 26B-A4B QAT agent section on a
-      branch: 16 slots of 131,072 tokens each, KV not unified
-      (c 2,097,152), card sampling (temperature 1.0, top-p 0.95,
+      branch: 15 slots of 131,072 tokens each, KV not unified
+      (c 1,966,080; 16 slots aborted on Vulkan, Decisions), card sampling (temperature 1.0, top-p 0.95,
       top-k 64, min-p 0).
       - The session pushes the branch straight to each host's clone over
         ssh and restarts the llama container so the router reads it (no
@@ -273,7 +273,7 @@ Slices
      - the two conform profiles, validated
      - the copied vision and sweep scenarios, and the new long-prompt
        scenario
-     - the 16 × 131,072 agent-section branch in spike-model-engines
+     - the 15 × 131,072 agent-section branch in spike-model-engines
      - the closures
      Demo:
      - `/hosting-upgrades screen framework` and `screen gb10-1` print the
@@ -347,7 +347,7 @@ Door          two-way:
 - Slice 1 committed (spike-hosting-upgrades edacd60, spike-model-engines b020ed2): the screen mode, the Pool sections, the speed floors, two conform profiles (both valid), the scenarios, the 16 × 131,072 agent section on spike-model-engines' `screen` branch, and the closures. Its demo, the screen run up to its cells on both hosts, is next.
 - Slice 1 demo, 2026-11-04: both hosts probed (set A served on each; framework b11960, gb10-1 b12063, 6 apt updates pending and a reboot pending for gnome-shell). The pool's research is in ignored `.state/screen/research-{agent,other,origin}.md`. The demo's escalation (Gemma 4's unnamed teacher, and five rule edges) was answered at its recs on 2026-11-04 (Decisions).
 - Slice 1 demo done: the gated pool for each host is in ignored `.state/screen/<host>/gated-pool.md`. Neither host keeps a candidate. The outcomes match on both hosts: agent 17 hold, 14 drop; vision 10 hold, 7 drop; audio 5 hold, 7 drop; embedding 5 hold, 12 drop. Seventeen agents need measurement. The session settled the assembler's open points by the policy as written: probes set the incumbents, a kept candidate must be measured, reward models, judges and hard-negative miners aren't teachers (their outputs aren't reproduced), and dataset sizes aren't mixture weights. The skill's hardcoded needs-measurement names were removed (d145c30). Slice 2, framework's pass, is next and needs the architect.
-- Slice 2, framework, 2026-11-04: the architect approved running over DERP(nyc), since the routing check failed only its 50 ms test. The session pushed spike-model-engines' `screen` branch to framework's clone and restarted the router, the profile validated, and the gates passed (chat template identical, sha d1c082be). Phase 1 ran in full: anchors A 43.8 and B 75.9 tok/s; long A 26.1 tok/s with TTFT 8.8 s; long B 36.4 tok/s, TTFT 25.1 s, ITL 61.4 ms; GTT 92.22 GiB; the sweep's highest level at ITL ≤100 ms was 4 streams; vision A 23.0 and B 39.2 tok/s. The results are in ignored `.state/screen/framework/`. Phase 2 stopped at cold start: the agent section's instance aborted in llama.cpp's auto-fit, "pre-allocated tensor (cache_k_l5) in a buffer (Vulkan0) that cannot run the operation (NONE)" (cf. #29082). Set A is restored. An escalation is open on the section's shape.
+- Slice 2, framework, 2026-11-04: the architect approved running over DERP(nyc), since the routing check failed only its 50 ms test. The session pushed spike-model-engines' `screen` branch to framework's clone and restarted the router, the profile validated, and the gates passed (chat template identical, sha d1c082be). Phase 1 ran in full: anchors A 43.8 and B 75.9 tok/s; long A 26.1 tok/s with TTFT 8.8 s; long B 36.4 tok/s, TTFT 25.1 s, ITL 61.4 ms; GTT 92.22 GiB; the sweep's highest level at ITL ≤100 ms was 4 streams; vision A 23.0 and B 39.2 tok/s. The results are in ignored `.state/screen/framework/`. Phase 2 stopped at cold start: the agent section's instance aborted in llama.cpp's auto-fit, "pre-allocated tensor (cache_k_l5) in a buffer (Vulkan0) that cannot run the operation (NONE)" (cf. #29082). Set A is restored. The escalation was answered: 15 slots (Decisions).
 
 ## Decisions
 
@@ -889,6 +889,7 @@ Door          two-way:
 - screen: llama.cpp #29655 (Gemma 4 tool calling, bug-unconfirmed, stale, filed at b11258, not reproduced on master) doesn't count under the keep rule's parser condition; conform through Pi tests tool calls at today's builds, and the record cites the issue (architect, 2026-11-04).
 - screen: Gemma 4 31B QAT drops at the speed floor on its measured decode, 11.6 and 11.8 tok/s at b11669, under 60% of the floor of 20 (architect, 2026-11-04).
 - screen: an Unsloth Dynamic quant (UD-Q5_K_M) is a format the floor doesn't name: the row names a uniform Q5_K_M or Q8_0 if one exists, and otherwise drops at the floor (architect, 2026-11-04).
+- screen: Gemma's agent section is 15 slots of 131,072 tokens each (c 1,966,080, about 56 GiB estimated), on both hosts so their records compare one configuration, falling back to 8 slots if 15 fails to load: at 16 slots (c 2,097,152) each full-attention layer's K tensor is exactly 4 GiB, and the load aborted on framework's Vulkan backend at b11960 ("pre-allocated tensor (cache_k_l5) in a buffer (Vulkan0) that cannot run the operation (NONE)", cf. llama.cpp #29082); supersedes round 4's 16 slots; rejected 8 slots at once, and 16 slots with a q8_0 KV cache (architect, 2026-11-04).
 
 ## Pending edits
 
