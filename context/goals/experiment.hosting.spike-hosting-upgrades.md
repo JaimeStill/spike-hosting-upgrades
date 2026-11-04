@@ -345,6 +345,7 @@ Door          two-way:
 ## Progress
 
 - Slice 1 committed (spike-hosting-upgrades edacd60, spike-model-engines b020ed2): the screen mode, the Pool sections, the speed floors, two conform profiles (both valid), the scenarios, the 16 × 131,072 agent section on spike-model-engines' `screen` branch, and the closures. Its demo, the screen run up to its cells on both hosts, is next.
+- Slice 1 demo, 2026-11-04: both hosts probed (set A served on each; framework b11960, gb10-1 b12063, 6 apt updates pending and a reboot pending for gnome-shell). The pool's research is in ignored `.state/screen/research-{agent,other,origin}.md`. The demo is paused on an escalation: every Gemma 4 generative model is origin unclear under the 2026-10-31 unnamed-teacher rule, plus four rule edges.
 
 ## Decisions
 
