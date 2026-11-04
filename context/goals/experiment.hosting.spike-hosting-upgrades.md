@@ -345,7 +345,7 @@ Door          two-way:
 ## Progress
 
 - Slice 1 committed (spike-hosting-upgrades edacd60, spike-model-engines b020ed2): the screen mode, the Pool sections, the speed floors, two conform profiles (both valid), the scenarios, the 16 × 131,072 agent section on spike-model-engines' `screen` branch, and the closures. Its demo, the screen run up to its cells on both hosts, is next.
-- Slice 1 demo, 2026-11-04: both hosts probed (set A served on each; framework b11960, gb10-1 b12063, 6 apt updates pending and a reboot pending for gnome-shell). The pool's research is in ignored `.state/screen/research-{agent,other,origin}.md`. The demo is paused on an escalation: every Gemma 4 generative model is origin unclear under the 2026-10-31 unnamed-teacher rule, plus four rule edges.
+- Slice 1 demo, 2026-11-04: both hosts probed (set A served on each; framework b11960, gb10-1 b12063, 6 apt updates pending and a reboot pending for gnome-shell). The pool's research is in ignored `.state/screen/research-{agent,other,origin}.md`. The demo's escalation (Gemma 4's unnamed teacher, and five rule edges) was answered at its recs on 2026-11-04 (Decisions).
 
 ## Decisions
 
@@ -881,6 +881,12 @@ Door          two-way:
 - screen: a keep needs every condition, any failure is a drop, and an overrule by the architect is recorded beside what the rule gave; rejected a table weighed each time (architect, 2026-11-04).
 - screen: Gemma's BFCL tiers run 4 requests in flight, the count the floors were measured at; rejected 16 (architect, 2026-11-04).
 - screen: gpt-oss-120b's long-prompt cells run on set A's section on both hosts (framework's 4-slot section gives 8,192 tokens a slot), and each set's memory is read after its long B cell (approved with the brief) (architect, 2026-11-04).
+- screen: Gemma 4's unnamed teacher (Gemma 3's "large IT teacher", adopted by reference) is placed in Google's pipeline by Google's own technical reports, with no source naming an outside model, so every Gemma 4 model passes origin; the reading is added to the policy's "Finding the teachers"; rejected the strict reading, which would leave every Gemma 4 generative model origin unclear (architect, 2026-11-04).
+- screen: LFM2.5-24B-A2B stays origin unclear: the 2.6B blog's "branch from the same SFT checkpoint" settles only the 2.6B, and the 24B's own documents only imply it; added to the policy (architect, 2026-11-04).
+- screen: a model whose repository needs `trust_remote_code` passes artifact integrity when the host loads a GGUF its engine loads with none of that code; added to the policy (architect, 2026-11-04).
+- screen: llama.cpp #29655 (Gemma 4 tool calling, bug-unconfirmed, stale, filed at b11258, not reproduced on master) doesn't count under the keep rule's parser condition; conform through Pi tests tool calls at today's builds, and the record cites the issue (architect, 2026-11-04).
+- screen: Gemma 4 31B QAT drops at the speed floor on its measured decode, 11.6 and 11.8 tok/s at b11669, under 60% of the floor of 20 (architect, 2026-11-04).
+- screen: an Unsloth Dynamic quant (UD-Q5_K_M) is a format the floor doesn't name: the row names a uniform Q5_K_M or Q8_0 if one exists, and otherwise drops at the floor (architect, 2026-11-04).
 
 ## Pending edits
 
