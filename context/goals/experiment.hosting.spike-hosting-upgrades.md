@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** building
+- **State:** handoff
 - **Task:** screen
 - **Branch:** screen
 
@@ -263,6 +263,25 @@ Behaviors
       branch's PR, whatever Gemma's verdict; BFCL multi-turn (45-minute cap)
       and conform (45-minute cap) then rerun on it. Single-turn's 0.800
       stands.
+  20. The engine move on gb10-1 (revised 2026-11-05, Decisions): ASR A and
+      B run on b12063, then the engines suite moves gb10-1 to b12125
+      (`host/engines llama update b12125`, the session's step, no root),
+      and set A's cells (anchors A and B, vision A and B, ASR A and B)
+      rerun on b12125. The verify mode's engine rule judges the move,
+      with its rollback printed. The gb10 class pin moves to b12125 on
+      spike-model-engines' screen branch, and its currency command
+      compares each class's pin with the newest bNNNNN release.
+      Framework stays on b11960 until its next session's host update,
+      reported as behind.
+  21. The configuration on b12125: the maintainers' design (cache-ram
+      8192, idle-slot caching on, slot-prompt-similarity 0) against
+      cache-ram 0 with cache-idle-slots = false, each on BFCL
+      multi-turn's whole list for Gemma's 16-slot section (45-minute
+      cap, the router's decode and saves read every 5 minutes). The
+      faster setting without a stall wins, its run is the keep rule's
+      multi-turn figure, and both agent sections take it. Then phases 1
+      and 2 rerun whole on b12125 with the winner, then BFCL single and
+      conform, and the keep rule judges gb10-1 on b12125.
   18. Currency: both repositories report only held items, and so do
       spike-model-engines' after its pull request. Both projects' checks
       pass, and so does spike-model-hosting's profile validation of the
@@ -365,6 +384,25 @@ Door          two-way:
 - The architect's first walk: BFCL single-turn 0.800 on 100 (floor 0.630), 10:05; BFCL multi-turn exit 124 at its cap (8/20, 5 passing). An escalation set its rerun (Decisions). Conform's first walk hit its 10-minute cap after one clean trial. Both reruns are decided (Decisions) and run in the background: BFCL multi into `bfcl-multi-2/`, conform into `conform-2/`.
 - Multi-turn rerun: 16 of 20 at its 45-minute cap (6 passing), about 2.9 minutes a sample. The router's log over 3 minutes showed 150 idle-slot saves to the prompt cache (290-370 MiB each, about 1.7 s apart), 26 context checkpoints of 200 MiB, and decode swinging between 4.6 and 22.6 tok/s. The architect judged 7-8 tok/s unacceptable for any agent and chose to diagnose and fix (Decisions). The job was stopped (conform had begun, and its partial is in `conform-2/`). gb10-1 serves set A again; its clone is on `screen` at eed8a33 (16 slots); framework's clone is on `screen` at 31b00eb.
 - Resumed 2026-11-04 after the architect's root steps on gb10-1: 8 security updates (apt, libsnmp, python3-pil, python3-twisted, linux-firmware-amd-graphics) and the deferred reboot (booted 16:02; kernel 1024, driver 580.178.04, b12063; the two SQLite updates were held back by phasing). The A/B's temporary sections are on spike-model-engines' screen at 4f40b62 (cram0 for both agents, plus a third arm the session added, Gemma with --no-cache-idle-slots), and the router's arguments read them back. The five-arm A/B runs in the background (`.state/screen/gb10-1/ab.sh`, its output in `ab.out`).
+- The A/B after the reboot reproduced no stall: Gemma took 219 s with the default, 232 s with cram0, and 194 s with noidle; set A took 88 s with both, on BFCL multi-turn's first 4 samples. Research (2026-11-05) found the cause, llama.cpp #30252 (idle-slot saves stall the server thread; the CUDA fix #31391 is in b12080 and later, while gb10-1 runs b12063). The architect redirected: move to the newest build in this task, optimize the configuration, and rerun (Decisions; brief behaviors 20 and 21).
+
+## Handoff
+
+- **Next move:** resume at 3R · RESUME in a fresh session, both repositories on `screen`. Run behavior 20:
+  1. Probe gb10-1 and run the routing check (DERP is approved).
+  2. Load set A and run ASR A and B on b12063 (`bench/audio-a.yaml`, `audio-b.yaml`, model `ggml-org/gemma-4-E4B-it-GGUF:Q8_0`, tokenizer `google/gemma-4-E4B-it`, into `.state/screen/gb10-1/b12063-asr-*`).
+  3. Move gb10-1 with the suite: `ssh gb10-1 'cd ~/repos/spike-model-engines && host/engines llama update b12125; echo "exit $?"'`, then read the build back.
+  4. Rerun set A's anchors, vision, and ASR on b12125, and apply the engine rule.
+  5. Then behavior 21: the two cache arms on BFCL multi-turn's whole list, then phases 1 and 2, BFCL single, and conform on the winner.
+- **Branch state:** spike-model-engines `screen` is at 4f40b62, with the temporary A/B sections (`-cram0`, `-noidle`, `set-a-cram0`) and Gemma's 16-slot section. On it, also land:
+  - the gb10 pin at b12125
+  - the currency command's newest-build rule
+  - the winning cache keys on both agent sections
+  - removal of the temporary sections
+  Push to a host's clone as `screen-next`, then fast-forward on the host. gb10-1's clone is at 4f40b62, and framework's at 31b00eb.
+- **Host state:** gb10-1 has only E4B and granite loaded, after the A/B, so load set A first. framework serves set A.
+- **Earlier b12063 results** stay as context, in `.state/screen/gb10-1/` (p1-*, p2-*, bfcl-single/, the partials, ab/). gb10-1's record compares only cells from b12125, beside the b12063 engine-rule cells.
+- **No escalation is waiting.**
 
 ## Decisions
 
@@ -913,8 +951,13 @@ Door          two-way:
 - screen: conform through Pi, which hit its 10-minute cap on gb10-1 after one clean trial (9 capabilities, 59 requests, all HTTP 200; about 8 minutes a trial, the time in Pi's turns, with the router decoding at about 70 tok/s), reruns whole at k = 5 under a 45-minute cap on the same fresh load right after the BFCL multi-turn rerun, both run by the session in the background; rejected a smaller k, which pass^5 can't judge (architect, 2026-11-04).
 - screen: the prompt-cache stall is diagnosed and fixed within this task: a bounded A/B on gb10-1 (BFCL multi-turn's first 4 samples, on Gemma's section and set A's gpt-oss section, each with the default prompt cache and with --cache-ram 0, saves and decode read from the router's log), the winning setting landing in spike-model-engines' preset through the screen branch's PR whatever Gemma's verdict, then multi-turn and conform rerun on it; single-turn's 0.800 stands; rejected ending the task at Gemma's drop with the diagnosis as a task of its own (architect, 2026-11-04).
 - screen: the background job was stopped as multi-turn reached its cap (16 of 20, 6 passing), before conform's rerun ran, so gb10-1 is free for the A/B and conform runs once on the setting that stays; rejected letting conform finish on the current setting (architect, 2026-11-04).
+- screen: gb10-1 moves to the newest llama.cpp build within this task, b12125 (#31391's CUDA fix for the idle-slot stall, #30252, is in b12080 and later); ASR A and B run on b12063 first, so the verify mode's engine rule judges the move on set A's cells on both builds; rejected finishing on b12063 with a separate engine-currency task (architect, 2026-11-05).
+- screen: on b12125 the maintainers' cache design (cache-ram 8192, idle-slot caching, -sps 0 per #22083) and cache-ram 0 with cache-idle-slots = false each run BFCL multi-turn's whole list on Gemma's section with 5-minute readouts; the faster setting without a stall wins, and its run is the keep rule's multi-turn figure; both agent sections take it; phases 1 and 2, BFCL single, and conform rerun on b12125 (architect, 2026-11-05).
+- screen: spike-model-engines' currency compares each host class's llama.cpp pin with the newest bNNNNN release, not the newest semver release, implemented in the screen branch's PR beside the gb10 pin; supersedes the pending edit that left it to the intake (architect, 2026-11-05).
+- screen: whether to host the agent model alone on vLLM for concurrent sessions goes to spike-model-layout as a question, with gb10-1's vLLM figures (gpt-oss-120b 34.0 vs 50.0 tok/s at 1 stream, 168.2 vs 129.0 at 16, 2026-10-31 report) (architect, 2026-11-05).
+- screen: framework's Gemma re-screen waits on watch items in its descriptor for llama.cpp #25584 and #31418, run when both merge; framework stays on b11960 until its next session's host update, its currency item held with that reason (architect, 2026-11-05).
 
 ## Pending edits
 
-- Coordinator roadmap (`standards-lab/context/roadmap.toml`), experiment.hosting's intake: a note that spike-model-engines' currency compares each host class's llama.cpp pin with the newest semver release's build, so a class pinned past it (gb10 at b12063) reads current until the next semver release; the intake decides whether currency should compare with the newest build release (verify-gb10, Decisions).
 - Coordinator roadmap, experiment.hosting's intake, beside the note above: framework runs strix-halo b11960 while the newest llama.cpp build is b12078 (2026-11-03), and spike-model-engines' currency doesn't report it, since it compares with the newest semver release's build (screen, PLAN).
+- Coordinator roadmap, `experiment.hosting.spike-model-layout`'s summary: weigh hosting the agent model alone on vLLM for concurrent-session throughput, with gb10-1's figures (gpt-oss-120b on vLLM v0.32.0: 34.0 vs llama.cpp's 50.0 tok/s at 1 stream, 168.2 vs 129.0 at 16; gb10-1 report 2026-10-31) and the screen's finding that llama.cpp's idle-slot saves stalled multi-turn load before b12080 (screen, Decisions).
