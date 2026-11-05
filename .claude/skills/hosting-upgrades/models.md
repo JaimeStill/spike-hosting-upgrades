@@ -1,9 +1,10 @@
 # Models: gates, sort, and memory
 
-How steps 7 and 8 of [SKILL.md](SKILL.md), and its screen mode, judge a model. Every value a gate compares against
-comes from the project's `docs/policy.md` or from the probe, never from this page; this page says
-how to read the sources that settle each gate. A gate that needs a value the policy doesn't state
-is a pause (SKILL.md, "When to pause"), and the run never fills the value in itself.
+How steps 7 and 8 of [SKILL.md](SKILL.md), and its screen mode, judge a model. Every value a
+gate compares against comes from the project's `docs/policy.md` or from the probe, never from
+this page; this page says how to read the sources that settle each gate. A gate that needs a
+value the policy doesn't state is a pause (SKILL.md, "When to pause"), and the run never fills
+the value in itself.
 
 ## Gate 1: the policy
 
@@ -146,12 +147,11 @@ output path, and conventions), and records adversary-generated data in a trainin
 - **Not settled, failing a later gate**: a model whose chain is short of the pass bar, with no
   involvement found at an excluding level, that a read the run has already made shows failing a
   later gate (artifact integrity, the floor, fit, the engine, the agent bar, or the speed floor).
-  Research to the
-  end would change nothing the report decides, so it may stop here. The row says origin is "not
-  settled", what the chain established so far, cited, and that the research stopped because the
-  model fails that gate, named with its source. The model is listed under the gate it fails, not
-  under "origin unclear", and never reaches a verdict or the model set. A model the run would
-  rank if origin passed is never stopped this way.
+  Research to the end would change nothing the report decides, so it may stop here. The row
+  says origin is "not settled", what the chain established so far, cited, and that the research
+  stopped because the model fails that gate, named with its source. The model is listed under
+  the gate it fails, not under "origin unclear", and never reaches a verdict or the model set. A
+  model the run would rank if origin passed is never stopped this way.
 
 ### Artifact integrity
 
@@ -395,8 +395,8 @@ The verdict rules are the same as SKILL.md's "Verdicts". For a model:
 - **hold**: its speed on the class is unpublished, comes from another class, is a lead, or is a
   stand-in estimate from another quantization (Sort); or it is an agent candidate that needs
   measurement (Gate 4); or its speed against its purpose's floor is a paper estimate alone
-  (Gate 5); or it is measured slower than the incumbent but ahead on the card's evals
-  for the purpose. Measured slower but ahead on evals is always hold, never verify or skip: the
-  trade is the architect's to weigh.
+  (Gate 5); or it is measured slower than the incumbent but ahead on the card's evals for the
+  purpose. Measured slower but ahead on evals is always hold, never verify or skip: the trade is
+  the architect's to weigh.
 - **skip**: it is measured behind the incumbent with no eval gain, or it failed a gate, the speed
   floor's included.

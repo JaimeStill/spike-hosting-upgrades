@@ -626,15 +626,14 @@ their checks are in [models.md](models.md); this step says what the section hold
 3. **The gates, in order**: the policy (the origin rule, then artifact integrity, then the
    quantization floor, as `docs/policy.md` states them and reads them), a fit in the probed
    memory, the host's engine serving the architecture on its backend, for the agent purpose the
-   policy's agent quality bar, and the policy's speed floor for the purpose ([models.md](models.md),
-   "Gate 5"). A model that fails a gate stops there and is listed
-   with the gate it failed and why. The floor takes one of the policy's three paths, settled by
-   the build, not the label (the publisher's native or QAT release, the publisher's
-   post-training checkpoint, or a third party's conversion), and never by the repository id: a
-   trained-in format passes by name with the publisher's quality statement quoted, a
-   publisher's post-training checkpoint passes only when every eval its card reports is within
-   the policy's margin of BF16 (the row names any outside it), and everything else meets the
-   floor.
+   policy's agent quality bar, and the policy's speed floor for the purpose
+   ([models.md](models.md), "Gate 5"). A model that fails a gate stops there and is listed with
+   the gate it failed and why. The floor takes one of the policy's three paths, settled by the
+   build, not the label (the publisher's native or QAT release, the publisher's post-training
+   checkpoint, or a third party's conversion), and never by the repository id: a trained-in
+   format passes by name with the publisher's quality statement quoted, a publisher's
+   post-training checkpoint passes only when every eval its card reports is within the policy's
+   margin of BF16 (the row names any outside it), and everything else meets the floor.
 4. **Excluded on origin, and origin unclear.** The run builds each model's evidence chain
    (publisher identity, the publisher's own documents, then artifact checks, as models.md,
    "Origin", gives it). A model with any disclosed or detected involvement of an adversarial
@@ -652,14 +651,13 @@ their checks are in [models.md](models.md); this step says what the section hold
    publisher, an unestablished lineage, a teacher the card doesn't name and the publisher doesn't
    place in its own pipeline, or sources that contradict each other) goes, without a pause, in the
    "origin unclear" list beside it, and never reaches a verdict either. Each entry names what the
-   run checked, each source cited inline. A pass means "no disclosed or detected involvement at
-   an excluding level", and the section says so. A model that already fails a later gate
-   (artifact integrity, the floor, fit, the engine, the agent bar, the speed floor), shown by a
-   read the run has
-   made, may stop at "not settled" for origin instead of being researched to the end: its row
-   says origin is not settled, that the research stopped because the model fails that gate, and
-   names the gate and its source (models.md, "Origin"). It is listed under the gate it fails, not
-   under "origin unclear".
+   run checked, each source cited inline. A pass means "no disclosed or detected involvement
+   at an excluding level", and the section says so. A model that already fails a later gate
+   (artifact integrity, the floor, fit, the engine, the agent bar, the speed floor), shown by
+   a read the run has made, may stop at "not settled" for origin instead of being researched
+   to the end: its row says origin is not settled, that the research stopped because the model
+   fails that gate, and names the gate and its source (models.md, "Origin"). It is listed under
+   the gate it fails, not under "origin unclear".
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
@@ -1514,8 +1512,8 @@ be split as "Research" says: its agent-models, other-models, and origin parts, w
 List the agent candidates the gates leave at "needs measurement", by name, each with what it
 needs: the BFCL category with no card figure, the tool-reliability check, or a speed floor's
 cell. The list is the screen's own, read fresh from the gates, never carried from a report: a
-report's held agents that the pool doesn't name aren't on it. Only
-the candidate step 1 names is measured; the others wait for a later screen.
+report's held agents that the pool doesn't name aren't on it. Only the candidate step 1 names is
+measured; the others wait for a later screen.
 
 ### 5. Before any load
 

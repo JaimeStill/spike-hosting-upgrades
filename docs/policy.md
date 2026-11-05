@@ -94,13 +94,13 @@ publisher's repository or GitHub organization that holds it: the run looks for a
 path there (the architect's decision, 2026-10-31). A teacher the card doesn't name (a card that says "distillation" or
 "teacher" and names no model) passes only when the publisher's own documents say it is a
 checkpoint from their own pipeline; otherwise the model is "origin unclear" (the architect's
-decision, 2026-10-31). A publisher's own technical report that describes the distillation as part of
-its own training of the family places the teacher in its pipeline, even when the recipe is adopted
-by reference from an earlier generation and the teacher is unnamed, provided no source, primary
-or lead, names an outside model: so Gemma 4, on Gemma 3's "large IT teacher", passes (the
-architect's decision, 2026-11-04). Another model's documents don't place a model's teachers: a
-sibling's blog saying its teachers branch from its own checkpoint settles only that sibling (the
-architect's decision, 2026-11-04).
+decision, 2026-10-31). A publisher's own technical report that describes the distillation as part
+of its own training of the family places the teacher in its pipeline, even when the recipe is
+adopted by reference from an earlier generation and the teacher is unnamed, provided no source,
+primary or lead, names an outside model: so Gemma 4, on Gemma 3's "large IT teacher", passes
+(the architect's decision, 2026-11-04). Another model's documents don't place a model's teachers:
+a sibling's blog saying its teachers branch from its own checkpoint settles only that sibling
+(the architect's decision, 2026-11-04).
 
 **Compliance, a gate of its own.** Apart from the threat above, the project deals with no
 adversarial entity. A publisher or an uploader that is an adversarial entity, by the lists above,
