@@ -115,7 +115,8 @@ The tasks, in the order they run; each cites the evidence it proves.
    `docs/findings/verify-framework.md`.
 3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
 4. `screen`: the pool's candidates screened for both host classes, each supported one verified
-   beside its role's incumbent (evidence 4).
+   beside its role's incumbent (evidence 4). Its records are
+   `docs/screens/framework/2026-11-04.md` and `docs/screens/gb10-1/2026-11-05.md`.
 5. `answer`: a second dated report showing what moved, the cadence, README "The answer", and the
    answer section (evidence 2, 6).
 
@@ -132,7 +133,9 @@ coordinator's `references.toml`, with its local checkout in `references.local.to
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.
 - `spike-model-hosting`: the pool document (`docs/pool.md`), its admission rules and speed floors,
-  the model-card method, and the measurements `docs/policy.md`'s agent quality bar is drawn from.
+  the model-card method, the measurements `docs/policy.md`'s agent quality bar is drawn from, and
+  the agent tiers (BFCL and conform) and profile loader the screen mode runs read-only from its
+  clone.
 - `claude-plugins`: the skill layout and the check, for the plugin the intake may route there.
 - `dotfiles`: gb10-1's host-stack setup (`platforms/dgx/system-setup.sh`).
 - `spike-harness-driver`: how harnesses load a skill.
