@@ -20,8 +20,11 @@ authoritative source first, and cites each link inline. "Origin" here is who was
 model; "build" (Quantization floor) is how the file the host would load was made.
 
 A pass the policy grants a publisher by name settles the origin gate in the policy's own words
-and scope, quoted in the row: as of 2026-11-06, every model NVIDIA publishes, Nemotron or not, and
-a conversion whose weights item 4 shows to be NVIDIA's. The pass covers the levels a teacher or
+and scope, quoted in the row: as of 2026-11-06, every model NVIDIA publishes on its own weights,
+Nemotron or not, and a conversion whose weights item 4 shows to be NVIDIA's. The pass follows the
+weights, not the uploader's name: an NVIDIA quantization or republication of another publisher's
+weights (an NVFP4 of a Qwen model, say) is judged by its base at every level, so one on
+adversary-origin weights is excluded at level 1. The pass covers the levels a teacher or
 data generator would otherwise reach, not the uploader's compliance (item 1 still screens the
 uploader), not a model another publisher derived from those weights (judged at every level), and
 not the later gates. A survey's discovery and pool rows take it like any other candidate.
