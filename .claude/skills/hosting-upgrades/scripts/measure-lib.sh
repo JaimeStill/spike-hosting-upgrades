@@ -351,8 +351,8 @@ image() {
     strix-halo) flavor=vulkan ;;
     *) echo "image: class $class is none of gb10, strix-halo" >&2; return 2 ;;
   esac
-  # fix-in-image.sh's method: an anonymous pull token, then a HEAD of the tag's manifest, 200 for
-  # a published image and 404 for none.
+  # The registry's manifest check: an anonymous pull token, as fix-in-image.sh takes, then a HEAD
+  # of the tag's manifest, 200 for a published image and 404 for none.
   token=$(curl -q -fsS --max-time 30 --proto =https \
     "https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull" |
     sed -n 's/.*"token":"\([^"]*\)".*/\1/p')

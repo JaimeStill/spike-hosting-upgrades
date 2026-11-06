@@ -22,8 +22,8 @@ without the page's layout, and a query can be repeated exactly.
 - **`gh issue view` and `gh pr view` read one issue or pull request**: its state for the blocker
   register (`--json state,closedAt,updatedAt`, or `--json state,mergedAt,mergeCommit`), and its
   comments for a maintainer's word (`--json comments`, each comment's `authorAssociation`:
-  `MEMBER`, `OWNER`, or `COLLABORATOR` is the project's own, a primary source; anyone else's is a
-  lead).
+  `MEMBER`, `OWNER`, or `COLLABORATOR` is the project's own, a maintainer and a primary source;
+  anyone else's, `CONTRIBUTOR` included, is a lead).
 - **`gh api` is only a fallback**, for when api.github.com's unauthenticated reads (60 an hour)
   run out. It asks permission each time, since the readiness check prints no rule for it
   ([setup.md](setup.md), "Readiness check").
@@ -32,7 +32,7 @@ without the page's layout, and a query can be repeated exactly.
   skill, or not at all until one exists ([survey.md](survey.md), "Research"). The Consolidated
   Screening List is read so, by `scripts/screen.sh`, a Hugging Face file's first 4 bytes by
   `scripts/magic.sh` ("Origin and build checks"), and whether a merged fix is in a class's newest
-  imaged build by `scripts/fix-in-image.sh` ("Engines", the ghcr.io manifest check).
+  imaged build by `scripts/fix-in-image.sh` ("Engines", the ghcr.io tag list).
 
 ## Tiers
 
@@ -139,7 +139,7 @@ primary, and a user's reply under it is a lead.
 | llama.cpp | source, at a build | `https://github.com/ggml-org/llama.cpp/blob/<build>/common/arg.cpp` | Raw with WebFetch, `https://raw.githubusercontent.com/ggml-org/llama.cpp/<build>/common/arg.cpp`; every server flag's help text and default, at the probed build. |
 | llama.cpp | tracker | <https://github.com/ggml-org/llama.cpp/issues> | `gh search issues --repo ggml-org/llama.cpp <terms> --sort updated`; `gh search prs` likewise. |
 | llama.cpp | container images | <https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp> | Tags `server-<backend>-<build>`, such as `server-vulkan-b11960`. |
-| llama.cpp | ghcr.io manifest check | `https://ghcr.io/v2/ggml-org/llama.cpp/manifests/server-<backend>-<build>` | Whether a build's image was published for a backend: the registry answers the manifest for a published tag and 404 for one that isn't. It needs an anonymous pull token (`https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull`) sent as a header, which WebFetch can't send, so the bundled [scripts/fix-in-image.sh](scripts/fix-in-image.sh) carries it, as spike-model-engines' `scripts/currency.sh` does: run `.claude/skills/hosting-upgrades/scripts/fix-in-image.sh "ggml-org/llama.cpp" "<pr or commit>" "<gb10 or strix-halo>"` from the project root. It names the newest b-build with the class's image (`server-cuda13-` for gb10, `server-vulkan-` for strix-halo) and reads GitHub's compare of the fix against it (`ahead` or `identical`: in the image). As run 2026-11-06, #30137 for gb10: newest imaged build b12124, `behind` by 17, not in the image; #31620 for strix-halo: b12124, `ahead` by 24, in the image. |
+| llama.cpp | ghcr.io tag list and manifest check | `https://ghcr.io/v2/ggml-org/llama.cpp/tags/list`, `https://ghcr.io/v2/ggml-org/llama.cpp/manifests/server-<backend>-<build>` | Which builds' images were published for a backend: the tag list (paged by its `Link` header) holds every published tag, including a build's with no GitHub release (`server-cuda13-b12169` had none), and the registry answers a published tag's manifest and 404 for one that isn't. It needs an anonymous pull token (`https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull`) sent as a header, which WebFetch can't send, so the bundled [scripts/fix-in-image.sh](scripts/fix-in-image.sh) carries it, as spike-model-engines' `scripts/currency.sh` does: run `.claude/skills/hosting-upgrades/scripts/fix-in-image.sh "ggml-org/llama.cpp" "<pr or commit>" "<gb10 or strix-halo>"` from the project root. It names the newest b-build in the tag list with the class's image (`server-cuda13-` for gb10, `server-vulkan-` for strix-halo) and reads GitHub's compare of the fix against the build's git tag, which exists with or without a release (`ahead` or `identical`: in the image). As run 2026-11-06, #30137 for gb10: newest imaged build b12169, `ahead` by 28, in the image (the releases list's walk had named b12124, `behind` by 17). |
 | llama.cpp (HRX) | ggml-hrx builds | <https://github.com/ROCm/ggml-staging-automation/releases> | Releases page or API (`https://api.github.com/repos/ROCm/ggml-staging-automation/releases`), with WebFetch: AMD's HRX backend builds (`hrx-bNNN`), their dates, and their target list. As read 2026-10-30 they ship as tarballs only, "not a stable distribution channel", with no container image. |
 | vLLM | releases | <https://api.github.com/repos/vllm-project/vllm/releases> | Release notes group changes by hardware (an "AMD ROCm" paragraph); each change cites its pull request. |
 | vLLM | ROCm install doc, at a tag | `https://github.com/vllm-project/vllm/blob/<tag>/docs/getting_started/installation/gpu.rocm.inc.md` | Raw with WebFetch from `https://raw.githubusercontent.com/vllm-project/vllm/<tag>/...`. Lists the supported AMD GPUs by gfx target. `docker/Dockerfile.rocm_base` at the tag names the `PYTORCH_ROCM_ARCH` the published image builds. |

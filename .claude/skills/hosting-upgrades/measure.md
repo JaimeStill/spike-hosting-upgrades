@@ -48,7 +48,7 @@ architect's own shell sources it once.
 | `memory` | One read-out on the host: the memory available to the GPU, where it is read, and the floor. |
 | `readout [<since>]` | The router's log since a time (default 5 minutes ago): idle-slot saves, prompt saves, context checkpoints created, and the decode rate of replies of 90 tokens or more (mean, min, max); then `memory`. |
 | `watch <name> <command...>` | Runs one command with the monitor ("During cells"). `cell`, `tier` and `conform` run under it; any other long step the brief caps is called through it. Its exit is the command's (124 at the cap), written to `<name>.exit` with the floor's reason when the floor stopped it. |
-| `image <class> <build>` | Whether the class's server image exists for the build on ghcr.io, by `scripts/fix-in-image.sh`'s method (an anonymous pull token, then a HEAD of the tag's manifest). |
+| `image <class> <build>` | Whether the class's server image exists for the build on ghcr.io, by the registry's manifest check (an anonymous pull token, as `scripts/fix-in-image.sh` takes, then a HEAD of the tag's manifest). |
 | `gate` | The build gate's loads ("Build gate"): every section the router lists, loaded alone, one at a time. |
 
 `watch`, while it is defined, shadows procps' `watch` in that shell.

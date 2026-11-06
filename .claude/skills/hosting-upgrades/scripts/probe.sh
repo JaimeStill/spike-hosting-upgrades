@@ -7,7 +7,8 @@
 # It prints plain labeled sections (== name ==): the OS, the kernel, firmware and BIOS, the GPU
 # and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
 # engine containers (with their presets' serving keys, the drafters each section loads, and the
-# run flags and engine environment docker run gave them) and
+# run flags and engine environment docker run gave them, and the commit of the clone each preset
+# is mounted from) and
 # systemd units, each running engine's build and served models, the models in the host's local
 # stores (with each GGUF file's first 4 bytes), and what the host has fallen behind on: the
 # package channel and mirror, pending package and firmware updates, failed units, and docker's
@@ -64,7 +65,8 @@ probe() {
           "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
           "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
           "--attention-backend --enforce-eager " \
-          "--cache-ram -cram --ctx-checkpoints --swa-checkpoints --checkpoint-min-step " \
+          "--cache-ram -cram --cache-idle-slots --no-cache-idle-slots --ctx-checkpoints " \
+          "--swa-checkpoints --checkpoint-min-step " \
           "--cache-prompt --no-cache-prompt --context-shift --no-context-shift --keep " \
           "--models-max --sleep-idle-seconds --mmproj-offload --no-mmproj-offload " \
           "--draft-max --draft-min --draft-p-min --n-predict -n --jinja --no-jinja " \
@@ -109,9 +111,14 @@ probe() {
   # address, model, or path and its value is short and plain; otherwise by name alone, "(value
   # not shown)". Any other variable the run set prints by name alone. So the review reads an engine
   # flag set through the environment (LLAMA_ARG_CTX_SIZE) and never a token.
+  #
+  # The template only prints fields and compares none: a docker that decodes inspect's JSON into
+  # untyped values (29.6.2 reads .Count as a json.Number) fails any comparison against a literal,
+  # so awk reads the count (-1 is all). A read that fails still prints both lines, as "not
+  # readable" with docker's first error line, so a missing line never passes for a clean one.
   run_flags() {
-    local hc
-    hc=$(docker inspect "$1" --format '{{with .HostConfig}}{{range .DeviceRequests}}gpus {{if eq .Count -1}}all{{else}}{{.Count}}{{end}}{{range .DeviceIDs}},{{.}}{{end}}
+    local hc err
+    if ! hc=$(docker inspect "$1" --format '{{with .HostConfig}}{{range .DeviceRequests}}gpus {{.Count}}{{range .DeviceIDs}},{{.}}{{end}}
 {{end}}{{range .Devices}}device {{.PathOnHost}}
 {{end}}ipc {{.IpcMode}}
 pid {{.PidMode}}
@@ -126,9 +133,17 @@ runtime {{.Runtime}}
 privileged {{.Privileged}}
 {{range .CapAdd}}cap-add {{.}}
 {{end}}{{range .GroupAdd}}group-add {{.}}
-{{end}}{{end}}') || return
+{{end}}{{end}}' 2>&1); then
+      err=$(grep -m 1 . <<<"$hc")
+      printf '  run flags not readable: %s\n' "${err:-docker inspect failed}"
+      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+      return
+    fi
     printf '  run flags%s\n' "$(awk '
-      $1 == "gpus" { sub(/^gpus /, ""); sub(/,/, " device="); out = out " --gpus " $0; next }
+      $1 == "gpus" {
+        sub(/^gpus /, ""); sub(/,/, " device=")
+        if ($0 ~ /^-1( |$)/) sub(/^-1/, "all")
+        out = out " --gpus " $0; next }
       $1 == "device" { out = out " --device " $2; next }
       $1 == "ipc" && $2 != "" && $2 != "private" && $2 != "shareable" { out = out " --ipc " $2 }
       $1 == "pid" && $2 != "" { out = out " --pid " $2 }
@@ -148,7 +163,11 @@ privileged {{.Privileged}}
     local image_env run_env line name value shown=()
     image_env=$(docker image inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
       "$(docker inspect --format '{{.Image}}' "$1")" 2>/dev/null)
-    run_env=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1")
+    if ! run_env=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1" 2>&1); then
+      err=$(grep -m 1 . <<<"$run_env")
+      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+      return
+    fi
     while IFS= read -r line; do
       [[ -n $line ]] || continue
       grep -qxF -- "$line" <<<"$image_env" && continue
@@ -335,9 +354,41 @@ privileged {{.Privileged}}
       else
         skip "preset $dest (container $cname): its host-side source is unreadable without root"
       fi
+      preset_clone "$src"
     done < <(docker inspect "$cname" \
       --format '{{range .Mounts}}{{.Source}}{{"\t"}}{{.Destination}}{{"\n"}}{{end}}')
     ((found)) || echo "  preset none mounted"
+  }
+
+  # Prints the git clone a preset is mounted from (the host's spike-model-engines checkout), once
+  # per clone: its commit, its branch, and how many tracked files differ from that commit. So the
+  # configuration review reads the preset the host serves, at the host's commit, and not the
+  # workstation's checkout. GIT_OPTIONAL_LOCKS=0 keeps git status from refreshing the index, so
+  # the read writes nothing. A preset outside any clone prints "not in a git clone".
+  local seen_clones=" "
+  preset_clone() {
+    local dir=$1 top head branch changed
+    [[ -d $dir ]] || dir=$(dirname "$1")
+    if ! have git; then
+      echo "  preset clone not readable: git absent"
+      return
+    fi
+    if ! top=$(git -C "$dir" rev-parse --show-toplevel 2>&1); then
+      if [[ $top == *"not a git repository"* ]]; then
+        echo "  preset clone none: not in a git clone"
+      else
+        printf '  preset clone not readable: %s\n' "$(head -n 1 <<<"$top")"
+      fi
+      return
+    fi
+    [[ $seen_clones == *" $top "* ]] && return
+    seen_clones+="$top "
+    head=$(git -C "$top" rev-parse --short HEAD 2>/dev/null)
+    branch=$(git -C "$top" symbolic-ref --short -q HEAD 2>/dev/null || echo "detached")
+    changed=$(GIT_OPTIONAL_LOCKS=0 git -C "$top" status --porcelain --untracked-files=no \
+      2>/dev/null | wc -l)
+    printf '  preset clone %s: commit %s, branch %s, %s tracked files changed\n' \
+      "$top" "${head:-unknown}" "$branch" "$changed"
   }
 
   # Prints the installed version of each named package (globs allowed), on pacman or dpkg hosts,

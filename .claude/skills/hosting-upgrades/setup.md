@@ -106,8 +106,8 @@ Three rules the check never prints:
 - **No rule for `gh api`.** Settings rules apply to every agent in the workspace, not only to this
   skill, and `gh api` writes as readily as it reads (`-X POST`, `-f`), with the architect's GitHub
   token. So a `gh api` call, the fallback once unauthenticated reads run out, asks each time. The
-  register's reads that need it (the releases list and the compare) run inside
-  `scripts/fix-in-image.sh`, whose own rule grants only those GETs; `gh issue view` and
+  register's read that needs it (the compare) runs inside `scripts/fix-in-image.sh`, whose own
+  rule grants only that GET; `gh issue view` and
   `gh pr view` only read, so they get rules of their own.
 - **No wildcard ssh host.** A rule such as `Bash(ssh * bash -s < <probe path>)` also matches ssh
   options riding along in the wildcard (`-o ProxyCommand=<any command>` runs that command on this
@@ -162,7 +162,10 @@ labeled sections (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `==
   key outside the filter prints its value. A flag neither line shows was not passed, and is at the
   engine's default unless it was set another way the probe doesn't read (an environment variable
   such as `LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show
-  either.
+  either. A `preset clone` line names the git clone the preset is mounted from (the host's
+  spike-model-engines checkout), its commit, its branch, and how many tracked files differ from
+  that commit: the configuration review reads the preset at that commit, not the workstation's
+  checkout.
 - **Run flags.** Each engine container also carries a `run flags` line: the flags `docker run`
   took that shape serving beside the engine's arguments, in `docker run`'s terms (`--gpus`,
   `--device`, `--ipc`, `--shm-size`, `--ulimit`, memory and CPU limits, `--network`,
@@ -171,7 +174,9 @@ labeled sections (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `==
   run set beyond the image's: an engine or GPU-stack variable (`LLAMA_ARG_`, `VLLM_`, `GGML_`,
   `CUDA_`, `NVIDIA_`, `HIP_`, `HSA_`, `ROCR_`, `OMP_`) as `NAME=value` when its name names no
   secret, address, model, or path and its value is short and plain, and any other by name alone,
-  `(value not shown)`. The configuration review reads both (survey.md, step 7).
+  `(value not shown)`. The configuration review reads both (survey.md, step 7). A read docker
+  refuses prints both lines as `not readable: <docker's error>`, so a missing line is a probe
+  fault, not a clean read.
 - **Drafters.** Each container, each preset section, and each model a router lists also carries a
   `drafter` line: the drafter models its arguments load for speculative decoding, each by its file
   or repository name only, or `none`, then in parentheses any other speculative key by name; a

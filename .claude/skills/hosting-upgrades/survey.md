@@ -50,7 +50,7 @@ which lists each by kind (hardware and host stack, engines, models, benchmarks) 
 project, with its URL and how to read it. Read the machine-readable endpoint where one exists (the
 GitHub releases API, the Hugging Face API, Arch's package JSON). A source goes through the research
 cache ("Research cache", below): one read within 14 days whose subject hasn't changed is cited from
-the cache with its read date, and every other source is read fresh and its entry replaced.
+the cache with its read time, and every other source is read fresh and its entry replaced.
 
 **When the inventory hasn't moved.** Compare the probe with the Inventory of the host's last
 report. When the two match on the engine builds (each container's image and the build an endpoint
@@ -62,7 +62,7 @@ inventory shows, because the outside world moves:
 - pending package and firmware updates, and each container image's newest tag (step 5)
 - each component's and engine's newer releases, and what is newly known to break (steps 4 and 6)
 - the newest models of the publishers, the pool, and the scan for new candidates (step 8), with
-  their origin chains (models.md, "Origin")
+  their origin chains (models.md, "Origin"), each through its model entry in the research cache
 - the descriptor's watch items, of every kind, each answered by name in its kind's step (4, 5, or
   6)
 - every blocker register entry's upstream state ("Blocker register")
@@ -104,30 +104,51 @@ Every claim cites its source as rules.md, "Citing", says.
 ### Research cache
 
 The project's committed `docs/research.md` holds one entry per source a survey read: its URL, its
-read date, the hosts and subject it concerns, its tier, and what it said, in the source's own
+read time, the hosts and subject it concerns, its tier, and what it said, in the source's own
 figures and words. It is one file, updated in place; git keeps the old text. Every host's surveys
-share it, so a source read for one host is cited for another while it is fresh.
+share it, so a source read for one host is cited for another while it is fresh. A read time is a
+UTC timestamp, `YYYY-MM-DDTHH:MMZ`, so a subject updated upstream on the day of the read is
+placed before or after it; an older entry that gives only a date counts as read at 00:00Z that
+day.
 
-1. **Before reading a source**, look for its entry. Cite the entry, with its read date and the
+An entry caches what a source said about its subject: an issue's comments, a release's notes, a
+model's card. It never caches which is newest: a release entry names its release and what its
+notes say, and whether a newer release exists is read fresh every run (item 1's "Never cached").
+
+**Model entries.** Each model a survey judges (an incumbent or a candidate, from any of step 8's
+origins) gets one entry for its card and origin chain, under the cache's "Model cards and origin
+chains" heading: its repository, the card's `lastModified`, the publisher, the base chain to the
+original weights (each level's repository and publisher), the teachers and the role each played,
+the card's reads the gates take (its format and build, its evals for the purpose, its context
+and architecture), and the origin chain's verdict inputs (each level's finding with its source
+and read time, and whether the chain reached the pass bar, excluded at a level, or stayed
+unclear). It holds the inputs, not the survey's verdict. A survey consults it before building the
+chain (step 8, item 5) and rebuilds only under item 1's rules, the model's record
+(`lastModified`) moving past the entry's being its subject's change.
+
+1. **Before reading a source**, look for its entry. Cite the entry, with its read time and the
    source's URL, instead of reading again, unless one of these holds; then read the source fresh:
    - the entry is 14 days old or more
-   - its subject has changed since the read: the issue or pull request was updated after it (its
-     `updatedAt`, which a `gh issue view` or `gh pr view` gives), the release list or the model's
-     record (`lastModified`) has moved past what the entry names, or the probe shows the host
-     running something the entry doesn't cover (a newer build, another model file)
+   - its subject has changed since the read: the issue or pull request was updated after the
+     entry's read time (its `updatedAt`, which a `gh issue view` or `gh pr view` gives), the
+     release list or the model's record (`lastModified`) has moved past what the entry names, or
+     the probe shows the host running something the entry doesn't cover (a newer build, another
+     model file)
    - the claim the survey would cite from it is not in the entry
 
    Never cached, read every run: what says what is newest (a release list, a registry's tags, a
-   publisher's model list, a package's or firmware's pending update), the foreign-adversary list
-   and the screening list ([sources.md](sources.md), "Origin and build checks"), and the
-   register's upstream states. A newest-version read is also how a survey sees that a cached
+   publisher's model list, a package's or firmware's pending update), and the newest fact itself,
+   even where an entry's source also gives it; the foreign-adversary list and the screening list
+   ([sources.md](sources.md), "Origin and build checks"); and the register's upstream states. A newest-version read is also how a survey sees that a cached
    entry's subject has changed.
-2. **After a read**, replace the source's entry whole, with today's date: what it says now, not
-   what it said then. A source read for the first time gets a new entry, under its kind's heading
-   (an engine, the engine choice and models, the host stack).
+2. **After a read**, replace the source's entry whole, with the read's UTC time: what it says
+   now, not what it said then. A source read for the first time gets a new entry, under its
+   kind's heading (an engine, the engine choice and models, model cards and origin chains, the
+   host stack).
 3. **Delete** an entry whose subject no longer concerns any host: a model no host serves or
-   screens and no survey ranks, a build two images behind the newest for every class it names, or
-   a register entry that is deleted. The report's Inventory names the entries deleted.
+   screens and no survey ranks, a build that no host runs or is held at and that is two images
+   behind the newest for every class it names, or a register entry that is deleted. The report's
+   Inventory names the entries deleted.
 
 A cached figure keeps its tier, and a lead stays a lead. The cache holds what a source said, never
 the survey's verdicts, and never a register entry's state: the register's upstream checks run every
@@ -159,10 +180,11 @@ in the register, and a descriptor points to it.
    .claude/skills/hosting-upgrades/scripts/fix-in-image.sh "<owner>/<repo>" "<pr or commit>" "<class>"
    ```
 
-   It names the newest build with the class's image (the ghcr.io manifest check spike-model-engines'
-   `scripts/currency.sh` uses) and reads GitHub's compare of the fix's merge commit against it:
+   It names the newest build with the class's image (the highest `server-<flavor>-b<N>` in
+   ghcr.io's tag list, so an image published for a build with no GitHub release counts) and
+   reads GitHub's compare of the fix's merge commit against it:
    `in image: yes` when the build is ahead of the fix or identical to it. Quote its lines, with
-   their read date.
+   their read time.
 3. **Move the state.** An open entry whose fix merged becomes **fix merged**; a fix-merged entry
    whose fix the script finds in the class's newest imaged build becomes **fix in an image
    build**. A state never moves back without a cited reason (a revert, a reopened issue), which
@@ -435,10 +457,12 @@ spike-model-engines), and measure settles it on the host.
 
 1. **What is reviewed.**
    - **Each served section's arguments**: every key of each preset section that serves a purpose
-     (the probe's `preset` block), with the `[*]` section's keys it inherits, and each argument
-     the section leaves at its default where published practice for the class names a value (the
-     batch and ubatch, flash attention, the KV cache's type and whether it is unified, the
-     prompt cache and its idle-slot saves, the context checkpoints, offload, mmap). A default is
+     (the probe's `preset` block, at the commit its `preset clone` line names, which is the
+     host's checkout and may differ from the workstation's), with the `[*]` section's keys it
+     inherits, and each argument the section leaves at its default where published practice for
+     the class names a value (the batch and ubatch, flash attention, the KV cache's type and
+     whether it is unified, the prompt cache and its idle-slot saves, the context checkpoints,
+     offload, mmap). A default is
      read from the build's own argument list (`common/arg.cpp`, `common/common.h` at the probed
      build) and cited as a default read, not a probed value.
    - **The container's run flags**: the probe's `run flags` and `run env` lines for each engine
@@ -458,7 +482,9 @@ spike-model-engines), and measure settles it on the host.
    the vendor's playbooks for the class (NVIDIA's DGX Spark playbooks), the engine project's own
    benches on the class (ggml-org's DGX Spark benches, which name their flags), the build's own
    argument list and help text, maintainers' comments on the tracker (`gh issue view <n>
-   --comments`, a maintainer's comment by its author association), and on Strix Halo the
+   --json comments`, each comment by its `authorAssociation`: `MEMBER`, `OWNER`, or
+   `COLLABORATOR` is a maintainer's, primary; `CONTRIBUTOR` or any other is a lead, as
+   [sources.md](sources.md), "Reading a source", tiers it), and on Strix Halo the
    community benches the sources list. Each is read through the research cache. A blocker
    register entry is a source too: a flag that works around an open entry (`cache-ram = 0` for a
    prompt-cache bug) is cited to it, and its removal is proposed only once the entry reaches "fix
@@ -533,7 +559,10 @@ and their checks are in [models.md](models.md); this step says what the section 
    outside it), and everything else meets the floor.
 5. **Excluded on origin, and origin unclear.** The survey builds each model's evidence chain
    (publisher identity, the publisher's own documents, then artifact checks, as models.md,
-   "Origin", gives it). A model with any disclosed or detected involvement of an adversarial entity
+   "Origin", gives it), starting from the model's entry in the research cache ("Research cache",
+   "Model entries"): a fresh entry's chain is cited, with its read time, and only a stale or
+   missing entry, or a level the entry doesn't settle, is read again; each chain built or extended
+   replaces the model's entry. A model with any disclosed or detected involvement of an adversarial entity
    at a level the policy excludes on, or a publisher or uploader that fails the policy's compliance
    gate, goes in the section's "excluded on origin" list and never reaches a verdict. Each entry
    names the level and cites, inline, the URL and read date of the source that shows it. A teacher
@@ -587,7 +616,11 @@ at once.
 2. **The candidates per purpose**: the top three from step 8 that pass every gate, plus the
    incumbent, so at most four per purpose. The report states this bound and how many sets it
    weighed. A model that serves several purposes can fill each of them in one set, and its memory
-   counts once.
+   counts once. The sets need not be enumerated one by one (four purposes give up to 256): the
+   survey may prune on paper, dropping a candidate whose memory at its load target leaves no
+   room for the other purposes' smallest choices (item 3), and a set another kept set dominates
+   (ranked no better on every purpose and using no less memory, as item 5 compares them). The
+   report states each pruning, its rule and what it dropped, beside the count of sets weighed.
 3. **Keep the sets that fit together**: the estimated memory of every model in the set, each at its
    purpose's load target (rules.md, "Load targets"), leaves the policy's headroom of the
    GPU-reachable ceiling free. A model serving two purposes is estimated at the more demanding
@@ -613,9 +646,11 @@ at once.
 One closing line naming a single verify item from across the sections: the one with the largest
 claimed gain on the agent purpose (or, on a host with none, on the purpose with the largest load
 target), and among equal claimed gains, the lowest risk first (no root and rolled back by removing
-a flag, before a root step with a rollback, before a reboot), with a one-line reason. It names a
-verify item only, never a take, hold, or skip item. When no item is verify, the line says so and
-names nothing.
+a flag, before a root step with a rollback, before a reboot), with a one-line reason. When that
+purpose has no verify item (a host that serves the agent purpose with none on it, say), the line
+names the top-ranked verify item of any purpose, by the same order: the largest claimed gain, then
+the lowest risk. It names a verify item only, never a take, hold, or skip item. When no item is
+verify, the line says so and names nothing.
 
 ## 12. Proposed changes
 
@@ -725,7 +760,9 @@ splits it into these five parts, so that runs are repeatable:
    and the discovered models among them), their speed on the class, and their cards' BFCL figures
    against the policy's agent quality bar, each with its gap (step 8).
 4. **Other models**: every other purpose's candidates, the discovered models among them (step 8).
-5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin").
+5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin"),
+   from each model's entry in the research cache: a fresh entry is cited, not re-read, and the
+   part returns a model entry for each chain it built or extended.
 
 **A second, narrower round.** The model parts find candidates as they go, so some reach the survey
 after the origin part has started, or after it has returned. When parts 3 and 4 have returned, the
@@ -739,7 +776,8 @@ other.
 **What each part gets.**
 
 - Its inputs: the probe's inventory, the host descriptor (with its load targets), the policy, the
-  pool's rows for a model part, and the research cache's entries for its kind, each with whether
+  pool's rows for a model part, and the research cache's entries for its kind (for the model and
+  origin parts, the model entries), each with whether
   it is fresh ("Research cache"), so a part reads only the stale and the new. A part returns each
   source it read as an entry for the cache; the survey writes the cache. The register's upstream
   checks are the survey's own, not a part's.
@@ -763,5 +801,5 @@ so they would run outside the rules the architect granted. Data too large for We
 header or a redirect WebFetch can't handle, goes through a narrow script bundled with the skill,
 which reads one source and is granted by its own rule, naming its path. There are three:
 `scripts/screen.sh` reads the screening list, `scripts/magic.sh` reads a Hub file's first 4 bytes
-past the xet CDN's 302, and `scripts/fix-in-image.sh` reads ghcr.io's manifests with a pull token
+past the xet CDN's 302, and `scripts/fix-in-image.sh` reads ghcr.io's tag list with a pull token
 and GitHub's compare ("Blocker register"). With the probe, they hold the skill's only curl.

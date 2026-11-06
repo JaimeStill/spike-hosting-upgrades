@@ -15,20 +15,23 @@
 #
 # 1. A pull request's state and merge commit, with `gh pr view --json state,mergedAt,mergeCommit`.
 #    A pull request that isn't merged stops here: no build can carry it.
-# 2. The newest b-build with the class's image: the repository's releases, newest first, with
-#    `gh api` (a GET), then each build's image manifest on ghcr.io, answered 200 for a published
-#    tag and 404 for one that isn't. The registry needs an anonymous pull token sent as a header,
-#    which WebFetch can't send, so the script fetches it with curl, as currency.sh does; llama.cpp
-#    publishes images only nightly and on manual runs, so its newest release often has none.
+# 2. The newest b-build with the class's image: ghcr.io's tag list for the image, read whole (the
+#    registry's /v2/<repo>/tags/list, a GET, a page at a time by its Link header), and the highest
+#    <N> among its server-<flavor>-b<N> tags. The registry needs an anonymous pull token sent as a
+#    header, which WebFetch can't send, so the script fetches it with curl, as currency.sh does.
+#    The tag list, not the releases list, because an image can be published for a build with no
+#    GitHub release (server-cuda13-b12169 had none); llama.cpp publishes images only nightly and
+#    on manual runs, so its newest release often has none either. The git tag b<N> exists either
+#    way, and step 3 compares against it.
 # 3. GitHub's compare API, `gh api repos/<owner>/<repo>/compare/<fix>...<build>` (a GET): the
 #    build carries the fix when its status is "ahead" or "identical", and not when it is "behind"
 #    or "diverged".
 #
 # It makes no write: `gh api` runs with --method GET and no fields, and curl only reads the token
-# and HEADs a manifest. It prints the fix, its state and merge commit, the class's newest imaged
+# and the tag list. It prints the fix, its state and merge commit, the class's newest imaged
 # build and its image, the compare's status, the answer ("in image: yes", "no", or "no (not
-# merged)"), and the read date. It exits 0 whenever it answers, 2 when an argument is refused,
-# and 1 when a read fails (the network, GitHub, or the registry), naming the read.
+# merged)"), and the read time (UTC). It exits 0 whenever it answers, 2 when an argument is
+# refused, and 1 when a read fails (the network, GitHub, or the registry), naming the read.
 set -u
 # The allowlist's ranges mean ASCII only in the C locale.
 export LC_ALL=C
@@ -69,7 +72,7 @@ if [[ $fix =~ ^[0-9]{1,7}$ ]]; then
   IFS=$'\t' read -r state merged sha <<<"$pr"
   printf 'fix: %s#%s, %s' "$repo" "$fix" "$state"
   if [[ $state != MERGED || $sha == - ]]; then
-    printf '\nin image: no (not merged)\nread: %s\n' "$(date +%F)"
+    printf '\nin image: no (not merged)\nread: %s\n' "$(date -u +%Y-%m-%dT%H:%MZ)"
     exit 0
   fi
   printf ', merged %s, merge commit %s\n' "$merged" "$sha"
@@ -81,27 +84,28 @@ else
 fi
 
 # 2. The newest b-build whose server image exists for the class's flavor.
-builds=$(gh api --method GET "repos/$repo/releases?per_page=100" \
-  --jq '.[].tag_name | select(test("^b[0-9]+$"))') && [[ -n $builds ]] ||
-  fail "the releases of $repo can't be read"
 token=$(curl -q -fsS --max-time 30 --proto =https \
   "https://ghcr.io/token?scope=repository:$registry:pull" |
   sed -n 's/.*"token":"\([^"]*\)".*/\1/p') && [[ -n $token ]] ||
   fail "ghcr.io gives no pull token for $registry"
-accept=application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json
-accept+=,application/vnd.oci.image.manifest.v1+json
-build=
-for b in $builds; do
-  status=$(curl -q -sS -o /dev/null -w '%{http_code}' --head --max-time 30 --proto =https \
-    -H "Authorization: Bearer $token" -H "Accept: $accept" \
-    "https://ghcr.io/v2/$registry/manifests/server-$flavor-$b") || status=
-  case $status in
-    200) build=$b && break ;;
-    404) ;;
-    *) fail "ghcr.io's server-$flavor-$b can't be read (${status:-no answer})" ;;
-  esac
+headers=$(mktemp) || fail "no temporary file for the registry's headers"
+trap 'rm -f "$headers"' EXIT
+# Each page names the next in its Link header (rel="next"), a path on ghcr.io; the last has none.
+# The page bound stops a registry that never ends its list.
+page="/v2/$registry/tags/list?n=1000" pages=0 newest=0
+while [[ -n $page ]]; do
+  ((++pages <= 200)) || fail "ghcr.io's tag list for $registry runs past 200 pages"
+  body=$(curl -q -fsS --max-time 30 --proto =https -D "$headers" \
+    -H "Authorization: Bearer $token" "https://ghcr.io$page") ||
+    fail "ghcr.io's tag list for $registry can't be read (page $pages)"
+  while read -r n; do
+    ((10#$n > newest)) && newest=$((10#$n))
+  done < <(grep -oE "\"server-$flavor-b[0-9]+\"" <<<"$body" | sed 's/.*-b\([0-9]*\)"$/\1/')
+  page=$(tr -d '\r' <"$headers" | sed -n 's/^[Ll]ink: *<\([^>]*\)>; *rel="next".*/\1/p')
+  [[ -z $page || $page == /v2/* ]] || fail "ghcr.io's next page \"$page\" is not a registry path"
 done
-[[ -n $build ]] || fail "none of $repo's last 100 releases has an image server-$flavor-<build>"
+((newest > 0)) || fail "ghcr.io has no image server-$flavor-b<build> for $registry"
+build=b$newest
 printf 'class: %s, flavor %s; newest imaged build: %s (ghcr.io/%s:server-%s-%s)\n' \
   "$class" "$flavor" "$build" "$registry" "$flavor" "$build"
 
@@ -116,4 +120,4 @@ case $status in
   behind | diverged) answer=no ;;
   *) fail "the compare's status \"$status\" is none of ahead, identical, behind, diverged" ;;
 esac
-printf 'in image: %s\nread: %s\n' "$answer" "$(date +%F)"
+printf 'in image: %s\nread: %s\n' "$answer" "$(date -u +%Y-%m-%dT%H:%MZ)"

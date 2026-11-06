@@ -2,11 +2,17 @@
 
 What the hosting-upgrades skill's surveys read, one entry per source, updated in place
 ([survey.md](../.claude/skills/hosting-upgrades/survey.md), "Research cache"). Each entry gives
-the source's URL, the date it was read, the hosts and subject it concerns, its tier, and what it
-said. A survey cites an entry, with its read date, instead of reading the source again, until the
+the source's URL, the time it was read, the hosts and subject it concerns, its tier, and what it
+said. A read time is a UTC timestamp, `YYYY-MM-DDTHH:MMZ`, so an upstream update on the day of the
+read is placed before or after it; an entry that gives only a date counts as read at 00:00Z that
+day. A survey cites an entry, with its read time, instead of reading the source again, until the
 entry is 14 days old or its subject has changed; then it reads the source and replaces the entry.
-An entry whose subject no longer concerns any host (a model no host serves or screens, a build two
-images behind the newest, a closed register entry) is deleted. Git keeps the old text.
+An entry holds what a source said about its subject (an issue's comments, a release's notes, a
+model's card), never which release or model is newest, which a survey reads fresh every run. Each
+model a survey judges has one entry for its card and origin chain, under "Model cards and origin
+chains", so the next survey cites the chain instead of rebuilding it. An entry whose subject no
+longer concerns any host (a model no host serves or screens, a build no host runs or is held at
+and two images behind the newest, a closed register entry) is deleted. Git keeps the old text.
 
 The register's upstream states are not cached here: a survey checks them with `gh` every run
 ([blockers.md](blockers.md)).
@@ -404,6 +410,13 @@ and the last reports of both hosts.
 - **Tier:** primary for its own measurement.
 - **Said:** BFCL v4 multi-turn 62.13%, for BF16 and its NVFP4 quantization alike, on vLLM with
   thinking on. Neither its harness nor its sample list is the screen's.
+
+## Model cards and origin chains
+
+One entry per model a survey judged: its repository, the card's `lastModified`, the publisher, the
+base chain, the teachers and their roles, the card's reads the gates take, and the origin chain's
+verdict inputs ([survey.md](../.claude/skills/hosting-upgrades/survey.md), "Research cache",
+"Model entries"). None yet; the next survey writes them.
 
 ## The host stack
 
