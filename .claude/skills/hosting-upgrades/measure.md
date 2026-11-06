@@ -74,6 +74,11 @@ check's lines. A helper called inside another (`cell`'s `watch` and `summarize`)
 under the outer one's name, once. What a helper prints to standard error, and what a command
 outside the helpers prints, isn't marked; `set +x` stops both.
 
+The log holds no tailnet address, so a record can quote it (STANDARDS.md rules out committing
+tailnet identifiers): `routing` looks up the host's tailnet addresses and compares the bare name's
+untraced, and logs only its labels (`tailnet`, `NOT-TAILNET`) on its `= ` line. A command outside
+the helpers that prints or expands an address is the session's to keep out of the log.
+
 A pass's steps before its first helper are logged only if the helpers are sourced first, so they
 are (step 1): readiness, the probe, `tailscale ping`, the blocker checks (`gh issue view`,
 `gh pr view`, `scripts/fix-in-image.sh`), an engine move and a preset change each run in a shell
@@ -496,20 +501,27 @@ changes no key: the keys stay as the preset has them, and a worse reading is a f
 `/models/load` takes the section's name alone (llama.cpp's server README, "POST /models/load",
 read 2026-11-06), so an arm is a preset state, not a load option. The two arms are the host's
 clone of spike-model-engines at two commits whose presets differ only by the keys: the commit
-before the keys and the one with them. The clone is moved to each with the router restarted, the
-session's steps, no root, and `load` reads each arm's keys back from the instance's arguments, so
-the record shows which arm each load ran:
+before the keys and the one with them. The record first gives the clone's branch and commit as
+found, from the probe's `preset clone` line. Where the clone as found is one arm (it is behind
+the keys, or already has them), that arm runs on the clone as found; the other arm is that commit
+detached after a fetch. The clone is moved with the router restarted, the session's steps, no
+root, and `load` reads each arm's keys back from the instance's arguments, so the record shows
+which arm each load ran:
 
 ```sh
-ssh <host> 'cd <clone> && git checkout --detach <commit without the keys> && git log --oneline -1'
-ssh <host> 'cd <clone> && git checkout main && git pull --ff-only && git log --oneline -1'
+ssh <host> 'cd <clone> && git log --oneline -1 && git status --short | head'    # as found
+ssh <host> 'cd <clone> && git fetch -q origin && git checkout -q --detach <commit> && git log --oneline -1'
 ssh <host> docker restart llama
 ```
 
 After a restart the router lists every section unloaded; wait for `/health`, then load the arm's
 set. Where no commit holds the section without the keys, the arm is a temporary section on a
-branch, as a candidate's is (step 4), named in the brief. The pass ends with the clone on its
-default branch and the router restarted (step 9).
+branch, as a candidate's is (step 4), named in the brief. The pass ends with the clone restored as
+found, `git checkout -q <branch as found>`, its `git log --oneline -1` reading the commit found,
+then the router restarted and the host's set reloaded (step 9). The fetch moves only the clone's
+remote-tracking refs; its branch stays where it was found. Moving that branch forward (pulling the
+keys onto it) is a change to the host's configuration, a later decision with its own brief, not
+part of the check.
 
 **The pass**, in one session, the routing check (`routing`) and `tailscale ping` first:
 
@@ -538,18 +550,22 @@ framework unmeasured on Vulkan b11960; goal record, Decisions, 2026-11-06):
 ```text
 Settings check: framework, llama.cpp b11960 (server-vulkan), gpt-oss-120b-MXFP4-set-a,
 cache-ram = 0 and cache-idle-slots = false. One session, the session; MEASURE_FLOOR_GIB=11.2.
-Arms: spike-model-engines dfc1d3d (before the keys) and main 933ec0f (with them); their presets
-differ only by these two keys in set A's section.
+Clone as found: ~/repos/spike-model-engines on main at dfc1d3d, never pulled (the probe's
+preset clone line). Arms: dfc1d3d (before the keys), the clone as found, and 933ec0f (with them,
+origin's main), detached after a fetch; their presets differ only by these two keys in set A's
+section.
   1 Anchors, load 1   ggml-org/gpt-oss-120b-GGUF:MXFP4 *    cell r1-anchor-a anchor-a; cell r1-anchor-b anchor-b
   2 Anchors, load 2   the same, unloaded and loaded again   cell r2-anchor-a anchor-a; cell r2-anchor-b anchor-b
-  3 Default arm       clone at dfc1d3d, router restarted; E4B and granite loaded, then set A's section
+  3 Default arm       the clone as found, dfc1d3d on main, router restarted; E4B, the Gemma 4
+                      26B-A4B vision section and granite loaded, then set A's section
                       (load reads no --cache-ram 0, no --no-cache-idle-slots)
                       MEASURE_TIER_CAP=10m tier default-bfcl-multi bfcl-multi gpt-oss-120b-MXFP4-set-a 4
-  4 No-cache arm      clone at main 933ec0f, router restarted; the same loads
-                      (load reads --cache-ram 0 --no-cache-idle-slots)
+  4 No-cache arm      git fetch -q origin && git checkout -q --detach 933ec0f, router restarted;
+                      the same loads (load reads --cache-ram 0 --no-cache-idle-slots)
                       MEASURE_TIER_CAP=10m tier nocache-bfcl-multi bfcl-multi gpt-oss-120b-MXFP4-set-a 4
-  * set A's agent unloaded meanwhile (one gpt-oss section at a time). Set A restored at the end on
-    main, read back by /models and the probe.
+  * set A's agent unloaded meanwhile (one gpt-oss section at a time).
+End state: git checkout -q main, reading dfc1d3d as found; router restarted; set A reloaded, read
+back by /models and the probe. The clone's main stays unpulled: moving it is a later decision.
 Spreads: the repeats set framework's within-session and across-days spreads (rules.md, "Figures").
 Verdict: the settings rule.
 ```
@@ -624,8 +640,9 @@ only once the walkthrough confirms the candidate, with their rollback (a downloa
 
 Restore the host's set by rules.md, "Fresh loads", then read it back by the router's `/models` and
 the probe: the host serves what it served at the start, or the set a verdict adopted. A clone moved
-to a branch for the pass returns to its default branch with the router restarted, unless a keep
-leaves the branch's pull request open; the brief says which.
+for the pass returns to the branch and commit it was found at, with the router restarted, unless a
+keep leaves the branch's pull request open; the brief says which. Pulling the clone forward is a
+host change for a later decision, not part of the pass.
 
 ## 10. Write the record
 

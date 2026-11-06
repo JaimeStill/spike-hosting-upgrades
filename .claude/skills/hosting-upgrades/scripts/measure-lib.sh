@@ -251,7 +251,12 @@ routing() {
   esac
   local h=$MEASURE_HOST t ty i a
   for ty in A AAAA; do echo "$h.lan $ty: $(resolvectl query -t "$ty" "$h.lan" >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+  # The host's tailnet addresses stay out of the log, which a record quotes (STANDARDS.md rules
+  # out committing tailnet identifiers): the lookup and its comparisons run untraced, and only
+  # their labels print.
+  _measure_quiet "matching the bare name against the host's tailnet addresses"
   t=$(tailscale ip "$h"); echo "bare name: $(getent ahosts "$h" | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+  _measure_trace_on
   _measure_quiet "connecting to http://$h:$MEASURE_PORT/health 50 times"
   for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} %{exitcode}\n' --connect-timeout 5 "http://$h:$MEASURE_PORT/health"; done | awk '{n++; if($NF!=0)f++; else {if($(NF-1)>0.05)s++; if($(NF-1)>m)m=$(NF-1)}} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m+0" s"}'
   _measure_trace_on
