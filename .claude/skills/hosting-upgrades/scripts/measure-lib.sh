@@ -1,0 +1,396 @@
+#!/usr/bin/env bash
+# The measure mode's step helpers (measure.md, "Step helpers"), sourced from the project root, one
+# host a shell, and called one step at a time in the architect's view:
+#
+#   source .claude/skills/hosting-upgrades/scripts/measure-lib.sh <host> [<port>]
+#
+# Sourcing only defines the helpers and starts the command log: it creates
+# .state/measure/<host>/, appends xtrace's lines to .state/measure/<host>/<YYYY-MM-DD>.log
+# (BASH_XTRACEFD, with PS4 '+ <ISO time> <helper>: '), and turns xtrace on in the calling shell,
+# so every command after it, the caller's own and each helper's, is logged with its time and the
+# helper it ran in. The record's "Commands as run" quotes that log. A poll or a sampling loop
+# logs one line saying what it does, not each pass. `set +x` stops the log; sourcing resumes it.
+#
+# No helper runs a benchmark on its own or chains cells: `cell` runs one GuideLLM scenario, `tier`
+# one agent tier, `conform` one conform run, each under `watch`, and `gate` only loads and unloads.
+# The helpers that change the host (load, unload, gate) do so only through the router's API.
+#
+#   loaded                          the sections the router has loaded or loading
+#   load <section>                  load one section, wait until loaded, print its time and args
+#   unload <section>|--all          unload one section (or every loaded one), wait until unloaded
+#   cell <name> <scenario> [<section> <tokenizer>]
+#                                   one GuideLLM cell from bench/<scenario>.yaml, under watch
+#   tier <name> <bfcl-single|bfcl-multi> <section> [<first N>]
+#                                   one spike-model-hosting BFCL tier, under watch
+#   conform <name> <class> [<k>]    one conform run through Pi, under watch
+#   summarize <name>                a result's figures: a cell's, a tier's, and its watch's
+#   memory                          one memory read-out on the host, and the floor
+#   readout [<since>]               the router's log since a time (default 5 minutes ago), and memory
+#   watch <name> <command...>       run one command with GPU clocks and memory sampled, readouts
+#                                   at an interval, and the run stopped under the memory floor
+#   image <class> <build>           whether the class's engine image exists for a build (ghcr.io)
+#   gate                            the build gate's loads: every preset section, one at a time
+#
+# Settings, each an environment variable read when a helper runs:
+#   MEASURE_FLOOR_GIB      the memory floor (required by watch): the policy's headroom on the
+#                          probed ceiling, e.g. 12.2 on gb10-1, 11.2 on framework
+#   MEASURE_SAMPLE_EVERY   seconds between watch's samples (default 10)
+#   MEASURE_READOUT_EVERY  seconds between watch's readouts (default 300)
+#   MEASURE_CELL_CAP       a cell's cap (default 10m); MEASURE_TIER_CAP a tier's (default 15m);
+#                          MEASURE_CONFORM_CAP conform's (default 10m)
+#   MEASURE_LOAD_WAIT      seconds a load or unload may take (default 600)
+#   MEASURE_HOSTING        spike-model-hosting's checkout (default ~/experiments/spike-model-hosting)
+#   MEASURE_CONTAINER      the engine's container on the host (default llama)
+
+if ! (return 0 2>/dev/null); then
+  echo 'measure-lib.sh is sourced, not run: source it with a host' >&2
+  exit 2
+fi
+if [[ -z ${1-} || $1 == -* ]]; then
+  echo 'usage: source .claude/skills/hosting-upgrades/scripts/measure-lib.sh <host> [<port>]' >&2
+  return 2
+fi
+
+MEASURE_HOST=$1
+MEASURE_URL=http://$1:${2:-8080}
+MEASURE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
+MEASURE_STATE=$MEASURE_ROOT/.state/measure/$MEASURE_HOST
+MEASURE_LOG=$MEASURE_STATE/$(date +%F).log
+export GUIDELLM__SPEC__BACKEND__TARGET=$MEASURE_URL
+
+# The flags a loaded instance's arguments print, which name how the section serves (slots,
+# context, the prompt cache and its checkpoints).
+_MEASURE_ARGS='--(ctx-size|parallel|cache-ram|swa-checkpoints|ctx-checkpoints|checkpoint-min-step) [0-9]+|--(no-)?cache-idle-slots|--(no-)?kv-unified'
+
+# One sample on the host, one line: the memory available to the GPU in MiB and where it is read
+# (GTT free on an amdgpu card, MemAvailable otherwise), then the GPU's clocks and limits:
+# nvidia-smi's SM clock, its maximum, the active throttle reasons (a bitmask; 0x0 is none),
+# temperature, power and utilization on a GB10; amdgpu's current sclk level, busy percent, edge
+# temperature and power on a Strix Halo. It reads only what an unprivileged user can.
+# The script runs on the host, so its expansions are meant to stay unexpanded here.
+# shellcheck disable=SC2016
+_MEASURE_SAMPLE='
+avail=$(awk "/^MemAvailable/{print int(\$2/1024)}" /proc/meminfo); src=MemAvailable; gpu=
+for d in /sys/class/drm/card*/device; do
+  [ -r "$d/mem_info_gtt_total" ] || continue
+  avail=$(( ($(cat "$d/mem_info_gtt_total") - $(cat "$d/mem_info_gtt_used")) / 1048576 )); src=GTT
+  h=$(ls -d "$d"/hwmon/hwmon* 2>/dev/null | head -n 1)
+  p=$(cat "$h/power1_average" 2>/dev/null || cat "$h/power1_input" 2>/dev/null)
+  gpu="sclk $(awk "/\\*/{print \$2}" "$d/pp_dpm_sclk" 2>/dev/null), busy $(cat "$d/gpu_busy_percent" 2>/dev/null)%, edge $(( $(cat "$h/temp1_input" 2>/dev/null || echo 0) / 1000 )) C, power $(( ${p:-0} / 1000000 )) W"
+  break
+done
+if command -v nvidia-smi >/dev/null; then
+  gpu=$(nvidia-smi --query-gpu=clocks.sm,clocks.max.sm,clocks_throttle_reasons.active,temperature.gpu,power.draw,utilization.gpu --format=csv,noheader 2>&1 | head -n 1)
+  gpu="sm, max sm, throttle, temp, power, util: $gpu"
+fi
+printf "%s\t%s\t%s\n" "$avail" "$src" "${gpu:-no GPU read}"
+'
+
+# Turns xtrace off for a poll or a sampling loop, leaving one traced line that says what it does;
+# _measure_trace_on turns it back on if it was.
+_measure_quiet() {
+  : "$@"
+  _measure_was_tracing=${-//[^x]/}
+  { set +x; } 2>/dev/null
+}
+_measure_trace_on() {
+  [[ -n ${_measure_was_tracing-} ]] && set -x
+  return 0
+}
+
+# Prints a section's status by the router's /models: loaded, loading, unloaded, or failed.
+_measure_status() {
+  curl -s --max-time 10 "$MEASURE_URL/models" |
+    jq -r --arg m "$1" '.data[] | select(.id == $m) | .status | if .failed then "failed" else .value end'
+}
+
+# Waits until a section reaches a status, polling every 3 s; returns 1 on a failed load or after
+# MEASURE_LOAD_WAIT seconds.
+_measure_wait() {
+  local section=$1 want=$2 i s
+  _measure_quiet "polling $MEASURE_URL/models every 3 s until $section is $want"
+  for ((i = 0; i < ${MEASURE_LOAD_WAIT:-600}; i += 3)); do
+    s=$(_measure_status "$section")
+    if [[ $s == "$want" ]]; then
+      _measure_trace_on
+      return 0
+    fi
+    if [[ $s == failed && $want == loaded ]]; then
+      echo "load failed: $section" >&2
+      _measure_trace_on
+      return 1
+    fi
+    sleep 3
+  done
+  echo "timeout: $section not $want after ${MEASURE_LOAD_WAIT:-600} s (status ${s:-none})" >&2
+  _measure_trace_on
+  return 1
+}
+
+loaded() {
+  curl -s --max-time 10 "$MEASURE_URL/models" |
+    jq -c '[.data[] | select(.status.value != "unloaded") | {id, status: .status.value}]'
+}
+
+load() {
+  local section=${1:?usage: load <section>} t0 rc
+  t0=$(date +%s%N)
+  curl -s --max-time 30 -X POST "$MEASURE_URL/models/load" -H 'Content-Type: application/json' \
+    -d "$(jq -cn --arg m "$section" '{model: $m}')"
+  echo
+  _measure_wait "$section" loaded
+  rc=$?
+  printf 'load %s: %s in %.1f s\n' "$section" "$([[ $rc == 0 ]] && echo loaded || echo FAILED)" \
+    "$(($(date +%s%N) - t0))e-9"
+  curl -s --max-time 10 "$MEASURE_URL/models" |
+    jq -r --arg m "$section" '.data[] | select(.id == $m) | .status.args // [] | join(" ")' |
+    grep -oE -- "$_MEASURE_ARGS" | paste -sd' ' | sed 's/^/args: /'
+  return "$rc"
+}
+
+unload() {
+  local section=${1:?usage: unload <section>|--all} s rc=0
+  if [[ $section == --all ]]; then
+    for s in $(curl -s --max-time 10 "$MEASURE_URL/models" |
+      jq -r '.data[] | select(.status.value != "unloaded") | .id'); do
+      unload "$s" || rc=1
+    done
+    return "$rc"
+  fi
+  curl -s --max-time 30 -X POST "$MEASURE_URL/models/unload" -H 'Content-Type: application/json' \
+    -d "$(jq -cn --arg m "$section" '{model: $m}')"
+  echo
+  _measure_wait "$section" unloaded
+}
+
+memory() {
+  local line avail src
+  line=$(ssh "$MEASURE_HOST" bash -s <<<"$_MEASURE_SAMPLE") || return 1
+  IFS=$'\t' read -r avail src _ <<<"$line"
+  awk -v h="$MEASURE_HOST" -v a="$avail" -v s="$src" \
+    'BEGIN { printf "memory %s: %.2f GiB available (%s)", h, a / 1024, s }'
+  if [[ -n ${MEASURE_FLOOR_GIB-} ]]; then
+    printf ', floor %s GiB' "$MEASURE_FLOOR_GIB"
+  fi
+  echo
+}
+
+readout() {
+  local since=${1:-$(date -u -d '-5 min' +%FT%TZ)} log
+  log=$(mktemp)
+  ssh "$MEASURE_HOST" docker logs --since "$since" "${MEASURE_CONTAINER:-llama}" >"$log" 2>&1
+  printf 'readout since %s: idle-slot saves %s, prompt saves %s, checkpoints %s, ' "$since" \
+    "$(grep -c 'saving idle slot' "$log")" "$(grep -c 'prompt_save:  - saving' "$log")" \
+    "$(grep -c 'created context checkpoint' "$log")"
+  # The decode rate of replies of 90 tokens or more, from the router's per-request timings.
+  grep 'eval time' "$log" | grep -v 'prompt eval' |
+    sed -E 's/.*= +([0-9.]+) ms \/ +([0-9]+) (tokens|runs).*\( *([0-9.]+) ms per token, +([0-9.]+) tokens per second.*/\2 \5/' |
+    awk '$1 >= 90 { n++; s += $2; if (n == 1 || $2 < mn) mn = $2; if ($2 > mx) mx = $2 }
+      END { if (n) printf "replies >=90 tokens: n %d, mean %.1f, min %.1f, max %.1f tok/s\n", n, s / n, mn, mx
+            else print "replies >=90 tokens: none" }'
+  rm -f "$log"
+  memory
+}
+
+# Kills a process and every descendant, deepest first.
+_measure_kill_tree() {
+  local c
+  for c in $(pgrep -P "$1"); do _measure_kill_tree "$c"; done
+  kill "$1" 2>/dev/null
+}
+
+watch() {
+  local name=${1:?usage: watch <name> <command...>} floor_mib pid rc t0 next line avail stopped=
+  shift
+  (($#)) || { echo 'usage: watch <name> <command...>' >&2; return 2; }
+  if [[ -z ${MEASURE_FLOOR_GIB-} ]]; then
+    echo 'watch: set MEASURE_FLOOR_GIB to the policy headroom on the probed ceiling first' >&2
+    return 2
+  fi
+  floor_mib=$(awk -v g="$MEASURE_FLOOR_GIB" 'BEGIN { printf "%d", g * 1024 }')
+  t0=$(date -u +%FT%TZ)
+  printf 'time\tavailable MiB\tread\tgpu\n' >"$MEASURE_STATE/$name.watch.tsv"
+  "$@" >"$MEASURE_STATE/$name.log" 2>&1 &
+  pid=$!
+  _measure_quiet "sampling $MEASURE_HOST every ${MEASURE_SAMPLE_EVERY:-10} s into $name.watch.tsv" \
+    "(ssh $MEASURE_HOST bash -s <<< \$_MEASURE_SAMPLE), readout every" \
+    "${MEASURE_READOUT_EVERY:-300} s, stop under $MEASURE_FLOOR_GIB GiB; output in $name.log"
+  next=$(($(date +%s) + ${MEASURE_READOUT_EVERY:-300}))
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "${MEASURE_SAMPLE_EVERY:-10}"
+    line=$(ssh "$MEASURE_HOST" bash -s <<<"$_MEASURE_SAMPLE" 2>/dev/null) || continue
+    printf '%s\t%s\n' "$(date -u +%T)" "$line" >>"$MEASURE_STATE/$name.watch.tsv"
+    avail=${line%%$'\t'*}
+    if [[ $avail =~ ^[0-9]+$ ]] && ((avail < floor_mib)); then
+      stopped="memory floor: ${avail} MiB available under $MEASURE_FLOOR_GIB GiB at $(date -u +%T)"
+      echo "$stopped; stopping $name"
+      _measure_kill_tree "$pid"
+      break
+    fi
+    if (($(date +%s) >= next)) && kill -0 "$pid" 2>/dev/null; then
+      readout "$(date -u -d "-${MEASURE_READOUT_EVERY:-300} sec" +%FT%TZ)"
+      next=$(($(date +%s) + ${MEASURE_READOUT_EVERY:-300}))
+    fi
+  done
+  wait "$pid"
+  rc=$?
+  _measure_trace_on
+  case $rc in
+    0) echo "exit 0" ;;
+    124) echo "exit 124: cap hit" ;;
+    *) echo "exit $rc${stopped:+: $stopped}" ;;
+  esac
+  echo "$rc${stopped:+ $stopped}" >"$MEASURE_STATE/$name.exit"
+  echo "whole run:"
+  readout "$t0"
+  return "$rc"
+}
+
+cell() {
+  local name=${1:?usage: cell <name> <scenario> [<section> <tokenizer>]} scenario=${2:?usage: cell <name> <scenario> [<section> <tokenizer>]}
+  local -a model=()
+  if [[ -e $MEASURE_STATE/$name.json ]]; then
+    echo "cell: $name.json exists; name each cell once (a rerun takes a new name)" >&2
+    return 2
+  fi
+  if [[ -n ${3-} ]]; then
+    model=(--backend "kind=openai_http,model=$3" --tokenizer "kind=huggingface_auto,model=${4:?cell: a section needs its tokenizer}")
+  fi
+  watch "$name" env -C "$MEASURE_ROOT" MISE_ENV=bench timeout "${MEASURE_CELL_CAP:-10m}" \
+    mise exec -- guidellm run -c "bench/$scenario.yaml" "${model[@]}" \
+    --output "kind=json,path=$MEASURE_STATE/$name.json"
+  local rc=$?
+  summarize "$name"
+  return "$rc"
+}
+
+tier() {
+  local name=${1:?usage: tier <name> <bfcl-single|bfcl-multi> <section> [<first N>]} which=${2-} section=${3-} first=${4-}
+  local hosting=${MEASURE_HOSTING:-$HOME/experiments/spike-model-hosting} list
+  [[ $which == bfcl-single || $which == bfcl-multi ]] && [[ -n $section ]] ||
+    { echo 'usage: tier <name> <bfcl-single|bfcl-multi> <section> [<first N>]' >&2; return 2; }
+  list=$hosting/evaluation/tiers/agent-$which.txt
+  if [[ -n $first ]]; then
+    # The tier's list cut to its first N samples, with its header (tier, dataset, seed) kept.
+    { grep '^#' "$list"; grep -v '^#' "$list" | head -n "$first"; } >"$MEASURE_STATE/$name-list.txt"
+    list=$MEASURE_STATE/$name-list.txt
+  fi
+  watch "$name" env -C "$hosting/evaluation" PYTHONDONTWRITEBYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT="$MEASURE_STATE/../suites-venv" HF_HOME="$MEASURE_STATE/../cache/huggingface" \
+    INSPECT_EVALS_CACHE_DIR="$MEASURE_STATE/../cache/inspect_evals" MISE_ENV=consumers \
+    timeout "${MEASURE_TIER_CAP:-15m}" mise exec -- uv run --project suites --locked --no-python-downloads \
+    python suites/agent_quality.py eval --router "$MEASURE_URL" --model "$section" --tier "$which" \
+    --list "$list" --slots 4 --output "$MEASURE_STATE/$name"
+  local rc=$?
+  summarize "$name"
+  return "$rc"
+}
+
+conform() {
+  local name=${1:?usage: conform <name> <class> [<k>]} class=${2:?usage: conform <name> <class> [<k>]}
+  local hosting=${MEASURE_HOSTING:-$HOME/experiments/spike-model-hosting}
+  watch "$name" env -C "$hosting/evaluation" MISE_ENV=consumers timeout "${MEASURE_CONFORM_CAP:-10m}" \
+    mise exec -- go run ./cmd/evaluate conform -router "$MEASURE_URL" \
+    -profile "$MEASURE_ROOT/bench/conform/$class.toml" -consumers pi -k "${3:-5}" -state "$MEASURE_STATE/$name"
+  local rc=$?
+  tail -n 8 "$MEASURE_STATE/$name.log"
+  return "$rc"
+}
+
+summarize() {
+  local name=${1:?usage: summarize <name>} f
+  _measure_quiet "summarizing $name"
+  if [[ -f $MEASURE_STATE/$name.json ]]; then
+    # A GuideLLM cell, one line a benchmark (a sweep level). "completed" is the completed-request
+    # figure, GuideLLM's successful mean: the output tokens of the requests that finished, over
+    # the benchmark's time. "every-token" is its total mean: every token generated, by the
+    # requests that finished and by those still in flight at the cutoff. "full" checks the
+    # scenario's max_requests against the successful count.
+    jq -r '.benchmarks[] | .metrics as $m | .config as $c
+      | ($c.constraints.max_requests.args.count // null) as $want
+      | "\($c.strategy.streams) stream(s): requests ok \($m.request_totals.successful), errored \($m.request_totals.errored), incomplete \($m.request_totals.incomplete) of \($m.request_totals.total)"
+        + (if $want then ", full \(if $m.request_totals.successful == $want then "yes" else "NO (\($want) wanted)" end)" else "" end)
+        + "; output tok/s completed \($m.output_tokens_per_second.successful.mean * 100 | round / 100), every-token \($m.output_tokens_per_second.total.mean * 100 | round / 100)"
+        + "; TTFT median \($m.time_to_first_token_ms.successful.median | round) ms; ITL median \($m.inter_token_latency_ms.successful.median * 100 | round / 100) ms"
+        + (($m.audio.seconds.input_per_second.successful.mean // 0) as $a | if $a > 0 then "; audio s/s \($a * 100 | round / 100)" else "" end)' \
+      "$MEASURE_STATE/$name.json"
+  fi
+  # Inspect names its log by time and a random id, letters and digits only, so ls reads it safely.
+  # shellcheck disable=SC2012
+  f=$(ls -t "$MEASURE_STATE/$name"/*.json 2>/dev/null | head -n 1)
+  if [[ -n $f ]]; then
+    # An Inspect log (a BFCL tier): samples done and passing, the sample times, the largest
+    # reply, and the replies that stopped at a token or context limit (cap hits).
+    jq -r '[.samples[]?] as $s
+      | [$s[] | .events[]? | select(.event == "model") | {id: null, out: (.output.usage.output_tokens // 0), stop: (.output.choices[0].stop_reason // "")}] as $calls
+      | ([$s[] | . as $x | [.events[]? | select(.event == "model") | .output.usage.output_tokens // 0] | {id: $x.id, out: (max // 0)}] | max_by(.out)) as $big
+      | "status \(.status); samples done \($s | length), passing \([$s[] | select((.scores | to_entries[0].value.value) == 1)] | length)"
+        + "; sample secs \([$s[] | .total_time | floor])"
+        + "; largest reply \($big.out // 0) tokens (\($big.id // "-"))"
+        + "; cap hits (stop max_tokens or model_length) \([$calls[] | select(.stop == "max_tokens" or .stop == "model_length")] | length)"' "$f"
+  fi
+  if [[ -f $MEASURE_STATE/$name.exit ]]; then
+    echo "exit: $(cat "$MEASURE_STATE/$name.exit")"
+  fi
+  if [[ -f $MEASURE_STATE/$name.watch.tsv ]]; then
+    awk -F'\t' 'NR > 1 { n++; if (n == 1 || $2 < mn) { mn = $2; at = $1 }; src = $3; g[$4]++ }
+      END { if (!n) { print "watch: no samples"; exit }
+            printf "watch: %d samples, lowest available %.2f GiB (%s) at %s\n", n, mn / 1024, src, at }' \
+      "$MEASURE_STATE/$name.watch.tsv"
+    # The GPU readings, clocks and throttle reasons, each distinct reading with its count.
+    tail -n +2 "$MEASURE_STATE/$name.watch.tsv" | cut -f4 | sort | uniq -c | sort -rn | head -n 8 |
+      sed 's/^/  gpu /'
+  fi
+  _measure_trace_on
+}
+
+image() {
+  local class=${1:?usage: image <gb10|strix-halo> <build>} build=${2:?usage: image <gb10|strix-halo> <build>} flavor token
+  case $class in
+    gb10) flavor=cuda13 ;;
+    strix-halo) flavor=vulkan ;;
+    *) echo "image: class $class is none of gb10, strix-halo" >&2; return 2 ;;
+  esac
+  # fix-in-image.sh's method: an anonymous pull token, then a HEAD of the tag's manifest, 200 for
+  # a published image and 404 for none.
+  token=$(curl -q -fsS --max-time 30 --proto =https \
+    "https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull" |
+    sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  [[ -n $token ]] || { echo 'image: ghcr.io gives no pull token' >&2; return 1; }
+  case $(curl -q -sS -o /dev/null -w '%{http_code}' --head --max-time 30 --proto =https \
+    -H "Authorization: Bearer $token" \
+    -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json' \
+    "https://ghcr.io/v2/ggml-org/llama.cpp/manifests/server-$flavor-$build") in
+    200) echo "image: ghcr.io/ggml-org/llama.cpp:server-$flavor-$build exists" ;;
+    404) echo "image: ghcr.io/ggml-org/llama.cpp:server-$flavor-$build NOT FOUND"; return 1 ;;
+    *) echo "image: server-$flavor-$build can't be read" >&2; return 1 ;;
+  esac
+}
+
+gate() {
+  local s rc=0
+  local -a sections
+  mapfile -t sections < <(curl -s --max-time 10 "$MEASURE_URL/models" | jq -r '.data[].id')
+  ((${#sections[@]})) || { echo 'gate: the router lists no section' >&2; return 1; }
+  echo "gate: ${#sections[@]} sections, each loaded alone"
+  unload --all || return 1
+  for s in "${sections[@]}"; do
+    if ! load "$s"; then
+      echo "gate: FAILED on $s; roll back now (measure.md, \"Build gate\")"
+      rc=1
+      break
+    fi
+    unload "$s" || { rc=1; break; }
+  done
+  ((rc == 0)) && echo 'gate: every section loaded'
+  return "$rc"
+}
+
+mkdir -p "$MEASURE_STATE"
+exec {MEASURE_XTRACE_FD}>>"$MEASURE_LOG"
+BASH_XTRACEFD=$MEASURE_XTRACE_FD
+# Each line: its time, then the helper it ran inside (none for a command the caller typed).
+# shellcheck disable=SC2016
+PS4='+ $(date -Is) ${FUNCNAME[0]:+${FUNCNAME[0]}: }'
+set -x
+: "measure log for $MEASURE_HOST ($MEASURE_URL), project $MEASURE_ROOT"

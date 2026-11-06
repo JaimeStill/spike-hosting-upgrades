@@ -32,9 +32,10 @@ The first argument, `$0`, names the mode, and the second, `$1`, the host by its 
   and given verify, take, hold, or skip, judged against the host's load targets. It applies
   nothing; it reads sources through the project's research cache. Read [setup.md](setup.md), then [survey.md](survey.md).
 - **`measure <host>`** is local cells: it takes the last survey's host items to a decision, moves
-  the engine to a newer build under the engine rule, and screens one candidate model beside the
-  host's set under the keep rule. It changes the host only by commands it prints and records as
-  run, and ends with the host serving its set. Read [setup.md](setup.md), then
+  the engine to a newer build under the engine rule, screens one candidate model beside the
+  host's set under the keep rule, and checks a section's keys with and without them. Its shipped
+  step helpers run each step, one call at a time, and log every command. It changes the host only
+  by commands it prints and records as run, and ends with the host serving its set. Read [setup.md](setup.md), then
   [measure.md](measure.md).
 
 With no mode, or a host alone, ask which mode to run; the default is `survey`. With a mode and no
@@ -56,6 +57,8 @@ writes neither.
     naming no model, each with its load target: the concurrent sessions or requests it is sized
     for and the context each reaches, citing where each figure comes from (rules.md, "Load
     targets")
+  - its run noise: a within-session and an across-days spread, each from cited same-build
+    readings (rules.md, "Figures")
   - optional watch items: named things the survey must check, beside its own scan, of any kind
     (hardware, system, or engine), each answered by name in the report section of its kind
   - optional measurements: the workspace's own dated findings on this host, each a reference name
@@ -80,7 +83,7 @@ and assumes no fixed set of purposes.
 |---|---|---|
 | [setup.md](setup.md) | the inputs, the readiness check, the probe | every mode, first |
 | [survey.md](survey.md) | the survey's steps, its verdicts, its research split, and the report's template | `survey` |
-| [measure.md](measure.md) | the measure's steps, the engine and keep rules, and the record's template | `measure` |
+| [measure.md](measure.md) | the measure's harness and steps, the build gate, the engine, keep and settings rules, and the record's template | `measure` |
 | [rules.md](rules.md) | the shared rules: who runs what, the default rules, load targets, citing, dated records, fresh loads, cells, caps, figures, the reasoning check, transcripts, routing, pause, root | when a step cites one |
 | [models.md](models.md) | the model gates: origin, artifact integrity, the floor, fit, the engine, the agent bar, speed, and the memory estimate | when a step gates a model |
 | [sources.md](sources.md) | the trusted sources by kind, their tiers, and how to read each | when a step reads a source |
@@ -89,6 +92,7 @@ and assumes no fixed set of purposes.
 | [scripts/screen.sh](scripts/screen.sh) | reads the screening list for the origin research | models.md, "Origin" |
 | [scripts/magic.sh](scripts/magic.sh) | reads a Hub file's first 4 bytes | models.md, "Artifact integrity" |
 | [scripts/fix-in-image.sh](scripts/fix-in-image.sh) | reads whether a merged fix is in a class's newest imaged build | survey.md, "Blocker register" |
+| [scripts/measure-lib.sh](scripts/measure-lib.sh) | measure's step helpers, sourced, and its command log | measure.md, "The harness" |
 | [templates/host.md](templates/host.md), [templates/policy.md](templates/policy.md) | the shapes of the two inputs | when a project writes its own |
 
 ## A host's cycle
@@ -97,7 +101,7 @@ and assumes no fixed set of purposes.
 2. `survey <host>` reads the public record and ranks the host's items. Its "Needs measurement" and
    "Verify next" name what only the host can settle.
 3. `measure <host>` settles them: the host's items to apply, remove, or close, then at most one
-   engine move and one candidate screen, each its own pass on one state.
+   engine move, one candidate screen, and a settings check, each its own pass on one state.
 4. The next `survey <host>` reads the measure records as attributed benchmarks on the host, and
    says what moved since the last report.
 

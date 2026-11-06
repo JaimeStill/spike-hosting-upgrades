@@ -13,6 +13,85 @@ it runs, run by whoever rules.md, "Who runs what", assigns it, and recorded as r
 default rules without asking (rules.md, "Default rules") and pauses only as rules.md, "Pause",
 says. At its end the host serves the set it served at the start, or the set a verdict adopts.
 
+## The harness
+
+Every step that loads the host, runs a cell, or reads the host during cells goes through one
+set of shipped helpers, [scripts/measure-lib.sh](scripts/measure-lib.sh), and every command they
+run is logged. The same helpers serve an engine move, a candidate screen, and a settings check.
+
+### Step helpers
+
+The helpers are bash functions, sourced from the project root with the host's SSH short name (and
+the router's port, 8080 by default):
+
+```sh
+source .claude/skills/hosting-upgrades/scripts/measure-lib.sh <host>
+```
+
+Sourcing only defines them and starts the command log; it reads nothing from the host. Each call
+is one step, printed before it runs and run in the architect's view by whoever rules.md, "Who runs
+what", assigns it. None runs a benchmark on its own or chains cells: the pass's order is the
+procedure's, one call at a time. The session's shell doesn't keep functions between its commands,
+so each command it runs starts with the `source` line, as in
+`source .claude/skills/hosting-upgrades/scripts/measure-lib.sh framework && load <section>`; the
+architect's own shell sources it once.
+
+| Helper | What one call does |
+|---|---|
+| `loaded` | Lists the sections the router has loaded or loading (`/models`). |
+| `load <section>` | `/models/load` for the section, waits until `/models` reads it loaded (up to `MEASURE_LOAD_WAIT`, 600 s), and prints the time it took (a cold start, when the section was unloaded) and the loaded instance's serving arguments (`--ctx-size`, `--parallel`, `--kv-unified`, `--cache-ram`, `--no-cache-idle-slots`, the checkpoint flags). A failed load returns 1. |
+| `unload <section>` | `/models/unload` for the section, and waits until `/models` reads it unloaded. `unload --all` does so for every loaded section, one at a time. |
+| `cell <name> <scenario> [<section> <tokenizer>]` | One GuideLLM cell, as rules.md, "Cells", gives its command, from `bench/<scenario>.yaml`, capped at `MEASURE_CELL_CAP` (10m), under `watch`; its result is `.state/measure/<host>/<name>.json`, its output `<name>.log`. A name already used is refused, so a rerun takes a new name. It ends with `summarize <name>`. |
+| `tier <name> <bfcl-single\|bfcl-multi> <section> [<N>]` | One of spike-model-hosting's BFCL tiers ("The agent tiers"), capped at `MEASURE_TIER_CAP` (15m), under `watch`, its Inspect log under `.state/measure/<host>/<name>/`. With `<N>`, the tier's list cut to its first N samples, its header kept. It ends with `summarize <name>`. |
+| `conform <name> <class> [<k>]` | One conform run through Pi on `bench/conform/<class>.toml` (k = 5 by default), capped at `MEASURE_CONFORM_CAP` (10m), under `watch`. |
+| `summarize <name>` | A result's figures: for a cell, each benchmark's request counts and whether it is full, its completed-request and every-token output figures (rules.md, "Figures"), TTFT and ITL medians, and audio seconds a second for an ASR cell; for a tier, samples done and passing, each sample's time, the largest reply with its sample, and the cap hits (rules.md, "Caps"); then the step's exit and its watch: the lowest memory available, and each distinct GPU reading with its count. |
+| `memory` | One read-out on the host: the memory available to the GPU, where it is read, and the floor. |
+| `readout [<since>]` | The router's log since a time (default 5 minutes ago): idle-slot saves, prompt saves, context checkpoints created, and the decode rate of replies of 90 tokens or more (mean, min, max); then `memory`. |
+| `watch <name> <command...>` | Runs one command with the monitor ("During cells"). `cell`, `tier` and `conform` run under it; any other long step the brief caps is called through it. Its exit is the command's (124 at the cap), written to `<name>.exit` with the floor's reason when the floor stopped it. |
+| `image <class> <build>` | Whether the class's server image exists for the build on ghcr.io, by `scripts/fix-in-image.sh`'s method (an anonymous pull token, then a HEAD of the tag's manifest). |
+| `gate` | The build gate's loads ("Build gate"): every section the router lists, loaded alone, one at a time. |
+
+`watch`, while it is defined, shadows procps' `watch` in that shell.
+
+### The command log
+
+Sourcing turns on xtrace in the shell, with a timestamped prompt,
+`PS4='+ $(date -Is) ${FUNCNAME[0]:+${FUNCNAME[0]}: }'`, and sends its lines through
+`BASH_XTRACEFD` to `.state/measure/<host>/<YYYY-MM-DD>.log` (ignored, under `.state/`), appended
+each time it is sourced. Every command after it is logged with its time: a line with no helper's
+name is a call the session or the architect made (`load gpt-oss-120b-MXFP4-set-a`), and a line
+naming one is a command that helper ran (`load: curl -s --max-time 30 -X POST
+http://framework:8080/models/load ...`, `cell: env -C ... MISE_ENV=bench timeout 10m mise exec --
+guidellm run -c bench/anchor-a.yaml ...`). A poll or a sampling loop logs one line saying what it
+does, not each pass. A step run outside the helpers (the routing check, `tailscale ping`, an
+engine move, a preset change) is run in a shell that has sourced them, so the log holds it too.
+The record's "Commands as run" quotes that log ("Write the record").
+
+### During cells
+
+`watch` is the monitor every cell and long step runs under:
+
+- **GPU clocks and limits**, sampled every `MEASURE_SAMPLE_EVERY` (10 s) over SSH into
+  `.state/measure/<host>/<name>.watch.tsv`: on a GB10, nvidia-smi's SM clock, its maximum, the
+  active throttle reasons (`clocks_throttle_reasons.active`, a bitmask, where 0x0 is none),
+  temperature, power and utilization; on a Strix Halo, amdgpu's sysfs: the current sclk level
+  (`pp_dpm_sclk`), `gpu_busy_percent`, and hwmon's edge temperature and power. Each sample also
+  reads the memory available. `summarize` gives each distinct reading with its count, so a cell
+  that ran throttled, or on a clock below the rest, shows beside its figure; the record gives
+  them, and a cell whose readings differ from its pair's is named.
+- **The memory floor** (rules.md, "Caps"): set `MEASURE_FLOOR_GIB` to the policy's headroom on
+  the probed ceiling before the first `watch` (12.2 on gb10-1, 11.2 on framework); `watch`
+  refuses to start without it. When a sample reads less available, `watch` stops the command and
+  everything it started, and records the floor's reason; the stop is a cap hit.
+- **Readouts** every `MEASURE_READOUT_EVERY` (300 s, the screen's 5 minutes) while the command
+  runs, and one for the whole run at its end: `readout` over the interval just past.
+
+### The sweep's figures
+
+Each sweep level's row gives both figures rules.md, "Figures", defines, as `summarize` prints
+them: the completed-request figure and the every-token figure, with the level's completed,
+incomplete and errored counts. The capacity condition reads each level's ITL median.
+
 ## 1. Setup
 
 1. Run setup.md, steps 1 to 3, with measure's rules: the inputs, the readiness check, the probe.
@@ -56,6 +135,11 @@ says. At its end the host serves the set it served at the start, or the set a ve
    fix, the entry becomes **cleared on the host** for this host, citing this record, and is
    deleted once cleared on every host it names. A pass that measures a new blocker's cost adds its
    entry, linked to this record.
+6. **The harness.** Source the helpers for the host ("Step helpers"), which starts the day's
+   command log, and set the memory floor from the probe's ceiling (`== memory ==`) and the
+   policy's headroom: `MEASURE_FLOOR_GIB`, 10% of the ceiling under today's policy. Read the
+   descriptor's "Run noise": its within-session and across-days spreads, and which are
+   provisional (rules.md, "Figures"). A descriptor with none is a pause.
 
 ## 2. What this measure runs
 
@@ -69,12 +153,16 @@ From the last survey:
   gives, which the record names with why. Step 6.
 - **A candidate screen**, of one candidate the architect names at the start, with the section it
   loads on: one in the survey's "Needs measurement", or the model its "Verify next" names. Step 7.
+- **A settings check**, of a served section's keys that a decision left owed a measurement on
+  this host (a key the shared preset gave it unmeasured here), or that the survey's configuration
+  review ranks verify: the section with and without the keys, on the same build, beside the
+  anchors' repeats. "A settings check", after step 7.
 
 The engine and model rows the survey ranks verify or hold, other than the ones this measure runs,
-are listed by name, as left for a later measure, with no decision asked on them. Each engine move
-and candidate screen is its own pass on one state (rules.md, "Cells"): the engine move runs first,
-so a candidate's pass runs on the build that stays. With neither named, measure settles the host's
-items, lists the candidates, and stops before any load.
+are listed by name, as left for a later measure, with no decision asked on them. Each engine move,
+candidate screen, and settings check is its own pass on one state (rules.md, "Cells"): the engine
+move runs first, so the other passes run on the build that stays. With none of them named, measure
+settles the host's items, lists the candidates, and stops before any load.
 
 ## 3. The host's items
 
@@ -159,16 +247,56 @@ For a candidate screen, beside its gates:
 
 Before an engine move's cells: the class's image exists for the build (a registry read), and after
 the move every preset section loads, one at a time, before any cell; a failed load rolls back at
-once (rules.md, "Default rules", item 1).
-TODO(slice 3): the gate's commands, its record rows, and its rollback.
+once (rules.md, "Default rules", item 1). The gate tests what the move can break before a cell
+spends time on it: b12125 had no image for gb10, and b12124 couldn't resolve Google's QAT
+sections (`docs/screens/gb10-1/2026-11-05.md`, "The engine move").
+
+1. **The image**, before the move, from this machine (the session; it reads only), for the
+   class (`gb10` or `strix-halo`) and the candidate build:
+
+   ```sh
+   image <class> <candidate build>
+   ```
+
+   It prints `exists` or `NOT FOUND`. A build with no image is passed over, and the newest imaged
+   build older than it and newer than the incumbent becomes the candidate (rules.md, "Default
+   rules", item 1); `scripts/fix-in-image.sh` and the survey's currency read name the builds, and
+   `image` confirms the one taken.
+2. **The move** (step 6, item 2), and the build read back.
+3. **Every section loads**, after the move and before any cell (the session, no root):
+
+   ```sh
+   gate
+   ```
+
+   It unloads every section, then loads each section the router lists, alone, one at a time,
+   reading each back loaded (with its time and arguments) and unloading it before the next. It
+   stops at the first section that fails to load, naming it. The build gate's failed load is
+   not retried ("Default rules", item 2, retries a cell's load, not the gate's): the move rolls
+   back at once, by the suite's update to the incumbent build, the session's step, no root:
+
+   ```sh
+   ssh <host> 'cd <clone> && host/engines <engine> update <incumbent build>; echo "exit $?"'
+   ```
+
+   then the probe reads the incumbent back as serving, the host's set is loaded again by rules.md,
+   "Fresh loads", and the next candidate, if any is left, starts its own pass from the image read.
+   The candidate's cells don't run.
+
+**The record's rows**, under its engine move: one row for the image read (the build, the image
+tag, `exists` or `NOT FOUND`, the read's time from the log), one per build passed over with its
+reason, and one per section the gate loaded (the section, `loaded` or `failed`, its load time,
+and for a failure the router's error from `/models` or its log); then the rollback as run, when
+the gate failed, with the probe that read the incumbent back.
 
 ## 6. The engine move
 
 An engine move measures the host's set on two builds of the engine, in one pass, in this order:
 
 1. **The incumbent build's cells**, on the build the probe shows serving.
-2. **The move to the candidate build**, through spike-model-engines' `engines` suite, run from the
-   host's clone of it, with the candidate's version as its argument (the session's step, no root):
+2. **The move to the candidate build**, once `image` has read the candidate's image (step 5,
+   item 1), through spike-model-engines' `engines` suite, run from the host's clone of it, with
+   the candidate's version as its argument (the session's step, no root):
 
    ```sh
    ssh <host> 'cd <clone> && host/engines <engine> update <candidate build>; echo "exit $?"'
@@ -191,8 +319,10 @@ applied), each model gated (step 4):
 - transcription (audio): ASR A and B, on the audio purpose's model;
 - a purpose with no scenario (embedding) has no cells, and the record says so.
 
-Each cell's row is as rules.md, "Figures", gives it for two builds. The reasoning check runs on each
-build's ASR cells, and the transcripts compare the audio model's ASR B on each build (rules.md,
+Each cell is one `cell` call, named by its build and cell (`cell b12098-asr-a audio-a
+ggml-org/gemma-4-E4B-it-GGUF:Q8_0 google/gemma-4-E4B-it`), each pair after `unload` and `load` of
+its model. Each cell's row is as rules.md, "Figures", gives it for two builds. The reasoning check
+runs on each build's ASR cells, and the transcripts compare the audio model's ASR B on each build (rules.md,
 "Reasoning check", "Transcripts").
 
 Print the pass before it runs. For example, on gb10-1 against its 2026-10-31 report:
@@ -206,8 +336,9 @@ Each cell: GuideLLM 0.8.1 from this machine, http://gb10-1:8080, timeout 10m, fr
            4 Vision B  Gemma 4 26B-A4B QAT Q4_0             4 x 32, 512 / 256, thinking on
            5 ASR A     Gemma 4 E4B Q8_0                     1 x 8 LibriSpeech clips, <=256 out
            6 ASR B     Gemma 4 E4B Q8_0                     4 x 32 clips, <=256 out
+  image    image gb10 b12033 (step 5)
   move     ssh gb10-1 'cd <clone> && host/engines llama update b12033; echo "exit $?"'
-  gate     every preset section loaded, one at a time (step 5)
+  gate     gate: every preset section loaded, one at a time (step 5)
   b12033   7-12 the same six cells
 Embedding: no cells (no scenario). Verdict: the engine rule (step 8).
 ```
@@ -221,7 +352,8 @@ A candidate screen measures one candidate beside the host's set in one session, 
   take, with those purposes' models unloaded, and the host's models for its other purposes loaded.
 
 Every cell follows rules.md, "Cells", "Fresh loads", and "Caps". The candidate's agent tiers and
-conform share one fresh load of its section; every other cell runs from its own. The host's set is
+conform share one fresh load of its section; every other cell runs from its own. Each cell is one
+`cell` call, each tier one `tier` call, conform one `conform` call ("Step helpers"). The host's set is
 restored at the end (step 9).
 
 The cells, for an agent candidate that would also take vision; a candidate of another purpose runs
@@ -251,9 +383,9 @@ than 8,704 tokens can't hold a long cell, so the long cells run on the set's own
 host. A model whose own agent-tier runs set the policy's floors (gpt-oss-120b's two runs, less their
 spread, `docs/policy.md`, "Agent quality bar") doesn't run them again.
 
-TODO(slice 3): the monitors during cells (GPU clocks and throttle reasons), the memory floor that
-stops a long run with readouts at a set interval, and the sweep's completed-request and
-every-token figures.
+Every cell, tier and conform run is under the monitor ("During cells"): GPU clocks and throttle
+reasons sampled, the memory floor, and readouts every 5 minutes. Each sweep row gives both its
+figures ("The sweep's figures").
 
 **The agent tiers**, spike-model-hosting's, run from this machine in its checkout, read-only: its
 consumers mise environment, its suites project (Inspect AI and inspect_evals' stock BFCL task), and
@@ -261,7 +393,10 @@ its seeded tier lists, with every output and cache in this project's ignored `.s
 checkout is never written. At the router's defaults (the card's sampling, the template's default
 reasoning), with parallel tool calls allowed, 4 requests in flight, the count the floors were
 measured at. A tier runs its whole list: no `--bar`, so no early stop. A new tool's first walk is
-the architect's (rules.md, "Who runs what"); after it, the session runs them:
+the architect's (rules.md, "Who runs what"); after it, the session runs them, each through its
+helper ("Step helpers"), `tier <name> bfcl-<single|multi> <section>` and
+`conform <name> <class>`, which run these commands under the monitor (the checkout is
+`MEASURE_HOSTING`, `~/experiments/spike-model-hosting` by default):
 
 ```sh
 cd <spike-model-hosting checkout>/evaluation && S=<project>/.state/measure/<host> && PYTHONDONTWRITEBYTECODE=1 UV_PROJECT_ENVIRONMENT=$S/../suites-venv HF_HOME=$S/../cache/huggingface INSPECT_EVALS_CACHE_DIR=$S/../cache/inspect_evals MISE_ENV=consumers timeout 15m mise exec -- uv run --project suites --locked --no-python-downloads python suites/agent_quality.py eval --router http://<host>:<port> --model <section> --tier bfcl-<single|multi> --list tiers/agent-bfcl-<single|multi>.txt --slots 4 --output $S/bfcl-<single|multi>
@@ -271,15 +406,17 @@ cd <spike-model-hosting checkout>/evaluation && MISE_ENV=consumers timeout 10m m
 A tier's figure is its accuracy over its whole list, read from the Inspect JSON log the tier leaves
 under its output directory. Conform's figure is its table: each capability's trials passed of 5,
 and the invalid requests. A tier whose request carries no token cap can run on; a reply past the
-tier's cap is a cap hit (rules.md, "Default rules", item 3).
+tier's cap is a cap hit (rules.md, "Caps", "A tier's token cap"), and `summarize` gives the
+tier's largest reply and its cap hits.
 
 **The local-only checks**, each recorded with its command as run:
 
-- **Cold start**: the router's `/models/load` for the candidate's section from unloaded, timed until
-  `/models` reads it loaded (the session, no root), as spike-model-engines' setup times a load.
-- **Memory**, read warmed after each set's long B cell, with the set still loaded: on a GB10,
-  `ssh <host> grep ^MemAvailable /proc/meminfo`; on a Strix Halo, the GTT in use,
-  `ssh <host> 'cat /sys/class/drm/card*/device/mem_info_gtt_used'`.
+- **Cold start**: `load <section>` for the candidate's section from unloaded, which prints the
+  time until `/models` reads it loaded (the session, no root), as spike-model-engines' setup times
+  a load.
+- **Memory**, read warmed after each set's long B cell, with the set still loaded, by `memory`:
+  on a GB10, MemAvailable; on a Strix Halo, the GTT free (`mem_info_gtt_total` less
+  `mem_info_gtt_used`). The set's use is the probed ceiling less that figure.
 - **Each slot's context**, read back from the router for the candidate's section:
   `curl -s "http://<host>:<port>/props?model=<section>" | jq '{n_ctx: .default_generation_settings.n_ctx, total_slots}'`.
 - **The API surface**: chat completions with tools under `tool_choice` `required`,
@@ -317,11 +454,81 @@ Each cell: GuideLLM 0.8.1 from this machine, http://framework:8080, fresh load, 
   * the set's agent unloaded meanwhile. The set restored at the end, read back by /models and the probe.
 ```
 
+## A settings check
+
+A settings check measures one served section with and without a set of keys, on one build, in
+one session: the keys a decision gave the host unmeasured (through the shared preset), or a
+configuration review's verify item. It runs after any engine move, on the build that stays, and
+changes no key: the keys stay as the preset has them, and a worse reading is a finding.
+
+**Selecting each arm.** A router loads a section with the arguments its preset gives it, and its
+`/models/load` takes the section's name alone (llama.cpp's server README, "POST /models/load",
+read 2026-11-06), so an arm is a preset state, not a load option. The two arms are the host's
+clone of spike-model-engines at two commits whose presets differ only by the keys: the commit
+before the keys and the one with them. The clone is moved to each with the router restarted, the
+session's steps, no root, and `load` reads each arm's keys back from the instance's arguments, so
+the record shows which arm each load ran:
+
+```sh
+ssh <host> 'cd <clone> && git checkout --detach <commit without the keys> && git log --oneline -1'
+ssh <host> 'cd <clone> && git checkout main && git pull --ff-only && git log --oneline -1'
+ssh <host> docker restart llama
+```
+
+After a restart the router lists every section unloaded; wait for `/health`, then load the arm's
+set. Where no commit holds the section without the keys, the arm is a temporary section on a
+branch, as a candidate's is (step 4), named in the brief. The pass ends with the clone on its
+default branch and the router restarted (step 9).
+
+**The pass**, in one session, the routing check and `tailscale ping` first:
+
+1. **The anchors' repeats**: anchors A and B on the anchor section, twice, each pair from its own
+   fresh load (`unload`, `load`, `cell <n>-anchor-a anchor-a`, `cell <n>-anchor-b anchor-b`, for
+   n = 1, 2). They are the first anchors beside the host's earlier readings (across-days), and
+   their spread between the two loads is a within-session reading (rules.md, "Figures", "Run
+   noise").
+2. **Each arm**, default first, then the keys: the clone at the arm's commit, the router
+   restarted, the arm's set loaded from fresh, then the arm's cells on its section from that one
+   load: an agent section's is BFCL multi-turn's first 4 samples
+   (`tier <arm>-bfcl-multi bfcl-multi <section> 4`), the 4-sample list gb10-1's check ran
+   (`docs/screens/gb10-1/2026-11-05.md`, "Cells"), under the cap the brief agrees.
+
+**The settings rule.** The keys are confirmed when, on the arm with them against the default arm:
+as many samples pass or more; the sum of sample times is no longer than the default's by more than
+the within-session spread; the long replies' decode mean (`readout`'s replies of 90 tokens or
+more, for the whole run) is no lower by more than that spread; and the keys' arm hit neither its
+cap nor the memory floor. Otherwise the keys did worse: a finding, with the figures, and an item for
+the host's next survey; this measure changes no key. The record gives both arms' figures, the
+readouts' idle-slot saves and checkpoints, and each arm's loaded arguments.
+
+For example, framework's owed check of set A's no-cache keys (the screen's merge gave them to
+framework unmeasured on Vulkan b11960; goal record, Decisions, 2026-11-06):
+
+```text
+Settings check: framework, llama.cpp b11960 (server-vulkan), gpt-oss-120b-MXFP4-set-a,
+cache-ram = 0 and cache-idle-slots = false. One session, the session; MEASURE_FLOOR_GIB=11.2.
+Arms: spike-model-engines dfc1d3d (before the keys) and main 933ec0f (with them); their presets
+differ only by these two keys in set A's section.
+  1 Anchors, load 1   ggml-org/gpt-oss-120b-GGUF:MXFP4 *    cell r1-anchor-a anchor-a; cell r1-anchor-b anchor-b
+  2 Anchors, load 2   the same, unloaded and loaded again   cell r2-anchor-a anchor-a; cell r2-anchor-b anchor-b
+  3 Default arm       clone at dfc1d3d, router restarted; E4B and granite loaded, then set A's section
+                      (load reads no --cache-ram 0, no --no-cache-idle-slots)
+                      MEASURE_TIER_CAP=10m tier default-bfcl-multi bfcl-multi gpt-oss-120b-MXFP4-set-a 4
+  4 No-cache arm      clone at main 933ec0f, router restarted; the same loads
+                      (load reads --cache-ram 0 --no-cache-idle-slots)
+                      MEASURE_TIER_CAP=10m tier nocache-bfcl-multi bfcl-multi gpt-oss-120b-MXFP4-set-a 4
+  * set A's agent unloaded meanwhile (one gpt-oss section at a time). Set A restored at the end on
+    main, read back by /models and the probe.
+Spreads: the repeats set framework's within-session and across-days spreads (rules.md, "Figures").
+Verdict: the settings rule.
+```
+
 ## 8. The verdict
 
 Each rule states what it gave on each condition, with its figures, then the outcome; the architect
 may overrule it, and the record gives the overrule and its reason beside what the rule gave. "Run
-noise" below is rules.md, "Figures".
+noise" below is the descriptor's within-session spread (rules.md, "Figures", "Run noise"): every
+comparison these rules make is within one session.
 
 **The engine rule.** For an engine move, adopt the candidate build only when all four hold:
 
@@ -399,9 +606,18 @@ before any decision writes no record unless the architect asks for one. It write
 the survey, the pool, the descriptor, the policy, the skill, or its conform profiles, and nothing on
 the host beyond the steps the record gives as run.
 
-TODO(slice 3): the shipped step helpers (load, unload, run a cell, summarize, memory, readout,
-watch), sourced and called one step at a time, every command logged by xtrace with a timestamped
-prompt into ignored state, and the record quoting that log for its commands as run.
+The descriptor's run noise is the one exception the record leads to: when the measure repeated
+cells, the record states each spread the repeats give and the descriptor's figures they set
+(rules.md, "Figures", "Run noise"), and the session writes them into the descriptor after the
+record, citing it.
+
+**Commands as run** come from the command log ("The command log"), never from memory: the record
+names the log's path and quotes its lines for each step, in order, the calls the session or the
+architect made (the lines with no helper's name) and, under each, the commands a helper ran that
+changed or loaded the host (its `curl` to `/models/load` or `/models/unload`, its GuideLLM or tier
+command, an `ssh`), with their times. Polls and the monitor's samples are left out, as the log
+leaves them. Each figure the record gives is `summarize`'s, for the cell it names. A step run
+without the helpers sourced is not in the log, and the record says so beside it.
 
 The record's sections, in order; a section with nothing in this run says "None":
 
@@ -427,9 +643,21 @@ with the architect's decision; then the probe that read the stack back.
 Each model gated before its load (step 4), each gate with what it read and its citation, and the
 conform profile's validation as run.
 
+## Commands as run
+The command log's path (`.state/measure/<host>/<YYYY-MM-DD>.log`), the helpers' commit (the
+project's, at the run), and the log's lines for every step in order, as "Commands as run" above
+gives them, each with who ran it.
+
+## Run noise
+The descriptor's within-session and across-days spreads the verdicts used, with their sources;
+each comparison that read one, and whether it moved beyond it. When the measure repeated cells:
+each repeated cell's readings and spread, the first anchors against the host's earlier readings
+on the same build and kernel, and the spreads the descriptor takes from them.
+
 ## Engine move: <engine> <incumbent build> to <candidate build>
 The candidate and why (rules.md, "Default rules", item 1: the builds passed over, with the reads
-that showed them unimaged or failing). The build gate (step 5). The pass's routing check, its kernel
+that showed them unimaged or failing). The build gate (step 5): its image row, one row per section
+it loaded, and the rollback as run when it failed. The pass's routing check, its kernel
 and host stack, and `tailscale ping -c 1`. Every command exactly as run: the incumbent build's
 cells, the move through the suite with its output and the build read back, the candidate build's
 cells. One row per cell, as rules.md, "Figures", gives it for two builds. A purpose with no cells,
@@ -442,6 +670,13 @@ gives it, with the earlier claims beside it. Each agent tier's command as run, i
 whole list against its floor, and its time; conform's table, invalid requests, and fit. The local-
 only checks: cold start, each set's memory read-out, each slot's context as the router reports it,
 the API surface, and whether each feature works, each with its command as run.
+
+## Settings check: <section>, <keys>
+The two arms, each by its clone commit and its loaded arguments as `load` read them; the anchors'
+repeats; each arm's tier as run, with samples done and passing, the sample times and their sum,
+the readouts (idle-slot saves, checkpoints, the long replies' decode), the largest reply, the cap
+hits, the lowest memory available, and the GPU readings; then the settings rule's conditions with
+their figures.
 
 ## Transcripts
 For a transcription purpose: the command as run, each model's (or each build's) word differences,
@@ -456,7 +691,7 @@ Each time a default rule applied (rules.md, "Default rules"): the step, what fai
 the retry as run, and what the verdict's rule read from it.
 
 ## Verdict
-For each pass, its rule (the engine rule or the keep rule), what it gave on each condition with its
+For each pass, its rule (the engine rule, the keep rule, or the settings rule), what it gave on each condition with its
 figures, the outcome (adopt or roll back; keep or drop), and any overrule by the architect with its
 reason beside what the rule gave. On an engine adopt, the rollback exactly as printed; on roll
 back, the update as run and the probe reading the incumbent back. On a candidate's adoption, the
@@ -465,7 +700,7 @@ architect's decision with its date.
 ## The claim beside the anchors
 The published claim the survey cited for each measured item, with its source, beside what this
 host measured, and how far the source held. The first anchors beside the host's last earlier
-readings, and any move beyond run noise, named as a finding.
+readings, and any move beyond the across-days spread, named as a finding.
 
 ## Removals
 Each removal: the dry run, the command as run, the space freed, its rollback, and the probe reading

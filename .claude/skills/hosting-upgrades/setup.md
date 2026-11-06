@@ -118,6 +118,13 @@ Three rules the check never prints:
   unload a model, move an engine, or run a cell (`sudo`, `docker`, `hf`, `curl`, `guidellm`,
   `git push`, the agent tiers, any ssh beyond the probe) change the host or load it. Each is run in
   the architect's view, by whoever rules.md, "Who runs what", assigns it, and asks each time.
+  That holds for measure's step helpers too (measure.md, "Step helpers"): no rule names
+  `scripts/measure-lib.sh`, since a command that sources it runs whatever follows the `source`,
+  and its `load`, `unload`, `cell`, `tier`, `conform`, `gate` and `watch` load the host. Each
+  call asks, and the prompt shows the step it runs. Their read-only calls (`memory`, `readout`,
+  `summarize`, `image`, `loaded`) ask too, since they ride in the same sourced shell. The helpers
+  need nothing beyond what measure already uses: bash, curl, jq, ssh, and GuideLLM through
+  `mise.bench.toml`. Their command log goes to ignored `.state/measure/<host>/`.
 
 ## 3. Probe
 

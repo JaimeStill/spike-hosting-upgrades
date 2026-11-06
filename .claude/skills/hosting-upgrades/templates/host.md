@@ -23,6 +23,18 @@
 - **embedding**: text embeddings for retrieval. Load target: <N> concurrent requests of
   <context> tokens each. From <the section or record, and its keys>.
 
+## Run noise
+
+<!-- Two spreads, each the widest relative spread, (highest - lowest) / lowest, between readings
+     of one cell on one engine build and one kernel, with the readings each comes from cited
+     (the records and their cells). The within-session spread bounds every comparison within one
+     run (the engine and keep rules); the across-days spread bounds a cell against an earlier
+     session's reading of it. A spread with too few readings is marked provisional, and the next
+     measure that repeats cells sets it (the skill's rules.md, "Figures", "Run noise"). -->
+
+- **Within-session**: <x.x>%. From <the record, its cells, and their readings>.
+- **Across-days**: <x.x>%. From <the records, the cell, and its readings on each day>.
+
 ## Watch items
 
 <!-- Optional. Named things every run must check, beside its own scan, of any kind: hardware

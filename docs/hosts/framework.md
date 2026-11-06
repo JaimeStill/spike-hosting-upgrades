@@ -35,6 +35,24 @@ list.
   tokens each. From the `mrutkows/granite-embedding-english-r2-GGUF:BF16` section:
   `c = 131072`, `parallel = 16`.
 
+## Run noise
+
+Each spread is the widest relative spread, (highest − lowest) / lowest, between readings of one
+cell on one engine build and one kernel (the skill's `rules.md`, "Figures", "Run noise"). Both
+are **provisional**, from few readings; the next measure that repeats cells sets them (anchors A
+and B twice each from fresh loads, the no-cache check's).
+
+- **Within-session**: 1.1%, provisional. Anchor B on b11960-8642541b2, kernel 7.2.15-1-omarchy,
+  in verify-framework's 2026-11-02 session (runs 3 and 4): 77.14, 77.31, 76.73 and 76.46 tok/s
+  ([verify-framework](../findings/verify-framework.md), "Cells" and "Run 4: E4B QAT with reasoning
+  off"). Anchor A's readings in that session, 44.86, 44.66, 44.91, 44.66 and 44.74 (the last in
+  its "Walkthrough"), spread 0.6%, and the shape cells repeated across runs 3 and 4 at most 0.8%
+  (Q8_0 shape B, 126.65 and 125.65).
+- **Across-days**: 2.6%, provisional. Anchor A on the same build and kernel: 44.91 at most on
+  2026-11-02 (verify-framework) and 43.79 on 2026-11-04
+  ([framework's screen record](../screens/framework/2026-11-04.md), "Cells", phase 1, run over
+  DERP rather than the direct path); anchor B 77.31 and 75.94, 1.8%.
+
 ## Watch items
 
 Named things every run checks, beside its own scan. What blocks this host from an upgrade is in

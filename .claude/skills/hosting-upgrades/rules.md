@@ -44,7 +44,7 @@ applies them without asking, and its record names each time one applied:
    its unfinished part allows: a condition that holds at every finish, or fails at every finish,
    is settled (6 of 20 passing is under 0.325 however the rest would finish); one the cap leaves
    open fails, as an incomplete cell does. A reply that runs past its tier's token cap counts as
-   a cap hit.
+   a cap hit ("Caps"), and so does a step the memory floor stops.
 
 Escalations remain only for what these rules don't settle; "Pause" lists them.
 
@@ -147,7 +147,9 @@ tailscale ping -c 1 <host>
 
 **The tool.** GuideLLM 0.8.1 from this machine (`mise.bench.toml`), with the engine's URL
 exported in `GUIDELLM__SPEC__BACKEND__TARGET` by the host's short name (`http://<host>:<port>`), so
-no address is committed. Each result goes under `.state/measure/<host>/`:
+no address is committed. Measure's `cell` helper runs it (measure.md, "Step helpers"), one cell a
+call, under the monitor, and its result goes under `.state/measure/<host>/`, as these commands
+give it:
 
 ```sh
 MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/anchor-<a|b>.yaml --output "kind=json,path=.state/measure/<host>/<pass>-anchor-<a|b>.json"
@@ -176,8 +178,30 @@ applies.
 ## Caps
 
 Each GuideLLM cell is capped at 10 minutes (`timeout 10m`), each agent tier at 15 minutes
-(`timeout 15m`), and any other step at the cap its brief agrees. A cap hit is recorded, and the
-run goes on ("Default rules", item 3).
+(`timeout 15m`), and any other step at the cap its brief agrees. A step that reaches its time cap
+exits 124. A cap hit is recorded, and the run goes on ("Default rules", item 3).
+
+**A tier's token cap.** A reply past its tier's token cap is a cap hit. The token cap is the
+`max_tokens` the tier sends. BFCL sends none (the harness's requests carry the model, the tools,
+`tool_choice`, and `parallel_tool_calls`, and no token limit; `docs/screens/gb10-1/2026-11-05.md`,
+"Cells"), so a runaway reply runs on until the model stops or the section's per-session context
+ends it: one multi-turn sample there generated 23,306 tokens, one reply of 7,326 ("BFCL and
+conform"). Until the harness sends a cap, a BFCL reply's cap is the section's per-session context,
+and a reply that stops there (Inspect's stop reason `max_tokens` or `model_length`) is a cap hit;
+the record gives each tier's largest reply beside its count, with its sample, so a runaway that
+stopped short of the context still shows. A sample a runaway holds past the tier's time cap is the
+time cap's hit.
+
+**The memory floor.** A long step (an agent tier, conform, any step capped past 10 minutes) and
+every cell run under the monitor (measure.md, "During cells") stop when the memory available to
+the GPU falls under the floor: the policy's headroom on the probed ceiling (`docs/policy.md`,
+"Memory headroom"), 12.2 GiB on gb10-1 (its screen's floor, `docs/screens/gb10-1/2026-11-05.md`,
+"BFCL and conform") and 11.2 GiB on framework (10% of its 112 GiB GTT ceiling). The memory
+available is MemAvailable on a GB10 and the GTT free (`mem_info_gtt_total` less
+`mem_info_gtt_used`) on a Strix Halo, each the ceiling the probe reads less what is in use. A
+stopped step is recorded with its last readout, as a cap hit: below the floor the set has spent
+the headroom the policy keeps, as the screen's no-prompt-cache arm did on gb10-1 (0.69 GiB
+available at its end).
 
 ## Figures
 
@@ -194,15 +218,44 @@ claims nothing about decode.
 **Comparisons.** Only cells run in the same session on the same versions are compared with each
 other; an earlier claim is context, never a condition.
 
-**Run noise.** A move counts only beyond run noise: 1.4%, the widest same-session spread the
-workspace had recorded when the verify tasks ran.
-TODO(slice 3): replace the fixed 1.4% with each descriptor's within-session and across-days
-spreads.
+**The sweep's two figures.** Each sweep level runs 60 s and then cancels the requests in flight,
+so the record gives two output figures a level, and `summarize` prints both
+(measure.md, "Step helpers"):
+
+- **completed-request**: the output tokens of the requests that finished within the level, over
+  its time (`.metrics.output_tokens_per_second.successful.mean`). With 256 tokens a request it is
+  the completed count times 256 over 60, so it is flat wherever the completed count is (the
+  earlier records' "flat 68 tok/s" at 4, 16 and 32 streams).
+- **every-token**: every output token generated in the level, by the finished requests and by
+  those cancelled at the cutoff (`.metrics.output_tokens_per_second.total.mean`), what the slots
+  actually decoded (gpt-oss-120b on gb10-1's 16-slot section: 49.4, 76.5, 125.6 and 124.5 at 1, 4,
+  16 and 32 streams; `docs/screens/gb10-1/2026-11-05.md`, "The sweep's measure").
+
+The sweep's incomplete requests are by design, not failures. The capacity condition reads ITL,
+not either figure.
+
+**Run noise.** Each descriptor's "Run noise" gives two spreads, each the widest relative spread
+between readings of one cell on one engine build and one kernel, (highest − lowest) / lowest, of
+its figure:
+
+- **within-session**: readings in one session. It is the engine rule's and the keep rule's run
+  noise (measure.md, "The verdict"), and the bound on any comparison within one run.
+- **across-days**: readings in different sessions, across reboots and days. It bounds a rerun
+  anchor against an earlier task's reading of the same cell, and the first anchors against the
+  host's earlier readings.
+
+A cell moved only when its change is beyond the matching spread. The descriptor cites each
+spread's readings. A spread marked provisional is set by the next measure that repeats cells
+(the same cell twice, each from a fresh load, in one session): the widest of its sources and the
+repeats, which the record states and the session writes into the descriptor. A set spread widens
+when a later same-build spread exceeds it, never narrows by one quiet run, and changes otherwise
+only by the architect's decision. A descriptor with no "Run noise" is a pause ("Pause", a policy
+question).
 
 **The first anchors** of a run are set beside the host's last earlier readings (the descriptor's
-Measurements and the host's earlier records). A move beyond run noise is a finding: the record
-names it, with both readings and what changed between them (the engine build, the kernel, the
-firmware), and the comparison within the run goes on.
+Measurements and the host's earlier records). A move beyond the across-days spread is a finding:
+the record names it, with both readings and what changed between them (the engine build, the
+kernel, the firmware), and the comparison within the run goes on.
 
 ## Reasoning check
 
@@ -298,8 +351,8 @@ don't settle:
    A version conflict among vendor notes that no verdict depends on is not a pause: the probe's
    installed versions decide, and the record keeps the conflict ([sources.md](sources.md),
    "Tiers"). One that changes a verdict still is.
-3. **A policy question**: the policy lacks a value a step needs, a purpose lacks a load target, or
-   a candidate sits on a rule's edge: a format the floor doesn't name, a file whose floor path its
+3. **A policy question**: the policy lacks a value a step needs, a purpose lacks a load target, a
+   descriptor lacks its run noise, or a candidate sits on a rule's edge: a format the floor doesn't name, a file whose floor path its
    build doesn't settle, or a scanner message under a "safe" status other than the one the policy
    passes by name. Origin is never a pause: a model with involvement found at a level the policy
    excludes on, or that fails its compliance gate, is excluded on origin; involvement at a level
