@@ -24,7 +24,10 @@ without the page's layout, and a query can be repeated exactly.
   comments for a maintainer's word (`--json comments`, each comment's `authorAssociation`:
   `MEMBER`, `OWNER`, or `COLLABORATOR` is the project's own, a maintainer and a primary source;
   anyone else's, `CONTRIBUTOR` included, is a lead, except a maintainer the architect has ruled
-  primary, "Configuration practice").
+  primary, "Configuration practice"). A measurement in such a comment that names its hardware,
+  engine version and method is still an attributed benchmark ("Tiers"): the rule for comments
+  covers stated practice, not measurement (the architect's ruling of 2026-11-06, hclsys's GB10
+  table in vLLM #58989; gb10-1's report of 2026-11-06-2, "Pauses", 1).
 - **`gh api` is only a fallback**, for when api.github.com's unauthenticated reads (60 an hour)
   run out. It asks permission each time, since the readiness check prints no rule for it
   ([setup.md](setup.md), "Readiness check").

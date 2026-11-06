@@ -26,8 +26,8 @@ applies nothing ([SKILL.md](../.claude/skills/hosting-upgrades/SKILL.md), "Modes
   cuda13 image moved to b12169, a build with no GitHub release, and gb10-1's research found
   `LiquidAI/LFM2.5-24B-A2B-GGUF`'s Q4_0, added that day
   ([framework](reports/framework/2026-11-06.md), "Blockers";
-  [gb10-1](reports/gb10-1/2026-11-06-2.md), "The research"). Both hosts were last surveyed
-  2026-11-06, so each is next due by 2026-11-13.
+  [gb10-1](reports/gb10-1/2026-11-06-2.md), "The research"). A host is due a week after its
+  last dated report, which `docs/reports/<host>/` shows.
 - **On a host update.** A host update changes the host stack, which is one of the three things
   the survey compares with the last report (survey.md, step 3, "When the inventory hasn't
   moved"). On 2026-11-06 the architect updated both hosts before their surveys (goal record,
@@ -154,12 +154,12 @@ Today showed this twice:
   "Pauses"). One of the architect's rulings, 0cc4m's statements as primary for Vulkan practice,
   is now in [sources.md](../.claude/skills/hosting-upgrades/sources.md). gb10-1's one pause was
   settled by the architect (commit `acfb0b8`; [gb10-1](reports/gb10-1/2026-11-06-2.md),
-  "Pauses").
+  "Pauses"), and its ruling, that a contributor's measurement naming hardware, version and
+  method is an attributed benchmark, is in sources.md too.
 
 The second surveys' own proposals are open, for the next session's start: framework's six
 descriptor changes, its two source notes and its policy items, and gb10-1's two descriptor watch
-items, two sources, and one probe change. gb10-1's tier question was settled with its pause, but
-sources.md doesn't state the ruling yet
+items, two sources, and one probe change
 ([framework](reports/framework/2026-11-06.md) and [gb10-1](reports/gb10-1/2026-11-06-2.md),
 "Proposed changes").
 
