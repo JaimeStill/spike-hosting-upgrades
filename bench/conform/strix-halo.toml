@@ -1,0 +1,182 @@
+# framework's conform profile: the strix-halo host class, in spike-model-hosting's profile schema
+# (hosting/profile/profile.go), modelled on its devices/strix-halo/profile.toml. Its one use is
+# conform, the agent bar's tool-reliability check (docs/policy.md, "Agent quality bar"), which the
+# screen mode runs from spike-model-hosting's clone with -profile naming this file
+# (.claude/skills/hosting-upgrades/SKILL.md, "The screen mode"). conform reads a profile's set
+# alone: its models, which it checks the router has loaded, and its roles, the model each of the
+# consumers' requests goes to. So each model's id is its section's name in the router's preset,
+# spike-model-engines' host/llama-preset/models.ini, which framework's router serves, and the set
+# is the Gemma set: 26B-A4B QAT's agent section for chat and vision, E4B Q8_0 for audio, and
+# granite BF16 for embeddings.
+#
+# The profile is never rendered. The router serves spike-model-engines' preset, not this file:
+# `profile render presets` would give a wrong one. Each model's c is one slot's context, since
+# every section's KV cache is split across its slots (kv = "per-slot") and the loader bounds c by
+# the card's context. The section's own c, its slots' total, is in each c_reason.
+#
+# Validated read-only from spike-model-hosting's clone, as the screen mode gives it:
+#   mise exec -- go run ./hosting/cmd/profile validate <this file's absolute path>
+host_class = "strix-halo"
+bind = "tailnet"
+# Every section in the preset leaves its KV cache split: setting parallel turns llama.cpp's
+# kv-unified auto default off, and no section the set loads sets kv-unified.
+kv = "per-slot"
+
+# framework's llama.cpp: ggml's Vulkan image at b11960 (docs/findings/verify-framework.md), the
+# build the screen measures on. min_build is the schema's floor, here the build itself.
+[engine]
+name = "llama.cpp"
+backend = "vulkan"
+min_build = "b11960"
+
+# The schema requires these; every model below sets its own c and slots, and no other key reads
+# them. gpu_layers 999 is the preset's n-gpu-layers = all; checkpoint_min_step is llama.cpp's
+# default, 8192, which the preset leaves as it is; c is spike-model-hosting's default for a model
+# without its own section.
+[defaults]
+c = 32768
+gpu_layers = 999
+checkpoint_min_step = 8192
+
+# The Gemma set, the one the keep rule weighs: Gemma 4 26B-A4B QAT serving agent and vision, with
+# gpt-oss-120b and the vision section unloaded.
+[[sets]]
+name = "gemma"
+startup = true
+models = [
+  "gemma-4-26B-A4B-QAT-Q4_0-agent",
+  "ggml-org/gemma-4-E4B-it-GGUF:Q8_0",
+  "mrutkows/granite-embedding-english-r2-GGUF:BF16",
+]
+
+[sets.roles]
+chat = "gemma-4-26B-A4B-QAT-Q4_0-agent"
+vision = "gemma-4-26B-A4B-QAT-Q4_0-agent"
+audio = "ggml-org/gemma-4-E4B-it-GGUF:Q8_0"
+embedding = "mrutkows/granite-embedding-english-r2-GGUF:BF16"
+
+# Estimated, never measured here: the agent section about 56 GiB with its weights (the screen
+# brief's estimate: 37.5 GiB of full-attention KV at 20,480 bytes a token over c = 1966080, and
+# 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and granite about 1.5 GiB (spike-model-
+# hosting docs/pool.md's budgets). 56 + 9.7 + 1.5 = 67.2 GiB, 68,813 MiB. The pool is framework's
+# GTT, 112.0 GiB (docs/reports/framework/2026-10-30-2.md, Inventory). The screen's memory read
+# after the long B cell is the measurement; it is recorded in the screen record, not here.
+[sets.memory_budget]
+pool_mib = 114688
+estimated_mib = 68813
+source = "the screen brief (context/goals, 2026-11-04); spike-model-hosting docs/pool.md"
+
+[[models]]
+id = "gemma-4-26B-A4B-QAT-Q4_0-agent"
+publisher = "Google"
+origin = "United States"
+# Licence: the card's license metadata (apache-2.0), linking Google's Gemma 4 licence page,
+# https://ai.google.dev/gemma/docs/gemma_4_license.
+licence = "Apache-2.0"
+# Vision through its mmproj, which the router loads beside the weights.
+roles = ["chat", "vision"]
+card_url = "https://huggingface.co/google/gemma-4-26B-A4B-it"
+# card_context: the card's 256K.
+card_context = 262144
+kind = "generative"
+c = 131072
+c_reason = """
+One slot's context: gpt-oss-120b's trained context, so each agent session reaches what set A's
+agent model gives one. The section, spike-model-engines' [gemma-4-26B-A4B-QAT-Q4_0-agent], loads
+google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 and its projector at c = 1966080 over 15 slots,
+split.
+"""
+slots = 15
+slots_reason = """
+Each slot is one agent session or image request at once, 15 in all, each with its own KV cache.
+"""
+
+[models.sampling]
+source = "https://huggingface.co/google/gemma-4-26B-A4B-it"
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+min_p = 0.0
+reason = """
+Sampling from the google/gemma-4-26B-A4B-it model card, "1. Sampling Parameters": temperature
+1.0, top_p 0.95, top_k 64, as the section sets them; min-p = 0 because the card names no min_p.
+No reasoning effort: conform runs at the template's default.
+"""
+
+[[models]]
+id = "ggml-org/gemma-4-E4B-it-GGUF:Q8_0"
+publisher = "Google"
+origin = "United States"
+# Licence: the card's license metadata (apache-2.0), linking Google's Gemma 4 licence page,
+# https://ai.google.dev/gemma/docs/gemma_4_license.
+licence = "Apache-2.0"
+# Audio and vision through its mmproj; the set sends it audio alone.
+roles = ["chat", "vision", "audio"]
+card_url = "https://huggingface.co/google/gemma-4-E4B-it"
+# card_context: the card's 128K.
+card_context = 131072
+kind = "generative"
+c = 8192
+c_reason = """
+One slot's context. The section, spike-model-engines' [ggml-org/gemma-4-E4B-it-GGUF:Q8_0], runs
+at c = 32768 over 4 slots, split; it is set A's audio model on framework
+(docs/findings/verify-framework.md, "Verdict").
+"""
+slots = 4
+slots_reason = """
+Each slot is one transcription at once, as the section sets them.
+"""
+
+[models.sampling]
+source = "https://huggingface.co/google/gemma-4-E4B-it"
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+min_p = 0.0
+reason = """
+Sampling from the google/gemma-4-E4B-it model card, "1. Sampling Parameters": temperature 1.0,
+top_p 0.95, top_k 64, as the section sets them; min-p = 0 because the card names no min_p.
+"""
+
+[models.prompts]
+source = "https://huggingface.co/google/gemma-4-E4B-it"
+asr = "Transcribe the following speech segment in English into English text."
+reason = """
+spike-model-hosting's ASR prompt for this model (devices/strix-halo/profile.toml): the card's
+("6. Audio"), the language filled in, without its formatting bullets, which on a clip of a word
+or two the model reads back as the transcript. conform's audio tool sends it.
+"""
+
+[[models]]
+id = "mrutkows/granite-embedding-english-r2-GGUF:BF16"
+publisher = "IBM"
+origin = "United States"
+# Licence: the card's license metadata (apache-2.0).
+licence = "Apache-2.0"
+roles = ["embedding"]
+card_url = "https://huggingface.co/ibm-granite/granite-embedding-english-r2"
+# card_context: the card's 8192-token context.
+card_context = 8192
+kind = "embedding"
+# dims: the 768-dimension output its card states.
+dims = 768
+c = 8192
+c_reason = """
+One slot's context, the model's trained 8192. The section, spike-model-engines'
+[mrutkows/granite-embedding-english-r2-GGUF:BF16], runs at c = 131072 over 16 slots. The file is
+a conversion of IBM's weights, which the policy passes after research (docs/policy.md, "Model
+origin").
+"""
+slots = 16
+slots_reason = """
+Each slot is one input embedded at once, as the section sets them.
+"""
+args_reason = """
+As the section sets them: embeddings serves it as an embedding model, and one input must fit one
+physical batch, so the batch is a whole slot. Its GGUF's CLS pooling stands, so no pooling key.
+"""
+
+[models.args]
+embeddings = true
+batch-size = 8192
+ubatch-size = 8192

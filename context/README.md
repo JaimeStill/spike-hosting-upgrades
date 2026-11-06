@@ -92,7 +92,15 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
   `docs/findings/verify-gb10-1.md`.
 - **The gb10-2 alignment report:** `docs/findings/gb10-2-upgrade.md`, the steps that bring gb10-2
   in line with gb10-1, each with who runs it and its rollback, for spike-ai-pipeline to apply.
-- **The screened pool:** the pool's candidates, kept or dropped per host class.
+- **The screen mode:** `/hosting-upgrades screen <host>`, which gates the pool a host's descriptor
+  names (its Pool section) for the host's class under today's policy, the speed floors included,
+  lists the agent candidates that need measurement, measures one agent candidate beside the host's
+  set in one session, applies the keep rule, and restores the set. It changes nothing on the host
+  itself and no served set. Its instruments are the conform profiles, `bench/conform/`, and the
+  vision, sweep, and long-prompt scenarios in `bench/`.
+- **The screened pool:** the screen records, `docs/screens/<host>/<YYYY-MM-DD>.md` (named in
+  `STANDARDS.md`), one per host per screen: the pool's candidates, kept, held, or dropped per host
+  class, the cells, BFCL and conform, the memory read-outs, and the verdict.
 - **The convention:** the method and its cadence.
 
 ## Path
@@ -107,7 +115,8 @@ The tasks, in the order they run; each cites the evidence it proves.
    `docs/findings/verify-framework.md`.
 3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
 4. `screen`: the pool's candidates screened for both host classes, each supported one verified
-   beside its role's incumbent (evidence 4).
+   beside its role's incumbent (evidence 4). Its records are
+   `docs/screens/framework/2026-11-04.md` and `docs/screens/gb10-1/2026-11-05.md`.
 5. `answer`: a second dated report showing what moved, the cadence, README "The answer", and the
    answer section (evidence 2, 6).
 
@@ -116,14 +125,17 @@ The tasks, in the order they run; each cites the evidence it proves.
 The spike reads these repositories for its setup, the anchors, and the verify and screen tasks,
 and never writes to them, with one exception: experiment.hosting owns spike-model-engines while
 the experiment runs, so its spikes may change that repository's `host/` (scripts and presets)
-through pull requests, each citing the finding behind it. The skill takes none of them as inputs, except the findings a host
-descriptor lists under Measurements. Each is a key in the
+through pull requests, each citing the finding behind it. The skill's report and verify modes take
+none of them as inputs, except the findings a host descriptor lists under Measurements; its screen
+mode also reads the pool a descriptor's Pool section names. Each is a key in the
 coordinator's `references.toml`, with its local checkout in `references.local.toml`:
 
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.
 - `spike-model-hosting`: the pool document (`docs/pool.md`), its admission rules and speed floors,
-  the model-card method, and the measurements `docs/policy.md`'s agent quality bar is drawn from.
+  the model-card method, the measurements `docs/policy.md`'s agent quality bar is drawn from, and
+  the agent tiers (BFCL and conform) and profile loader the screen mode runs read-only from its
+  clone.
 - `claude-plugins`: the skill layout and the check, for the plugin the intake may route there.
 - `dotfiles`: gb10-1's host-stack setup (`platforms/dgx/system-setup.sh`).
 - `spike-harness-driver`: how harnesses load a skill.

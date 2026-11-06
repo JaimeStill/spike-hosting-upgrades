@@ -14,6 +14,7 @@
       "Bash(tailscale ping -c 1 gb10-1)",
       "Edit(docs/findings/verify-*.md)",
       "Edit(docs/reports/**)",
+      "Edit(docs/screens/**)",
       "Skill(marathon:marathon)",
       "WebSearch",
       "WebFetch"

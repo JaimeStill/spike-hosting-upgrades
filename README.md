@@ -20,6 +20,12 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
   finding; it changes nothing on the host itself.
 - The verification findings: `docs/findings/verify-<host>.md`, such as
   [framework's](docs/findings/verify-framework.md).
+- The screen mode: `/hosting-upgrades screen <host>` gates the model pool a host's descriptor
+  names for the host's class, measures one agent candidate beside the host's served set, and
+  writes the host's screen record; it changes no served set.
+- The screen records: `docs/screens/<host>/<YYYY-MM-DD>.md`, such as
+  [framework's](docs/screens/framework/2026-11-04.md) and
+  [gb10-1's](docs/screens/gb10-1/2026-11-05.md).
 
 ## The answer
 

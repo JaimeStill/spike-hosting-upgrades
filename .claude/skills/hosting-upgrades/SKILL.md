@@ -1,7 +1,7 @@
 ---
 name: hosting-upgrades
-description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, its model engine, and its models) from what others publish, and finds and ranks everything the workstation has fallen behind on (pending package and firmware updates, failed or stopped units, container images behind their tag, unused images and models taking disk, and configuration that differs from its descriptor). Probes the host live over SSH, read-only and without root, and writes a dated, cited report that gives each item a verdict (verify, take, hold, or skip); it applies nothing. Its verify mode takes a host's last report to a decision on each item: it re-checks the gates, prints the commands, rollbacks, and anchor cells, and writes a verification finding, changing nothing on the host itself. Use when asked to evaluate upgrades for a host, check what's new for a host's engine or models, find what a host has fallen behind on, plan a host's next upgrade, or verify, apply, or settle a report's items.
-argument-hint: <host> | setup | verify <host>
+description: Evaluates upgrades to one inference host's serving stack (its hardware configuration, model engine, and models) from what others publish, and ranks what the workstation has fallen behind on (pending package and firmware updates, failed units, container images behind their tag, unused images and models, configuration that differs from its descriptor). Probes the host over SSH, read-only and without root, and writes a dated, cited report giving each item a verdict (verify, take, hold, or skip); it applies nothing. Its verify mode takes a host's last report to a decision on each item and writes a verification finding; its screen mode gates another spike's model pool for the host's class under today's policy, measures one agent candidate beside the host's set, and writes a dated screen record. Neither changes the host itself. Use when asked to evaluate upgrades for a host, find what it has fallen behind on, plan its next upgrade, verify or settle a report's items, or screen a model pool for a host.
+argument-hint: <host> | setup | verify <host> | screen <host>
 ---
 
 # hosting-upgrades
@@ -22,6 +22,11 @@ decision on each of its verify, take, and hold items, prints what applying each 
 writes the host's verification finding (see "The verify mode"). Like a run, it changes nothing
 on the host itself.
 
+`/hosting-upgrades screen <host>` starts no run either: it gates the model pool the host's
+descriptor names for the host's class, under today's policy, measures one agent candidate beside
+the host's set in one session, and writes the host's dated screen record (see "The screen mode").
+It changes nothing on the host itself, and no served set.
+
 The skill's frontmatter grants no tools. A skill's grant clears when the user sends their next
 message, so an interactive run would lose it at its first pause; the durable grants are the
 settings rules the readiness check prints.
@@ -29,7 +34,8 @@ settings rules the readiness check prints.
 ## Inputs
 
 A run reads two documents from the project, relative to its root (`${CLAUDE_PROJECT_DIR}`), and
-writes neither.
+writes neither. The report and verify modes take no other spike's model pool as an input; only the
+screen mode reads one, the pool the descriptor's Pool section names.
 
 - **The host descriptor**, `docs/hosts/<host>.md`. It holds only:
   - the SSH short name the run reaches the host by
@@ -43,12 +49,15 @@ writes neither.
   - optional measurements: the workspace's own dated findings on this host, each a reference
     name plus a path, which the run counts as attributed benchmarks ([sources.md](sources.md),
     "Tiers")
+  - an optional pool: another spike's model pool document, a reference name plus a path in the
+    same form, which only the screen mode reads ("The screen mode", step 1)
 
   Every other fact about the host comes from probing it. [templates/host.md](templates/host.md)
   gives the shape, for an environment writing its own.
 - **The policy**, `docs/policy.md`. It states the model-origin rule, artifact integrity with the
-  code the architect has accepted, the quantization floor, the agent quality bar, the minimum
-  context per agent session, and the memory headroom a model set must leave.
+  code the architect has accepted, the quantization floor, the agent quality bar, the speed
+  floors per purpose, the minimum context per agent session, and the memory headroom a model set
+  must leave.
   [templates/policy.md](templates/policy.md) gives the shape.
 
 When a step needs a policy value the document doesn't state (a floor for a kind of model it
@@ -60,8 +69,8 @@ the answer in the report as the architect's, never inventing one.
 A run's tools need permission rules in the project's settings, or each use asks. The check works
 out the rules this workspace needs, finds the ones missing, and prints them for the architect to
 add. It never writes a settings file. A run makes it the last part of step 1; the verify mode
-makes it its first step, with the verify mode's rules; `setup` makes it the whole run, with both
-sets.
+makes it its first step, with the verify mode's rules, and the screen mode the same, with the
+screen mode's; `setup` makes it the whole run, with all three sets.
 
 1. **Work out the rules.** The probe path is the project-relative one step 2 runs
    (`.claude/skills/hosting-upgrades/scripts/probe.sh` here), and the reports directory is
@@ -87,6 +96,13 @@ sets.
      `Bash(tailscale ping -c 1 <host>)`, for the network path each pass records ("The verify
      mode", step 6)
    - `Edit(docs/findings/verify-*.md)`, for the verification finding, the mode's only write
+
+   The screen mode needs every one of the verify mode's rules (its probe, its gates' reads and
+   scripts, and `tailscale ping`), and these beside them:
+   - `Edit(docs/screens/**)`, for the screen record, the mode's only write
+   - one rule per pool a descriptor names, for reading it outside the project:
+     `Read(<the pool's absolute path>)`, written with `~/` for a path under the home directory.
+     It names the architect's own checkout, so it belongs in `.claude/settings.local.json`
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -115,9 +131,10 @@ sets.
    ```
 
    `setup` prints the verify mode's rules beside the run's: the run's set first, then the verify
-   mode's own rules, each marked present or missing, then the JSON for every rule missing from
-   either set. The verify mode works out the same two sets, and asks about any rule missing from
-   either. For example, in a workspace that holds the run's rules:
+   mode's own rules, then the screen mode's own, each marked present or missing, then the JSON for
+   every rule missing from any set. The verify mode works out the run's set and its own, and asks
+   about any rule missing from either; the screen mode works out all three. For example, in a
+   workspace that holds the run's rules:
 
    ```text
    Readiness check, the run's rules: 9 of 9 present.
@@ -148,10 +165,11 @@ Three rules the check never prints:
   machine), so each host gets its own exact rule, and a new host's descriptor brings a new rule
   through `setup`. The rule names the probe path literally, because settings rules don't expand
   `${CLAUDE_SKILL_DIR}`.
-- **No rule for a command the verify mode prints.** The commands that apply or remove an item,
-  load or unload a model, or run a cell (`sudo`, `docker`, `hf`, `curl`, `guidellm`, any ssh
-  beyond the probe) change the host or load it. Each is run in the architect's view, by the
-  architect or the session as the verify mode assigns it, and asks each time.
+- **No rule for a command the verify or screen mode prints.** The commands that apply or remove
+  an item, load or unload a model, or run a cell (`sudo`, `docker`, `hf`, `curl`, `guidellm`,
+  `git push`, the agent tiers, any ssh beyond the probe) change the host or load it. Each is run
+  in the architect's view, by the architect or the session as the mode assigns it, and asks each
+  time.
 
 ## The run
 
@@ -160,7 +178,8 @@ Three rules the check never prints:
 1. Take the host from the argument, `$0`. With no argument, list the descriptors in `docs/hosts/`
    by their short names, ask which host to run on, and run on one host only. With `setup`, run
    the readiness check alone, as "Readiness check" says, and stop there. With `verify` and a
-   host, `$1`, follow "The verify mode" instead of these steps.
+   host, `$1`, follow "The verify mode" instead of these steps, and with `screen` and a host, `$1`,
+   follow "The screen mode".
 2. Read `docs/hosts/<host>.md`. If it is absent, stop and say so: "No descriptor for `<host>` in
    `docs/hosts/`, so the run has no declared purposes to judge against; write one from the
    skill's `templates/host.md` and run again." Name the descriptors that do exist.
@@ -577,7 +596,9 @@ Every item in steps 5, 5b, 6, and 7 takes one of four verdicts:
 - **hold**: the only claim is release notes, or comes from another hardware class, or the
   upgrade needs a root step with no rollback. An agent candidate the policy's agent quality bar
   can't yet place is hold, by the bar's own reading (`docs/policy.md`, "Reading the bar", as
-  [models.md](models.md), "Gate 4", applies it).
+  [models.md](models.md), "Gate 4", applies it). So is a candidate whose speed against its
+  purpose's floor is a paper estimate alone (`docs/policy.md`, "Reading the floors", as
+  [models.md](models.md), "Gate 5", applies it).
 - **skip**: sources show no gain or show a regression, or the upgrade breaks a rule: the policy,
   or an engine change outside how the host installs engines.
 
@@ -604,15 +625,15 @@ their checks are in [models.md](models.md); this step says what the section hold
    candidate for each, and the report says which incumbents it would replace.
 3. **The gates, in order**: the policy (the origin rule, then artifact integrity, then the
    quantization floor, as `docs/policy.md` states them and reads them), a fit in the probed
-   memory, and the host's engine serving the architecture on its backend, and, for the agent
-   purpose, the policy's agent quality bar. A model that fails a gate stops there and is listed
-   with the gate it failed and why. The floor takes one of the policy's three paths, settled by
-   the build, not the label (the publisher's native or QAT release, the publisher's
-   post-training checkpoint, or a third party's conversion), and never by the repository id: a
-   trained-in format passes by name with the publisher's quality statement quoted, a
-   publisher's post-training checkpoint passes only when every eval its card reports is within
-   the policy's margin of BF16 (the row names any outside it), and everything else meets the
-   floor.
+   memory, the host's engine serving the architecture on its backend, for the agent purpose the
+   policy's agent quality bar, and the policy's speed floor for the purpose
+   ([models.md](models.md), "Gate 5"). A model that fails a gate stops there and is listed with
+   the gate it failed and why. The floor takes one of the policy's three paths, settled by the
+   build, not the label (the publisher's native or QAT release, the publisher's post-training
+   checkpoint, or a third party's conversion), and never by the repository id: a trained-in
+   format passes by name with the publisher's quality statement quoted, a publisher's
+   post-training checkpoint passes only when every eval its card reports is within the policy's
+   margin of BF16 (the row names any outside it), and everything else meets the floor.
 4. **Excluded on origin, and origin unclear.** The run builds each model's evidence chain
    (publisher identity, the publisher's own documents, then artifact checks, as models.md,
    "Origin", gives it). A model with any disclosed or detected involvement of an adversarial
@@ -630,13 +651,13 @@ their checks are in [models.md](models.md); this step says what the section hold
    publisher, an unestablished lineage, a teacher the card doesn't name and the publisher doesn't
    place in its own pipeline, or sources that contradict each other) goes, without a pause, in the
    "origin unclear" list beside it, and never reaches a verdict either. Each entry names what the
-   run checked, each source cited inline. A pass means "no disclosed or detected involvement at
-   an excluding level", and the section says so. A model that already fails a later gate
-   (artifact integrity, the floor, fit, the engine, the agent bar), shown by a read the run has
-   made, may stop at "not settled" for origin instead of being researched to the end: its row
-   says origin is not settled, that the research stopped because the model fails that gate, and
-   names the gate and its source (models.md, "Origin"). It is listed under the gate it fails, not
-   under "origin unclear".
+   run checked, each source cited inline. A pass means "no disclosed or detected involvement
+   at an excluding level", and the section says so. A model that already fails a later gate
+   (artifact integrity, the floor, fit, the engine, the agent bar, the speed floor), shown by
+   a read the run has made, may stop at "not settled" for origin instead of being researched
+   to the end: its row says origin is not settled, that the research stopped because the model
+   fails that gate, and names the gate and its source (models.md, "Origin"). It is listed under
+   the gate it fails, not under "origin unclear".
 5. **Sort and judge.** An agent candidate's card figures must clear the policy's agent quality
    bar before speed sorts it, and the bar decides its verdict until the local tool-reliability
    check runs (`docs/policy.md`, "Reading the bar", as [models.md](models.md), "Gate 4",
@@ -1392,6 +1413,361 @@ or roll back), and any overrule by the architect with its reason. On adopt, the 
 as printed; on roll back, the update as run and the probe reading the incumbent back.
 ```
 
+## The screen mode
+
+`/hosting-upgrades screen <host>` gates another spike's model pool for the host's class under the
+policy as it reads today, then measures one agent candidate beside the host's set in one session,
+and leaves the host's screen record. A report run ranks what the public record says; the verify
+mode settles a report's items; the screen mode judges a pool someone else assembled, by this
+project's rules and this host's checks. It adopts nothing: a candidate both the sources and the
+host's checks support is recorded as kept, a later report ranks it, and no served set changes. It
+is interactive, as a run is, and pauses as "When to pause" says.
+
+The mode changes nothing on the host itself, as the verify mode doesn't: it prints every command
+that would load, unload, restart, or measure, says who runs it, and records each as it ran ("The
+verify mode", step 4, for who runs what). At its end the host serves the set it served at its
+start.
+
+### 1. Load the inputs
+
+1. Take the host from `$1`. With none, list the descriptors in `docs/hosts/` by their short names,
+   ask which host to screen, and screen one host only.
+2. Read `docs/hosts/<host>.md` and `docs/policy.md`. If either is absent, stop and say so, in the
+   words step 1 of the run gives for each.
+3. **The pool.** Read the descriptor's "Pool" section: a reference name and a path, as its
+   Measurements give a finding. Resolve the name as a Measurements entry is resolved, to the local
+   checkout the coordinator's `references.local.toml` maps it to, the key its `references.toml`
+   names. If the descriptor has no Pool section, stop and say so: "The descriptor for `<host>`
+   names no pool (`## Pool`), so there is nothing to screen; add one from the skill's
+   `templates/host.md` and run again." If the key has no checkout, or the file isn't there, stop
+   and name the path tried. Name the pool by its reference, its path, and the commit its checkout
+   is at; then what it says of itself: its date, the host class and build it was judged for, and
+   the rules it was judged by. Read its rows, never its verdicts: each status was reached under its
+   own rules, and the screen judges every row again (step 3).
+4. Read the host's last report (as "The verify mode", step 1, item 3, finds it), its verification
+   finding, and the findings its Measurements list: the earlier published and measured claims each
+   cell is set beside (step 6), and the report's rows for the incumbents and their citations. A
+   host with no report is no stop: the incumbents come from the probe.
+5. **The candidate to measure.** One agent candidate a screen measures, which the architect names
+   at the start, with the section it loads on: a candidate the last report or this screen holds at
+   "needs measurement" (step 4). With none named, the mode gates the pool, lists the candidates,
+   and stops before the pass.
+
+### 2. Readiness and probe
+
+1. Run the readiness check with the screen mode's rules ("Readiness check"), and go on as the
+   architect answers it.
+2. Run the probe exactly as step 2 of the run gives it, and stop as it says when SSH fails.
+3. From the probe: the engine and its build, the GPU-reachable ceiling (`== memory ==`), and the
+   host's set, one model per purpose, each by its router ID (`== endpoints ==`). This is the set
+   the pass measures beside and restores (set A, on this project's hosts).
+
+### 3. Gate the pool
+
+Every row of the pool, in every purpose's table, is one or more candidates: a row that names
+several models is one candidate per model, and the rows the pool excluded are candidates too. For
+each candidate, in the purpose its row is listed under (and each other purpose its card serves,
+step 7 of the run, item 2):
+
+1. **The file the host would load today.** The exact repository and file, its build, and the
+   projector's repository, file, and precision, as [models.md](models.md), "A model's row", gives
+   them. When the pool's file fails a gate another file of the same model passes (a converter's
+   post-training Q4_0 where the publisher releases a QAT Q4_0, say), the row names the file that
+   passes, beside the pool's. For example, the pool's `ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_0` is
+   a post-training Q4_0 that fails the floor, and the host would load Google's QAT file,
+   `google/gemma-4-26B-A4B-it-qat-q4_0-gguf` (`gemma-4-26B_q4_0-it.gguf`, with
+   `gemma-4-26B-it-mmproj.gguf`).
+2. **The gates, in order**, by [models.md](models.md), each stopping the candidate at its first
+   failure:
+   - origin, artifact integrity, and the quantization floor (Gate 1), under the policy as it reads
+     today
+   - fit in the probed memory (Gate 2)
+   - the host's engine at the probed build (Gate 3)
+   - for the agent purpose, the agent quality bar (Gate 4)
+   - the speed floor (Gate 5), whose reading the policy gives (`docs/policy.md`, "Reading the
+     floors"): a measured or attributed figure under its floor drops the row, and a paper estimate
+     alone holds it. A pool's figures are its class's: on a host of another class they are paper
+     estimates.
+
+   A row the pool excluded on an earlier origin rule is judged again under today's, by its own
+   evidence chain (models.md, "Origin"), and a row the pool admitted is judged again too; neither
+   stands on the pool's word.
+3. **The outcome**, one of three:
+   - **kept candidate**: every gate passes on cited figures, for the agent purpose the local
+     tool-reliability check included, so only a measured candidate can be kept, by the keep rule
+     (step 8)
+   - **hold**: a gate can't yet place it; the row names the measurement that would (the BFCL
+     category its card lacks, the tool-reliability check, the floor and the `bench/` cell that
+     measures it)
+   - **drop**: a gate fails it; the row names the gate and its source
+
+   Excluded on origin and origin unclear are drops, listed as step 7 of the run lists them.
+
+Every claim cites its source with its URL and read date ("Citing", step 4 of the run); a figure
+taken from the pool cites the pool's path and the source the pool gives for it. The research may
+be split as "Research" says: its agent-models, other-models, and origin parts, with their tools.
+
+### 4. Needs measurement
+
+List the agent candidates the gates leave at "needs measurement", by name, each with what it
+needs: the BFCL category with no card figure, the tool-reliability check, or a speed floor's
+cell. The list is the screen's own, read fresh from the gates, never carried from a report: a
+report's held agents that the pool doesn't name aren't on it. Only the candidate step 1 names is
+measured; the others wait for a later screen.
+
+### 5. Before any load
+
+1. **The candidate's gates, re-checked** under the policy as it reads today, as "The verify mode",
+   step 5, re-checks a verify item's, the chat-template check included. A failed gate stops the
+   pass: the record names the gate and what failed it.
+2. **The conform profile for the host's class**, `bench/conform/<class>.toml` (`strix-halo` for
+   a Strix Halo host, `nvidia-cuda` for a GB10), validated by spike-model-hosting's profile loader
+   from its checkout, read-only (the session, no root), where `<project>` is this project's root:
+
+   ```sh
+   cd <spike-model-hosting checkout> && mise exec -- go run ./hosting/cmd/profile validate <project>/bench/conform/<class>.toml
+   ```
+
+   It prints `<path>: valid`. The profile names the router IDs of the candidate's set: the
+   candidate's section for chat and vision, and the host set's audio and embedding models. A
+   profile whose IDs differ from the router's `/models`, or that fails to validate, is a pause.
+3. **The candidate's section** on the host's clone of the repository that owns the preset
+   (spike-model-engines' `host/llama-preset/models.ini`), from the branch that adds it, pushed
+   over ssh and the router restarted so it reads it (the session, no root), each command printed
+   before it runs; the router's `/models` reads the section back, unloaded.
+4. **The routing check**, the probe, the build, and `tailscale ping -c 1 <host>`, as "The verify
+   mode", step 6, gives them.
+5. **The cells, printed** (step 6): every cell with its command, who runs it, and its cap, before
+   the first load.
+
+### 6. The cells
+
+The verify mode's cell rules hold for every cell and are not restated here ("The verify mode",
+step 6): one model per purpose, so a load waits until the router reports the purpose's model
+unloaded; each model's cells from a fresh load; every cell at its full request count; and the
+probe, the build, and `tailscale ping`, with the routing check before the pass. The screen's own
+rules beside them:
+
+- **The tool**: GuideLLM 0.8.1 from this machine (`mise.bench.toml`) against the host's router,
+  in the verify mode's command form, with each result under `.state/screen/<host>/`:
+
+  ```sh
+  MISE_ENV=bench timeout 10m mise exec -- guidellm run -c bench/<scenario>.yaml --backend "kind=openai_http,model=<section>" --tokenizer "kind=huggingface_auto,model=<tokenizer>" --output "kind=json,path=.state/screen/<host>/<phase>-<cell>.json"
+  ```
+
+- **The caps**: `timeout 10m` on every cell, and `timeout 15m` on each BFCL tier. A cap hit is an
+  escalation: a pause, with the cell named.
+- **One shared load**: BFCL single-turn, BFCL multi-turn, and conform share one fresh load of the
+  candidate's section; every other cell runs from its own.
+- **Two phases.** Phase 1 runs on the host's set as served. Phase 2 runs on the candidate's set:
+  the candidate's section serving agent and vision, with the set's agent and vision models
+  unloaded and its audio and embedding models loaded. The host's set is restored at the end.
+
+The cells, for an agent candidate that would also take vision:
+
+| Phase | Cell | Model, section | Scenario | Load | Informs |
+|---|---|---|---|---|---|
+| 1 | Anchor A, B | the set's agent, on the anchor section the host's earlier readings used | `anchor-a.yaml`, `anchor-b.yaml` | 1 × 8, 4 × 32, 512 / 256 | the incumbent's decode and TTFT, and concurrency |
+| 1 | Long A | the set's agent, on the set's own section | `long-a.yaml` | 1 × 4, 8,192 / 512 | prefill and TTFT beside the candidate's |
+| 1 | Long B | the same, with the whole set loaded | `long-b.yaml` | 4 × 16, 8,192 / 512 | streams at agent prompt size; the set's memory read after |
+| 1 | Sweep | the set's agent, on its 16-slot section | `sweep.yaml` | 1/4/16/32 streams, 512 / 256, 60 s a level | capacity |
+| 1 | Vision A, B | the set's vision model, on its section | `vision-a.yaml`, `vision-b.yaml` | 1 × 8, 4 × 32, 720p + 200 / 64 | the reasoning count and the vision baseline |
+| 2 | Cold start | the candidate's section | the router's API | a load from unloaded, timed | local only |
+| 2 | Shape A, B | the same | `shape-a.yaml`, `shape-b.yaml` | 1 × 8, 4 × 32, 512 / 256, thinking on | the decode floor, beside anchors A and B |
+| 2 | Long A | the same | `long-a.yaml` | 1 × 4, 8,192 / 512 | the prefill and TTFT floors |
+| 2 | Long B | the same, with the candidate's set loaded | `long-b.yaml` | 4 × 16, 8,192 / 512 | the stream floor; the set's memory read after |
+| 2 | Sweep | the same | `sweep.yaml` | as phase 1's | capacity |
+| 2 | Vision A, B | the same | `vision-a.yaml`, `vision-b.yaml` | as phase 1's | the vision floor and the reasoning count |
+| 2 | BFCL single | the same, one fresh load | spike-model-hosting's tier list | 100 samples, 4 in flight | the single-turn floor |
+| 2 | BFCL multi | the same load | spike-model-hosting's tier list | 20 samples, 4 in flight | the multi-turn floor |
+| 2 | Conform | the same load | `bench/conform/<class>.toml` | Pi, k = 5, 9 capabilities | tool reliability and the API surface |
+
+The anchor section a host's earlier readings used may not be the set's own (framework's anchors
+ran on the 4-slot section, with the set's agent unloaded meanwhile); a section that gives a slot
+fewer than 8,704 tokens can't hold a long cell, so the long cells run on the set's own section on
+every host. Every scenario but the anchors names no model, so each command gives its section and
+its tokenizer (the model's upstream repository: `openai/gpt-oss-120b`,
+`google/gemma-4-26B-A4B-it`). gpt-oss-120b's BFCL doesn't run: the floors are its own two runs,
+less their spread (`docs/policy.md`, "Agent quality bar").
+
+**The agent tiers**, spike-model-hosting's, run from this machine in its checkout, read-only: its
+consumers mise environment, its suites project (Inspect AI and inspect_evals' stock BFCL task),
+and its seeded tier lists, with every output and cache in this project's ignored `.state/`, so
+the checkout is never written. At the router's defaults (the card's sampling, the template's
+default reasoning), with parallel tool calls allowed, 4 requests in flight, the count the floors
+were measured at. A tier runs its whole list: no `--bar`, so no early stop. A new tool's first
+walk is the architect's (the experiment's rules); after it, the session runs them:
+
+```sh
+cd <spike-model-hosting checkout>/evaluation && S=<project>/.state/screen/<host> && PYTHONDONTWRITEBYTECODE=1 UV_PROJECT_ENVIRONMENT=$S/../suites-venv HF_HOME=$S/../cache/huggingface INSPECT_EVALS_CACHE_DIR=$S/../cache/inspect_evals MISE_ENV=consumers timeout 15m mise exec -- uv run --project suites --locked --no-python-downloads python suites/agent_quality.py eval --router http://<host>:<port> --model <section> --tier bfcl-<single|multi> --list tiers/agent-bfcl-<single|multi>.txt --slots 4 --output $S/bfcl-<single|multi>
+cd <spike-model-hosting checkout>/evaluation && MISE_ENV=consumers timeout 10m mise exec -- go run ./cmd/evaluate conform -router http://<host>:<port> -profile <project>/bench/conform/<class>.toml -consumers pi -k 5 -state <project>/.state/screen/<host>/conform
+```
+
+A tier's figure is its accuracy over its whole list, read from the Inspect JSON log the tier
+leaves under its output directory. Conform's figure is its table: each capability's trials passed
+of 5, and the invalid requests.
+
+**The local-only checks**, each recorded with its command as run:
+
+- **Cold start**: the router's `/models/load` for the candidate's section from unloaded, timed
+  until `/models` reads it loaded (the session, no root), as spike-model-engines' setup times a
+  load.
+- **Memory**, read warmed after each set's long B cell, with the set still loaded: on a GB10,
+  `ssh <host> grep ^MemAvailable /proc/meminfo`; on a Strix Halo, the GTT in use,
+  `ssh <host> 'cat /sys/class/drm/card*/device/mem_info_gtt_used'`.
+- **Each slot's context**, read back from the router for the candidate's section:
+  `curl -s "http://<host>:<port>/props?model=<section>" | jq '{n_ctx: .default_generation_settings.n_ctx, total_slots}'`.
+- **The API surface**: chat completions with tools under `tool_choice` `required`,
+  `response_format` `json_schema`, and image input, each answered without error, read from
+  conform's recordings (its state's `conform/wire/`) and one request each against the section.
+- **Whether a feature works**: images on the candidate's section, and replies with no unprompted
+  reasoning.
+
+**The reasoning check** runs on all four vision cells, both phases', by "The verify mode", step 6:
+the replies that reasoned in the thought channel, and those whose text speaks about the task.
+
+Print the pass before it runs, in the verify mode's form. For example, on framework:
+
+```text
+Screen pass: framework, llama.cpp b11960 (server-vulkan), Gemma 4 26B-A4B QAT on its agent section.
+Each cell: GuideLLM 0.8.1 from this machine, http://framework:8080, fresh load, the session.
+  phase 1, set A
+   1 Anchor A     gpt-oss-120b, 4-slot section *         1 x 8, 512 / 256          timeout 10m
+   2 Anchor B     the same                               4 x 32, 512 / 256         timeout 10m
+   3 Long A       gpt-oss-120b, set A's section          1 x 4, 8,192 / 512        timeout 10m
+   4 Long B       the same, set A loaded; GTT after      4 x 16, 8,192 / 512       timeout 10m
+   5 Sweep        gpt-oss-120b, 16-slot section          1/4/16/32, 60 s a level   timeout 10m
+   6 Vision A, B  26B-A4B QAT, vision section            1 x 8 / 4 x 32, 720p      timeout 10m each
+  phase 2, the Gemma set (gpt-oss-120b and the vision section unloaded)
+   7 Cold start   26B-A4B QAT, agent section             API load, timed           the session
+   8 Shape A, B   the same                               1 x 8 / 4 x 32, thinking  timeout 10m each
+   9 Long A       the same                               1 x 4, 8,192 / 512        timeout 10m
+  10 Long B       the same, the set loaded; GTT after    4 x 16, 8,192 / 512       timeout 10m
+  11 Sweep        the same                               1/4/16/32, 60 s a level   timeout 10m
+  12 Vision A, B  the same                               1 x 8 / 4 x 32, 720p      timeout 10m each
+  13 BFCL single  the same, one fresh load               100 samples, 4 in flight  timeout 15m, the architect (first walk)
+  14 BFCL multi   the same load                          20 samples, 4 in flight   timeout 15m, the architect (first walk)
+  15 Conform      the same load                          Pi, k = 5                 timeout 10m, the architect (first walk)
+  * set A's agent unloaded meanwhile. Set A restored at the end, read back by /models and the probe.
+```
+
+### 7. The figures beside each cell
+
+Each cell's row gives its request count, its figure (output tok/s), its TTFT median, and its ITL
+median, and beside them the earlier claims for the same model and shape: the pool's figure, the
+last report's published claim, and the host's earlier measured cell, each cited with its build.
+Only cells of this session are compared with each other; an earlier claim is context, never a
+condition (the experiment's comparisons rule, as the verify mode keeps it).
+
+### 8. The keep rule
+
+For an agent candidate serving agent and vision with the set's agent model unloaded. Keep only
+when every condition holds; otherwise drop. The record states what the rule gave on each
+condition, with its figures, then the outcome; the architect may overrule it, and the record
+gives the overrule and its reason beside what the rule gave.
+
+- **Gates**: every gate passes, and no open tracker report has the engine's parser rejecting the
+  model's tool calls.
+- **Capability**: BFCL single-turn at least 0.630 and multi-turn at least 0.325, each on its
+  whole list (`docs/policy.md`, "Agent quality bar").
+- **Tool reliability**: conform through Pi passes every applicable capability 5 of 5, with 0
+  invalid requests.
+- **Completeness**: every cell holds its full request count.
+- **Speed** (`docs/policy.md`, "Speed floors"): shape A at least 20 output tok/s; long A prefill
+  at least 500 tok/s, with TTFT median at most 20 s; long B ITL median at most 100 ms (each stream
+  at least 10 tok/s). The set's agent model's same-session figures go beside them.
+- **Capacity**: the highest sweep level where the candidate's ITL median stays at 100 ms or less
+  is at least the set's agent model's, and every one of the candidate's slots holds the context
+  its section gives, as the router reports it.
+- **Memory**: the candidate's set leaves the policy's headroom (`docs/policy.md`, "Memory
+  headroom") and uses no more than the host's set read the same way in the same session.
+- **Vision**: on the candidate's section, every vision A and B request is answered within 10 s,
+  and no more replies reasoned than on the set's vision section, for each of the two counts.
+
+A keep is recorded, not adopted: the host's set is restored either way.
+
+### 9. The end state
+
+Restore the host's set by the verify mode's one-model-per-purpose rule, then read it back by the
+router's `/models` and the probe: the host serves what it served at the screen's start. A clone
+moved to a branch for the pass returns to its default branch with the router restarted, unless a
+keep leaves the branch's pull request open; the brief says which.
+
+### 10. Write the record
+
+The record is the mode's only write: one file per host per screen, at
+`docs/screens/<host>/<YYYY-MM-DD>.md`, dated the day the screen read its sources. When the host
+already has a record of that date, the screen writes `<YYYY-MM-DD>-2.md`, then `-3`, the next
+number free. It is written once, when the screen ends (after the end state is read back, or when
+the architect stops the screen, saying where it stopped), and never edited. A screen stopped
+before its pass writes no record unless the architect asks for one. The record's sections, in
+order:
+
+```markdown
+# <host>: screen of <pool reference> <pool path>, <YYYY-MM-DD>
+
+## Inputs and probe
+The pool read (its reference, path, commit, and what it says of itself), the descriptor and policy
+read, the readiness rules found missing and the answer, the probe's date and inventory, and the
+candidate measured, with its section.
+
+## The gated pool
+Per purpose, one row per candidate: the file the host would load (and the pool's, when it
+differs), its projector, each gate with its citation, and its outcome (kept candidate, hold with
+the measurement that would place it, or drop with the gate and its source). Then the drops on
+origin and the models of unclear origin, with what the screen checked.
+
+## Needs measurement
+Step 4's list, each candidate with what it needs.
+
+## Closures
+Each item closed with no action, with its reason (the standing closures below, and any the
+architect makes in this screen).
+
+## Gates
+The measured candidate's gates re-checked before any load, each with what it read and its
+citation, and the conform profile's validation as run.
+
+## Cells
+The routing check, the engine build and host stack from the probe, and `tailscale ping -c 1`.
+Every command exactly as run, in order, with who ran it. Phase 1's cells, then phase 2's, each row
+with its requests, figure, TTFT median, and ITL median, the earlier claims beside it (step 7).
+
+## BFCL and conform
+Each tier's command as run, its accuracy on its whole list against its floor, and its time;
+conform's table, invalid requests, and fit.
+
+## Local-only checks
+Cold start, each set's memory read-out, each slot's context as the router reports it, the API
+surface, and whether each feature works, each with its command as run.
+
+## Reasoning
+The reasoning check on the four vision cells, both counts each, each flagged reply quoted by its
+opening.
+
+## Verdict
+The keep rule, what it gave on each condition with its figures, the outcome (keep or drop), and
+any overrule by the architect with its reason beside what the rule gave.
+
+## End state
+The host's set restored, read back by `/models` and the probe; the clone's branch and the router's
+restart.
+
+## Sources
+Every source cited, with its tier, URL, and read date.
+```
+
+**The standing closures**, which every record's "Closures" carries until the architect reopens
+one (the architect's decisions, 2026-11-04):
+
+- **E4B QAT's logit-bias ban on `<|channel>`**: closed, no action. Its unprompted reasoning was in
+  the reply's plain text, which a ban on the channel token can't reach, and Google has published
+  no revision of `google/gemma-4-E4B-it-qat-q4_0-gguf` since the one verify-framework rolled back
+  (sha 4b4a2c1d, 2026-07-17); E4B QAT is revisited only on a revision (framework's descriptor's
+  watch item).
+- **12B QAT's and 31B QAT's reasoning check**: closed, no action. Neither serves a purpose nor is
+  a measured candidate, so the check runs on 26B-A4B QAT alone; both are named as not checked.
+
 ## What a run writes
 
 A run writes nothing except its report: not the descriptor, not the policy, not the skill, and
@@ -1400,5 +1776,9 @@ nothing on the host. Changes it would make to any of them go into the report as 
 The verify mode writes nothing except the host's verification finding,
 `docs/findings/verify-<host>.md`: not the report it verifies, not the descriptor, not the policy,
 not the skill, and nothing on the host. The commands that change the host are printed, run by the
-architect or the session as the mode assigns them, and recorded in the finding as run. `setup`
-writes nothing.
+architect or the session as the mode assigns them, and recorded in the finding as run.
+
+The screen mode writes nothing except the host's screen record,
+`docs/screens/<host>/<YYYY-MM-DD>.md`: not the pool, not a report or a finding, not the
+descriptor, the policy, the skill, or its conform profiles, and nothing on the host beyond the
+loads and the branch the record gives as run. `setup` writes nothing.

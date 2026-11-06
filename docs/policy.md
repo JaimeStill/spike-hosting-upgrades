@@ -94,7 +94,13 @@ publisher's repository or GitHub organization that holds it: the run looks for a
 path there (the architect's decision, 2026-10-31). A teacher the card doesn't name (a card that says "distillation" or
 "teacher" and names no model) passes only when the publisher's own documents say it is a
 checkpoint from their own pipeline; otherwise the model is "origin unclear" (the architect's
-decision, 2026-10-31).
+decision, 2026-10-31). A publisher's own technical report that describes the distillation as part
+of its own training of the family places the teacher in its pipeline, even when the recipe is
+adopted by reference from an earlier generation and the teacher is unnamed, provided no source,
+primary or lead, names an outside model: so Gemma 4, on Gemma 3's "large IT teacher", passes
+(the architect's decision, 2026-11-04). Another model's documents don't place a model's teachers:
+a sibling's blog saying its teachers branch from its own checkpoint settles only that sibling
+(the architect's decision, 2026-11-04).
 
 **Compliance, a gate of its own.** Apart from the threat above, the project deals with no
 adversarial entity. A publisher or an uploader that is an adversarial entity, by the lists above,
@@ -151,7 +157,10 @@ file Hugging Face's scanner marks as a pickle with imports, or a model that need
 `trust_remote_code` or other code shipped with it, fails unless the code is on the "Accepted
 code" list below. A `.bin` file may be a pickle or not, and only its contents say which, so the
 run reads the format from what the file is, never from its extension (the architect's decision,
-2026-10-31):
+2026-10-31). A model whose repository needs `trust_remote_code` passes when the file the host
+loads is a GGUF its engine loads with none of that code (llama.cpp runs no repository code), the
+GGUF settled as below; the code clause applies to an engine that would run the code (the
+architect's decision, 2026-11-04):
 
 - **A file stored on the host** is settled by the probe's read of its first 4 bytes, under
   `== models ==`.
@@ -265,6 +274,40 @@ published equivalent: no card or benchmark reports it, so only a local run measu
   check runs, because the check is always unmeasured until then. A candidate whose local check
   has run and passed clears the bar; one whose check fails, or that an open parser report
   covers, fails it: skip.
+
+## Speed floors
+
+A candidate for a purpose must be fast enough for the purpose's work, whatever it scores: a run
+and a screen gate each candidate by its purpose's floor, after the agent quality bar (the
+architect's decision, 2026-11-04). The floors are spike-model-hosting's role floors
+(spike-model-hosting `evaluation/floors.toml`, read 2026-11-04), absolute and task-based: what the
+purpose's work needs, not a fraction of any model's score.
+
+| Purpose | Measure | Floor |
+|---|---|---|
+| agent | single-stream decode | at least 20 tok/s |
+| agent | single-stream prefill of an 8,192-token prompt | at least 500 tok/s, with TTFT at most 20 s at the client |
+| agent | decode of each of N agentic streams in flight, an 8,192-token prompt and 512 out | at least 10 tok/s each |
+| vision | one image question answered, about 100 tokens out, wall time at the client | at most 10 s, alone and each of N in flight |
+| audio | transcription speed, audio seconds over wall seconds (RTFx), single stream | at least 5 |
+| embedding | throughput of one batch, prompt tokens a second at the client | at least 4,300 tok/s |
+
+N is the model's slots in the section the host would serve it from. Each of the N is judged by
+the floor, never their sum.
+
+**Reading the floors.** This is the rule; the skill applies it and points here.
+
+- A measured figure, or an attributed benchmark's, on the host's class and backend, for the file
+  the host would load, under its purpose's floor fails the gate: skip, with the floor, the figure,
+  and its source.
+- A paper estimate alone holds the candidate: a ceiling from bandwidth, a figure scaled from
+  another model's, a stand-in from another quantization, or a figure from another host class.
+  The row says "needs measurement" and names the floor the measurement must clear.
+- A measured or attributed figure at or over the floor passes the gate.
+
+The pool's other floors are not this gate: its memory floor (the headroom below holds a set's
+memory), audio's per-stream RTFx, and embedding's 32-token query time, which the gate as decided
+doesn't name.
 
 ## Agent session context
 

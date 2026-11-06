@@ -1,9 +1,10 @@
 # Models: gates, sort, and memory
 
-How steps 7 and 8 of [SKILL.md](SKILL.md) judge a model. Every value a gate compares against
-comes from the project's `docs/policy.md` or from the probe, never from this page; this page says
-how to read the sources that settle each gate. A gate that needs a value the policy doesn't state
-is a pause (SKILL.md, "When to pause"), and the run never fills the value in itself.
+How steps 7 and 8 of [SKILL.md](SKILL.md), and its screen mode, judge a model. Every value a
+gate compares against comes from the project's `docs/policy.md` or from the probe, never from
+this page; this page says how to read the sources that settle each gate. A gate that needs a
+value the policy doesn't state is a pause (SKILL.md, "When to pause"), and the run never fills
+the value in itself.
 
 ## Gate 1: the policy
 
@@ -145,12 +146,12 @@ output path, and conventions), and records adversary-generated data in a trainin
   pause.
 - **Not settled, failing a later gate**: a model whose chain is short of the pass bar, with no
   involvement found at an excluding level, that a read the run has already made shows failing a
-  later gate (artifact integrity, the floor, fit, the engine, or the agent bar). Research to the
-  end would change nothing the report decides, so it may stop here. The row says origin is "not
-  settled", what the chain established so far, cited, and that the research stopped because the
-  model fails that gate, named with its source. The model is listed under the gate it fails, not
-  under "origin unclear", and never reaches a verdict or the model set. A model the run would
-  rank if origin passed is never stopped this way.
+  later gate (artifact integrity, the floor, fit, the engine, the agent bar, or the speed floor).
+  Research to the end would change nothing the report decides, so it may stop here. The row
+  says origin is "not settled", what the chain established so far, cited, and that the research
+  stopped because the model fails that gate, named with its source. The model is listed under
+  the gate it fails, not under "origin unclear", and never reaches a verdict or the model set. A
+  model the run would rank if origin passed is never stopped this way.
 
 ### Artifact integrity
 
@@ -330,11 +331,32 @@ holds:
 
 When the policy states no agent quality bar, the gate is a pause (SKILL.md, "When to pause").
 
+## Gate 5: the speed floor
+
+For every purpose the policy gives a floor, after gate 4 for the agent purpose and after gate 3
+for any other. The policy's "Speed floors" names each purpose's floors, and its "Reading the
+floors" is the rule: which figures count, and what each outcome gives. The gate applies it as
+written and adds only what each row holds:
+
+- **The figure against the floor.** Each row names the floor, the figure set against it, and the
+  figure's kind: measured on this host, an attributed benchmark on the host's class and backend,
+  or a paper estimate (a bandwidth ceiling, a figure scaled from another model's, a stand-in from
+  another quantization, or a figure from another host class), cited, with its build. A pool's
+  figure is read the same way: its "meas." on the host's class counts, and its "est." is a paper
+  estimate.
+- **The measurement that would place it.** A hold names the floor its measurement must clear and
+  the cell that measures it (a scenario in the project's `bench/`).
+
+A figure from another host class never fails the gate on this one: measured speed on a Strix
+Halo is a paper estimate for a GB10. When the policy states no floor for a purpose, the gate
+passes the purpose's candidates with "no floor stated", and the run proposes one under "Proposed
+changes", "Policy and the model gates".
+
 ## Sort
 
-Models that pass every gate (for the agent purpose, the four gates, where a candidate whose card
-figures clear the floors sorts though it is held for the tool-reliability check; for any other,
-the first three) sort by:
+Models that pass every gate (for the agent purpose, the five gates, where a candidate whose card
+figures clear the floors sorts though it is held for the tool-reliability check or for a speed
+measurement; for any other, gates 1 to 3 and 5) sort by:
 
 1. **Published speed on the same hardware class**: decode and prefill from an attributed
    benchmark (sources.md, "Tiers"), at a concurrency that fits the purpose. A model with no
@@ -372,7 +394,9 @@ The verdict rules are the same as SKILL.md's "Verdicts". For a model:
   host update.
 - **hold**: its speed on the class is unpublished, comes from another class, is a lead, or is a
   stand-in estimate from another quantization (Sort); or it is an agent candidate that needs
-  measurement (Gate 4); or it is measured slower than the incumbent but ahead on the card's evals
-  for the purpose. Measured slower but ahead on evals is always hold, never verify or skip: the
-  trade is the architect's to weigh.
-- **skip**: it is measured behind the incumbent with no eval gain, or it failed a gate.
+  measurement (Gate 4); or its speed against its purpose's floor is a paper estimate alone
+  (Gate 5); or it is measured slower than the incumbent but ahead on the card's evals for the
+  purpose. Measured slower but ahead on evals is always hold, never verify or skip: the trade is
+  the architect's to weigh.
+- **skip**: it is measured behind the incumbent with no eval gain, or it failed a gate, the speed
+  floor's included.
