@@ -330,8 +330,13 @@ address:
 ```sh
 for ty in A AAAA; do echo "<host>.lan $ty: $(resolvectl query -t $ty <host>.lan >/dev/null 2>&1 && echo PRESENT || echo none)"; done
 t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
-for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} %{exitcode}\n' --connect-timeout 5 http://<host>:<port>/health; done | awk '{n++; if($NF!=0)f++; else {if($(NF-1)>0.05)s++; if($(NF-1)>m)m=$(NF-1)}} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m+0" s"}'
 ```
+
+Each connect prints its time and curl's exit code, so a failed connect counts once, as failed, and
+its time stays out of the maximum. (The earlier records' form, `|| echo -n "FAIL "`, printed a
+failed connect's `0.000000` beside its `FAIL`: it counted a failure twice among the connects and
+gave `FAIL` as the maximum.)
 
 A LAN record for `<host>.lan`, a bare name that resolves off the tailnet, or a failed connect is
 a failed check, and a failed check is a pause. Connects over 50 ms with none failed, when

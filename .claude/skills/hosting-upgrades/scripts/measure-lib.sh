@@ -253,7 +253,7 @@ routing() {
   for ty in A AAAA; do echo "$h.lan $ty: $(resolvectl query -t "$ty" "$h.lan" >/dev/null 2>&1 && echo PRESENT || echo none)"; done
   t=$(tailscale ip "$h"); echo "bare name: $(getent ahosts "$h" | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
   _measure_quiet "connecting to http://$h:$MEASURE_PORT/health 50 times"
-  for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 "http://$h:$MEASURE_PORT/health" || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+  for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} %{exitcode}\n' --connect-timeout 5 "http://$h:$MEASURE_PORT/health"; done | awk '{n++; if($NF!=0)f++; else {if($(NF-1)>0.05)s++; if($(NF-1)>m)m=$(NF-1)}} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m+0" s"}'
   _measure_trace_on
 }
 
