@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** idle
-- **Task:** none
-- **Branch:** none
+- **State:** building
+- **Task:** answer
+- **Branch:** answer
 
 ## Tasks
 
@@ -13,169 +13,134 @@
 5. [x] skill-revision
 6. [ ] answer
 
-## Task brief · skill-revision
+## Task brief · answer
 
 ```
-Problem       The screen task showed the hosting-upgrades skill costs more
-              than it returns. Its one file holds three modes, their
-              templates and their shared rules, 1,784 lines loaded whole on
-              every run. It found published facts after measuring them the
-              hard way: the prompt-cache stall (#30252) and its -kvu bugs,
-              unbounded context checkpoints with no prompt cache, -ub 2048,
-              llama.cpp's tuning for at most 8 sequences (#31711), vLLM's fit
-              at 16 sessions. What blocks a host is scattered across
-              Decisions, descriptors and pins. Two engine moves each cost a
-              pass and an escalation (b12125 had no image; b12124 broke
-              Google's QAT sections). A screen re-read about 340 KB of
-              sources. Its 1.4% noise figure failed on gb10-1, its sweep
-              figure counted only completed requests, its helpers lived in
-              ignored state, and its record took five review rounds to state
-              the commands as run. Descriptors copy model set A's four roles
-              onto every host, so nothing can be judged against a host's
-              intended load, which spike-model-layout may change.
-              This task redesigns the skill around two modes over the same
-              rules: survey, the public record, and measure, local cells under
-              one harness. No new tool: the helpers are bash, the command log
-              is xtrace, the monitors are nvidia-smi and amdgpu sysfs, and the
-              upstream checks use gh, all already present.
+Problem       The spike has a revised skill but has not shown the skill
+              repeating itself, and its convention is unwritten. framework
+              has no report from the revised survey; its last is the old
+              skill's 2026-10-30-2. gb10-1's only revised survey, of
+              2026-11-06, researched in full, so the research cache and
+              "only what moved" have never been tested on a repeat run.
+              The skill's entry file says survey runs "on a cadence", and
+              nothing defines that cadence. gb10-1's 2026-11-06 proposals
+              were never settled. README "The answer" is empty, and the
+              experiment's intake needs this spike's answer section. This
+              task runs the second survey on each host, writes the
+              convention and its cadence from what the two surveys show,
+              and gives the spike's answer. No new tool and no local cells.
 
 Behaviors
-  Layout
-  1.  The skill's entry file is about 150 lines: what the skill does, its
-      modes (`setup`, `survey <host>`, `measure <host>`), when each
-      applies, and pointers. Each mode's procedure and record template
-      sit in one reference file loaded only when that mode runs. Shared
-      rules (cells, fresh loads, caps, figures, reasoning check,
-      transcripts, routing, pause, root) are defined once and cited.
-      The model gates and sources files stay. The check passes and every
-      dated record's links still resolve.
-  2.  Default rules replace screen's escalations: take the newest build
-      with an image for the class that passes the build gate; retry a
-      failure once from a fresh load; record a cap hit and continue.
-      Escalations remain for choices the rules don't settle.
+  Hosts current, proposals settled
+  1.  Before either survey, the architect brings framework and
+      gb10-1 up to date with root, from the exact commands the plan
+      agreed. Each command appears in the record as run, with what it
+      changed and its rollback. A reboot happens only when the kernel
+      or firmware changed, and the probe then reads back the running
+      kernel and that the router serves its set.
+  2.  Before gb10-1's survey, each of its 2026-11-06 proposals is
+      settled one at a time: the four descriptor watch-item changes,
+      the four trusted sources, the blocklist entry, and the DGPP
+      engine seed. The architect accepts or rejects each one. The
+      session applies the accepted ones, and each decision is logged.
+      The policy proposals, already decided on 2026-11-06, are read as
+      settled.
 
-  Hosts' intended load
-  3.  Each descriptor's Purposes section lists only the purposes that host
-      serves, each with its load target (concurrent sessions or requests,
-      context per session). Today's targets are written in; no served set
-      changes. Survey and measure judge the configuration review, engine
-      fit, capacity and memory against those targets, and no rule assumes
-      model set A's four roles on every host.
+  The second surveys
+  3.  A revised survey of framework, run on the day BUILD starts,
+      writes that day's dated report (named -2 when the day already has
+      one). Its Inventory compares the probe with 2026-10-30-2 and
+      states what moved. Among the moves it reads are the no-cache keys
+      on the agent section (clone at 933ec0f), the host update, and the
+      descriptor's load targets. It also states whether it researched
+      in full or only what moved.
+  4.  A revised survey of gb10-1, run on the same day, writes its dated
+      report the same way. It compares with 2026-11-06, reads the
+      descriptor as behavior 2 left it, and states what moved since
+      then.
+  5.  Each report gives its research-cache counts: entries cited, read
+      fresh, and deleted. It also gives each blocker register entry's
+      state as checked upstream with gh, and its Verify next and Needs
+      measurement lists. The register and the cache are updated in
+      place. Neither survey applies anything, and no cell runs.
 
-  Survey (the public record)
-  4.  `survey <host>` covers what report and screen's gating did: the
-      read-only probe, system debt, hardware configuration, model host,
-      models, each item cited and given verify, take, hold or skip. It
-      writes the dated report as report mode did.
-  5.  Configuration review, every survey: each served section's
-      arguments, the container's run flags the probe reads, and the
-      engine choice at the host's load target, flag by flag against
-      published practice for the class and engine (vendor playbooks,
-      ggml-org's DGX Spark benches, the build's argument list,
-      maintainers' tracker comments; Strix Halo community benches). Each
-      flag is cited and ranked; the review only proposes.
-  6.  Discovery, every survey: models others run on the host class
-      (playbooks, the class's bench threads) join publishers' newest
-      models and any named pool as candidates, all through the origin,
-      quantization, fit, engine, agent-bar and speed gates.
-  7.  A committed research cache, one file updated in place: one entry
-      per source with its read date and what it said. A survey re-reads
-      a source only after 14 days or when its subject changed, replaces
-      the entry, and deletes entries whose subject no longer concerns any
-      host (a model no host serves or screens, a build two images behind
-      the newest, a closed register entry).
-  8.  A committed blocker register, one per project. Each entry names the
-      hosts it affects, what it blocks, its measured cost with the record
-      behind it, the upstream issue or PR, when it clears, the
-      workaround, what reopens it, its state and when it was last
-      checked. States: open, fix merged, fix in an image build, cleared
-      on the host. An entry is deleted once cleared on every host it
-      names. Seeded with: #31620/#31639 (gb10 held at b12098);
-      framework's #29221, #25584 and #31418; the prompt-cache bugs
-      (#30961, #27148); unbounded checkpoints (#30137, merged after
-      b12098); Gemma 4's multi-turn gap (62% published on vLLM against
-      about 0.26 here). Watch items stay in descriptors for possible
-      upgrades.
-  9.  Survey checks every open entry's upstream state with gh each run;
-      measure re-checks the entries naming its host before its first
-      load. A bundled script, granted by its own readiness rule, reads
-      whether a merged fix is in the newest build with an image for the
-      class (the ghcr manifest check, and GitHub's compare API). A
-      blocker whose fix reaches an image becomes an upgrade item in the
-      survey. Readiness prints the gh rules.
+  The convention and its cadence
+  6.  One convention document states:
+      - when survey runs: weekly per host, and on these event triggers:
+        a host update, a register entry reaching "fix in an image
+        build", a change to the descriptor's purposes or load targets,
+        and before any change to the host;
+      - what triggers a measure: a survey's verify item or Needs
+        measurement entry; one measure per session; its cells agreed
+        in that task's plan round;
+      - the record an adoption leaves: the report, then the measure
+        record quoting its command log, then the descriptor, the pin,
+        and the register entry's state;
+      - how proposals are settled between surveys;
+      - the blocker register and its four states;
+      - the research cache and its 14-day rule;
+      - per-host load targets, and spike-model-layout's ownership of
+        them;
+      - what stays with the backlog goal model-evaluation: workloads
+        only we can measure, our agents and our role sets under our own
+        sessions, and tuning at scale.
+      Each statement cites the record that shows it, the two second
+      surveys among them. The skill's entry file points to the
+      document for its cadence.
+  7.  README "The answer" states the question, a one-line answer, and
+      evidence 1 to 6, each item naming where it is proven. It links
+      the convention document.
+  8.  The goal record's pending edits gain this spike's answer section
+      for the coordinator's ai-hosting.md, in the "Answer section"
+      form: Question, Answer, numbered evidence, gaps, and
+      "Requirements for the intake to route", which carries BFCL's
+      max_tokens per tier for spike-model-hosting's agent-tier harness.
+      The two existing pending edits stay. The project's context notes
+      name the convention among the capabilities and mark the Path's
+      last task done.
 
-  Measure (local cells)
-  10. `measure <host>` runs both engine moves and candidate screens under
-      one harness, judged by the engine rule or the keep rule, and writes
-      one dated measure record per run per host. Existing verify findings
-      and screen records stay as history.
-  11. Build gate before an engine move: the class's image exists for the
-      build, and after the move every preset section loads, one at a
-      time, before any cell; a failed load rolls back at once.
-  12. Shipped, parameterized bash helpers (load, unload, run a cell,
-      summarize, memory, readout, watch) are sourced and called one step
-      at a time in the architect's view; none runs a benchmark on its
-      own. Every command is logged by xtrace with a timestamped prompt
-      into ignored state, and the record quotes that log for its commands
-      as run.
-  13. Run noise: each descriptor keeps a within-session spread (used by
-      the engine and keep rules) and an across-days spread (used when a
-      rerun anchor is compared with an earlier task); a cell moved only
-      beyond the matching figure. gb10-1 starts at 2.2% and 5.0%,
-      framework from its same-build readings. The fixed 1.4% is gone.
-  14. During cells: GPU clocks and throttle reasons sampled (nvidia-smi on
-      GB10, amdgpu sysfs on Strix Halo); a memory floor stops a long run,
-      with readouts at a set interval; the sweep reports both its
-      completed-request figure and its every-token figure. A reply past
-      its tier's cap counts as a cap hit; BFCL's missing max_tokens goes
-      to the coordinator as a pending edit for spike-model-hosting's
-      harness.
-
-  Verification
-  15. A revised survey of gb10-1, on paper, surfaces in its configuration
-      review and register: #30252, #30961/#27148, unbounded checkpoints,
-      -ub 2048, #31711 and vLLM's fit at gb10-1's load target, each cited.
-  16. A revised measure on framework discharges its owed no-cache check
-      (screen, 2026-11-06): anchors A and B twice each from fresh loads
-      (about 10 minutes), then BFCL multi-turn's first 4 samples on set
-      A's section with the default cache and with the no-cache keys
-      (10-minute cap each). The keys, already on framework through the
-      shared preset, are confirmed if they perform as well or better;
-      worse is a finding and an item for the next survey, not a change in
-      this task. The record quotes the command log, and the repeats
-      set framework's spreads.
-
-Test seams    the skill's three verbs, run by the session and the
-              architect; the check (shellcheck, links); the record a run
-              writes against its command log
+Test seams    the skill's survey verb, run by the session; the check
+              (shellcheck, links); each report's Inventory against the
+              host's previous report
 
 Slices
-  1.  Layout and load targets: the entry file, per-mode references, the
-      shared rules, the default rules, descriptors' Purposes with load
-      targets (behaviors 1–3). Demo: setup, and each mode printing its
-      plan up to its first network read or load; check passes.
-  2.  Survey: the configuration review, discovery, the research cache,
-      the seeded blocker register with gh checks and the image script
-      (behaviors 4–9). Demo: gb10-1's survey, on paper (behavior 15).
-  3.  Measure: the harness, its record, the build gate, helpers with the
-      command log, per-host noise, monitors, the sweep's two figures, the
-      cap-hit rule (behaviors 10–14). Demo: framework's no-cache check
-      through measure (behavior 16).
-  4.  Walkthrough, the architect's: from the docs, setup; read one
-      register entry back against gh; source the helpers and rerun anchor
-      A on framework from the log's commands, against the descriptor's
-      within-session spread; read the record's commands against the log.
+  1.  Hosts current, proposals settled (behaviors 1, 2). The
+      architect: the root updates on both hosts, plus a reboot only
+      when the kernel or firmware changed, and a decision on each of
+      gb10-1's proposals. The session: records the commands as run,
+      reads back with the probe, applies the accepted proposals, and
+      runs setup. Demo: the probe's read-back on both hosts; the
+      descriptor, sources and blocklist changed; check passes.
+  2.  The second surveys (behaviors 3–5). The session runs survey
+      framework, then survey gb10-1: probes over Tailscale SSH with no
+      root, the research, and the reports, register and cache. The
+      architect answers any pause and reads out any fact that needs
+      root. Demo: two dated reports, each stating what moved and its
+      cache counts; check passes.
+  3.  The convention and the answer (behaviors 6–8), written by the
+      session. Demo: the convention document, README "The answer", the
+      answer section and the Sync list in the record; check passes.
+  4.  Walkthrough, the architect's: from the convention document, run
+      setup; read one host's "what moved" against its previous report;
+      read one register entry back against gh; read one cached
+      citation's read date against the 14-day rule; review the answer
+      section and the Sync list.
 
-Out of scope  changing any served set or a host's configuration (the review
-              proposes; measure decides in a later task); deciding which
-              host serves which purpose (spike-model-layout); changing
-              spike-model-hosting's harness or spike-model-engines'
-              presets; an engine move on either host; the coordinator,
-              beyond this plan's PR and pending edits
-Door          two-way: the skill, its records and the descriptors are this
-              repository's files, and the framework cells change nothing
-              the run doesn't restore
+Out of scope  any local cell or measure; an engine move on either host
+              (framework stays on b11960 and gb10-1 on b12098); applying
+              a survey's take or verify items beyond the system updates
+              of behavior 1; changing any served set, preset or load
+              target; spike-model-engines' host/; the coordinator, beyond
+              the pending edits the Sync carries
+
+Door          two-way: the reports, convention, README, register, cache
+              and descriptors are this repository's files. The system
+              updates roll back by booting the previous kernel and
+              downgrading packages from the pacman cache on framework, or
+              by pinning the apt version on gb10-1.
 ```
+
+Release: none.
 
 ## Progress
 
@@ -781,6 +746,15 @@ Door          two-way: the skill, its records and the descriptors are this
 - skill-revision: an engine move's vision cells are shape A and B, named so, as the verify mode ran them (session, 2026-11-06).
 - skill-revision: framework's run noise is 1.1% within a session and 2.8% across days, set by its 2026-11-06 measure from the repeated anchors and the earlier same-build readings, no longer provisional (session, 2026-11-06).
 - skill-revision, after ship: framework's spike-model-engines clone pulled from dfc1d3d to 933ec0f and the router restarted, so set A's section serves the confirmed no-cache keys (`--cache-ram 0 --no-cache-idle-slots`, read back by the probe); the strix-halo pin and image (b11960) unchanged. framework's DERP relay is the laptop's network, not the host: the laptop's netcheck reads MappingVariesByDestIP true (a hard NAT), framework's false with UPnP and PCP, so nothing on framework to fix (architect's direction, 2026-11-06).
+- answer: the second report is a new revised survey of both hosts on the day BUILD starts: framework against 2026-10-30-2, gb10-1 against 2026-11-06, named -2 when the day already has a report; rejected counting gb10-1's 2026-11-06 paper survey (architect, 2026-11-06).
+- answer: the architect brings both hosts up to date with root before the surveys, as the experiment rule requires every session to; rejected surveying first and ranking the updates as take items (architect, 2026-11-06).
+- answer: no local cells. The task runs no measure; both surveys are on paper (architect, 2026-11-06).
+- answer: held llama.cpp strix-halo at b11960: an engine move is a measure, and builds past b12098 break Google's QAT vision section (#31620) (architect, 2026-11-06).
+- answer: gb10-1's 2026-11-06 proposals are settled one at a time before its second survey: the architect decides each and the session applies the accepted ones; rejected leaving them for the walkthrough (architect, 2026-11-06).
+- answer: survey runs weekly per host, plus event triggers; rejected triggers only (architect, 2026-11-06).
+- answer: the convention is its own document, `docs/convention.md`, linked from README "The answer", the answer section and the skill's entry file; rejected writing it only into the README (architect, 2026-11-06).
+- answer: BFCL's max_tokens per tier goes under the answer section's "Requirements for the intake to route", which settles where that pending edit lands; rejected a line in model-evaluation's roadmap summary (architect, 2026-11-06).
+- answer: currency on start reported python 3.14.10 -> 3.15.2 (mise.bench.toml), still held: torchcodec 0.17.0 has no cp315 wheel (PyPI, 2026-11-06) (session, 2026-11-06).
 
 ## Pending edits
 
