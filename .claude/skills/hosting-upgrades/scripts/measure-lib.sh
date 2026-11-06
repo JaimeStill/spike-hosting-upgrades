@@ -8,8 +8,16 @@
 # .state/measure/<host>/, appends xtrace's lines to .state/measure/<host>/<YYYY-MM-DD>.log
 # (BASH_XTRACEFD, with PS4 '+ <ISO time> <helper>: '), and turns xtrace on in the calling shell,
 # so every command after it, the caller's own and each helper's, is logged with its time and the
-# helper it ran in. The record's "Commands as run" quotes that log. A poll or a sampling loop
-# logs one line saying what it does, not each pass. `set +x` stops the log; sourcing resumes it.
+# helper it ran in. What a helper prints to standard output lands in the same log as well, each
+# line as the terminal shows it after '= <ISO time> <helper>: ' (the helper the caller called), so
+# the record quotes a load's time, a cell's figures and a readout from the log. The record's
+# "Commands as run" quotes that log. A poll or a sampling loop logs one line saying what it does,
+# not each pass. `set +x` stops the log, printed results included; sourcing resumes it.
+#
+# MEASURE_LOG=off, set for the `source` line, sources the helpers read-only: no log, no xtrace,
+# nothing appended, for reading a finished run (`summarize`, `loaded`, `memory`, `readout`,
+# `routing`, `image`) without adding to the day's log. The helpers that load the host (load,
+# unload, watch, cell, tier, conform, gate) refuse there.
 #
 # No helper runs a benchmark on its own or chains cells: `cell` runs one GuideLLM scenario, `tier`
 # one agent tier, `conform` one conform run, each under `watch`, and `gate` only loads and unloads.
@@ -25,6 +33,8 @@
 #   conform <name> <class> [<k>]    one conform run through Pi, under watch
 #   summarize <name>                a result's figures: a cell's, a tier's, and its watch's
 #   memory                          one memory read-out on the host, and the floor
+#   routing                         rules.md's routing check: the host's .lan records, what the bare
+#                                   name resolves to, and 50 connects to the router's /health
 #   readout [<since>]               the router's log since a time (default 5 minutes ago), and memory
 #   watch <name> <command...>       run one command with GPU clocks and memory sampled, readouts
 #                                   at an interval, and the run stopped under the memory floor
@@ -52,10 +62,11 @@ if [[ -z ${1-} || $1 == -* ]]; then
 fi
 
 MEASURE_HOST=$1
-MEASURE_URL=http://$1:${2:-8080}
+MEASURE_PORT=${2:-8080}
+MEASURE_URL=http://$1:$MEASURE_PORT
 MEASURE_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
 MEASURE_STATE=$MEASURE_ROOT/.state/measure/$MEASURE_HOST
-MEASURE_LOG=$MEASURE_STATE/$(date +%F).log
+MEASURE_LOG_FILE=$MEASURE_STATE/$(date +%F).log
 export GUIDELLM__SPEC__BACKEND__TARGET=$MEASURE_URL
 
 # The flags a loaded instance's arguments print, which name how the section serves (slots,
@@ -98,6 +109,44 @@ _measure_trace_on() {
   return 0
 }
 
+# Every helper opens with the same case on the shell's flags and _measure_marking, so that what
+# it prints lands in the log once, under the outermost helper's name:
+#   *x*:   the log is on and no helper is marking: run the helper again under _measure_marked,
+#          in a pipe's subshell (no helper sets state its caller reads);
+#   *:on   that rerun, entered with xtrace off: mark it inside, turn xtrace back on, and go on;
+#   *:off  (the helpers that load the host) sourced with MEASURE_LOG=off: refuse;
+#   other  a helper inside a marked one, or the log stopped: just run.
+# Of the marking, the log holds the case's first line, _measure_marked's call and its two lines,
+# and the helper's return; _measure_lines runs untraced. `local -` turns xtrace back on when
+# _measure_marked returns, an interrupt included.
+_measure_marked() {
+  local - _measure_marking=on
+  set +x
+  "$@" | _measure_lines "$1"
+  return "${PIPESTATUS[0]}"
+}
+
+# Copies its input to standard output unchanged, and each non-empty line to the log after
+# '= <ISO time> <helper>: ', through the xtrace descriptor, so it sits among the commands in order.
+_measure_lines() {
+  local line t nl
+  while :; do
+    nl=$'\n'
+    IFS= read -r line || { [[ -n $line ]] || break; nl=; }
+    printf '%s%s' "$line" "$nl"
+    if [[ -n $line ]]; then
+      printf -v t '%(%FT%T%z)T' -1
+      printf '= %s %s: %s\n' "${t:0:-2}:${t: -2}" "$1" "$line" >&"$MEASURE_XTRACE_FD"
+    fi
+    [[ -n $nl ]] || break
+  done
+}
+
+_measure_refuse() {
+  echo "$1: refused, the helpers are sourced read-only (MEASURE_LOG=off); source them without it" >&2
+  return 2
+}
+
 # Prints a section's status by the router's /models: loaded, loading, unloaded, or failed.
 _measure_status() {
   curl -s --max-time 10 "$MEASURE_URL/models" |
@@ -128,11 +177,20 @@ _measure_wait() {
 }
 
 loaded() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked loaded; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
   curl -s --max-time 10 "$MEASURE_URL/models" |
     jq -c '[.data[] | select(.status.value != "unloaded") | {id, status: .status.value}]'
 }
 
 load() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked load "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse load; return ;;
+  esac
   local section=${1:?usage: load <section>} t0 rc
   t0=$(date +%s%N)
   curl -s --max-time 30 -X POST "$MEASURE_URL/models/load" -H 'Content-Type: application/json' \
@@ -149,6 +207,11 @@ load() {
 }
 
 unload() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked unload "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse unload; return ;;
+  esac
   local section=${1:?usage: unload <section>|--all} s rc=0
   if [[ $section == --all ]]; then
     for s in $(curl -s --max-time 10 "$MEASURE_URL/models" |
@@ -164,6 +227,10 @@ unload() {
 }
 
 memory() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked memory; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
   local line avail src
   line=$(ssh "$MEASURE_HOST" bash -s <<<"$_MEASURE_SAMPLE") || return 1
   IFS=$'\t' read -r avail src _ <<<"$line"
@@ -175,7 +242,26 @@ memory() {
   echo
 }
 
+# rules.md's routing check, its three commands as rules.md gives them, for this host and port.
+# The 50 connects log one line, not one each.
+routing() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked routing; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
+  local h=$MEASURE_HOST t ty i a
+  for ty in A AAAA; do echo "$h.lan $ty: $(resolvectl query -t "$ty" "$h.lan" >/dev/null 2>&1 && echo PRESENT || echo none)"; done
+  t=$(tailscale ip "$h"); echo "bare name: $(getent ahosts "$h" | cut -d' ' -f1 | sort -u | while read -r a; do echo "$t" | grep -qxF "$a" && echo tailnet || echo NOT-TAILNET; done | paste -sd' ')"
+  _measure_quiet "connecting to http://$h:$MEASURE_PORT/health 50 times"
+  for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 "http://$h:$MEASURE_PORT/health" || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
+  _measure_trace_on
+}
+
 readout() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked readout "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
   local since=${1:-$(date -u -d '-5 min' +%FT%TZ)} log
   log=$(mktemp)
   ssh "$MEASURE_HOST" docker logs --since "$since" "${MEASURE_CONTAINER:-llama}" >"$log" 2>&1
@@ -200,6 +286,11 @@ _measure_kill_tree() {
 }
 
 watch() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked watch "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse watch; return ;;
+  esac
   local name=${1:?usage: watch <name> <command...>} floor_mib pid rc t0 next line avail stopped=
   shift
   (($#)) || { echo 'usage: watch <name> <command...>' >&2; return 2; }
@@ -247,6 +338,11 @@ watch() {
 }
 
 cell() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked cell "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse cell; return ;;
+  esac
   local name=${1:?usage: cell <name> <scenario> [<section> <tokenizer>]} scenario=${2:?usage: cell <name> <scenario> [<section> <tokenizer>]}
   local -a model=()
   if [[ -e $MEASURE_STATE/$name.json ]]; then
@@ -265,6 +361,11 @@ cell() {
 }
 
 tier() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked tier "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse tier; return ;;
+  esac
   local name=${1:?usage: tier <name> <bfcl-single|bfcl-multi> <section> [<first N>]} which=${2-} section=${3-} first=${4-}
   local hosting=${MEASURE_HOSTING:-$HOME/experiments/spike-model-hosting} list
   [[ $which == bfcl-single || $which == bfcl-multi ]] && [[ -n $section ]] ||
@@ -287,6 +388,11 @@ tier() {
 }
 
 conform() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked conform "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse conform; return ;;
+  esac
   local name=${1:?usage: conform <name> <class> [<k>]} class=${2:?usage: conform <name> <class> [<k>]}
   local hosting=${MEASURE_HOSTING:-$HOME/experiments/spike-model-hosting}
   watch "$name" env -C "$hosting/evaluation" MISE_ENV=consumers timeout "${MEASURE_CONFORM_CAP:-10m}" \
@@ -298,6 +404,10 @@ conform() {
 }
 
 summarize() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked summarize "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
   local name=${1:?usage: summarize <name>} f
   _measure_quiet "summarizing $name"
   if [[ -f $MEASURE_STATE/$name.json ]]; then
@@ -345,6 +455,10 @@ summarize() {
 }
 
 image() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked image "$@"; return ;;
+    *:on) _measure_marking=in; set -x ;;
+  esac
   local class=${1:?usage: image <gb10|strix-halo> <build>} build=${2:?usage: image <gb10|strix-halo> <build>} flavor token
   case $class in
     gb10) flavor=cuda13 ;;
@@ -368,6 +482,11 @@ image() {
 }
 
 gate() {
+  case $-:${_measure_marking-} in
+    *x*:) _measure_marked gate; return ;;
+    *:on) _measure_marking=in; set -x ;;
+    *:off) _measure_refuse gate; return ;;
+  esac
   local s rc=0
   local -a sections
   mapfile -t sections < <(curl -s --max-time 10 "$MEASURE_URL/models" | jq -r '.data[].id')
@@ -386,8 +505,15 @@ gate() {
   return "$rc"
 }
 
+if [[ ${MEASURE_LOG-} == off ]]; then
+  # Read-only: no log, and xtrace off if an earlier sourcing in this shell turned it on.
+  _measure_marking=off
+  { set +x; } 2>/dev/null
+  return 0
+fi
+unset _measure_marking
 mkdir -p "$MEASURE_STATE"
-exec {MEASURE_XTRACE_FD}>>"$MEASURE_LOG"
+exec {MEASURE_XTRACE_FD}>>"$MEASURE_LOG_FILE"
 BASH_XTRACEFD=$MEASURE_XTRACE_FD
 # Each line: its time, then the helper it ran inside (none for a command the caller typed).
 # shellcheck disable=SC2016

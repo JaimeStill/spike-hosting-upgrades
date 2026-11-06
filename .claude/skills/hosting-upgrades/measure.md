@@ -46,6 +46,7 @@ architect's own shell sources it once.
 | `conform <name> <class> [<k>]` | One conform run through Pi on `bench/conform/<class>.toml` (k = 5 by default), capped at `MEASURE_CONFORM_CAP` (10m), under `watch`. |
 | `summarize <name>` | A result's figures: for a cell, each benchmark's request counts and whether it is full, its completed-request and every-token output figures (rules.md, "Figures"), TTFT and ITL medians, and audio seconds a second for an ASR cell; for a tier, samples done and passing, each sample's time, the largest reply with its sample, and the cap hits (rules.md, "Caps"); then the step's exit and its watch: the lowest memory available, and each distinct GPU reading with its count. |
 | `memory` | One read-out on the host: the memory available to the GPU, where it is read, and the floor. |
+| `routing` | rules.md's routing check ("Routing"), its three commands as given there, for the host and the router's port: the host's `.lan` A and AAAA records, what the bare name resolves to, and 50 connects to `/health`. Reading the result against the check is the caller's. |
 | `readout [<since>]` | The router's log since a time (default 5 minutes ago): idle-slot saves, prompt saves, context checkpoints created, and the decode rate of replies of 90 tokens or more (mean, min, max); then `memory`. |
 | `watch <name> <command...>` | Runs one command with the monitor ("During cells"). `cell`, `tier` and `conform` run under it; any other long step the brief caps is called through it. Its exit is the command's (124 at the cap), written to `<name>.exit` with the floor's reason when the floor stopped it. |
 | `image <class> <build>` | Whether the class's server image exists for the build on ghcr.io, by the registry's manifest check (an anonymous pull token, as `scripts/fix-in-image.sh` takes, then a HEAD of the tag's manifest). |
@@ -63,9 +64,34 @@ name is a call the session or the architect made (`load gpt-oss-120b-MXFP4-set-a
 naming one is a command that helper ran (`load: curl -s --max-time 30 -X POST
 http://framework:8080/models/load ...`, `cell: env -C ... MISE_ENV=bench timeout 10m mise exec --
 guidellm run -c bench/anchor-a.yaml ...`). A poll or a sampling loop logs one line saying what it
-does, not each pass. A step run outside the helpers (the routing check, `tailscale ping`, an
-engine move, a preset change) is run in a shell that has sourced them, so the log holds it too.
-The record's "Commands as run" quotes that log ("Write the record").
+does, not each pass.
+
+What a helper prints to standard output lands in the log too, as the terminal shows it, each line
+marked `= <ISO time> <helper>: ` so it reads apart from the `+` lines of xtrace: a load's time and
+serving arguments (`= 2026-11-06T10:12:40-05:00 load: load gpt-oss-120b-MXFP4-set-a: loaded in
+41.3 s`), a cell's or a tier's figures, a readout's decode figures, a memory read-out, the routing
+check's lines. A helper called inside another (`cell`'s `watch` and `summarize`) marks its lines
+under the outer one's name, once. What a helper prints to standard error, and what a command
+outside the helpers prints, isn't marked; `set +x` stops both.
+
+A pass's steps before its first helper are logged only if the helpers are sourced first, so they
+are (step 1): readiness, the probe, `tailscale ping`, the blocker checks (`gh issue view`,
+`gh pr view`, `scripts/fix-in-image.sh`), an engine move and a preset change each run in a shell
+that has sourced them, and the routing check is the `routing` helper. A command that starts with
+the `source` line no longer matches an exact rule of the project's settings (the probe's), so it
+asks.
+
+Reading a finished run's results again (`summarize` on a cell's name after the pass) sources the
+helpers read-only, so the day's log doesn't gain a second copy of figures already in it:
+
+```sh
+MEASURE_LOG=off source .claude/skills/hosting-upgrades/scripts/measure-lib.sh <host> && summarize <name>
+```
+
+With `MEASURE_LOG=off` sourcing opens no log and leaves xtrace off; `summarize`, `loaded`,
+`memory`, `readout`, `routing` and `image` run, and the helpers that load the host (`load`,
+`unload`, `watch`, `cell`, `tier`, `conform`, `gate`) refuse. The record's "Commands as run"
+quotes the log ("Write the record").
 
 ### During cells
 
@@ -94,7 +120,11 @@ incomplete and errored counts. The capacity condition reads each level's ITL med
 
 ## 1. Setup
 
-1. Run setup.md, steps 1 to 3, with measure's rules: the inputs, the readiness check, the probe.
+1. **The helpers first.** Source the helpers for the host ("Step helpers"), which starts the
+   day's command log, before anything runs on the host or its network path; each command from
+   here on runs in a shell that has sourced them, so the probe, the routing check (`routing`) and
+   `tailscale ping` are in the log ("The command log"). Then run setup.md, steps 1 to 3, with
+   measure's rules: the inputs, the readiness check, the probe.
    From the probe: the engine and its build, the GPU-reachable ceiling (`== memory ==`), and the
    host's set, one model per purpose, each by its router ID (`== endpoints ==`). This is the set
    the passes measure beside and restore.
@@ -135,11 +165,10 @@ incomplete and errored counts. The capacity condition reads each level's ITL med
    fix, the entry becomes **cleared on the host** for this host, citing this record, and is
    deleted once cleared on every host it names. A pass that measures a new blocker's cost adds its
    entry, linked to this record.
-6. **The harness.** Source the helpers for the host ("Step helpers"), which starts the day's
-   command log, and set the memory floor from the probe's ceiling (`== memory ==`) and the
-   policy's headroom: `MEASURE_FLOOR_GIB`, 10% of the ceiling under today's policy. Read the
-   descriptor's "Run noise": its within-session and across-days spreads, and which are
-   provisional (rules.md, "Figures"). A descriptor with none is a pause.
+6. **The harness.** With the helpers sourced since item 1, set the memory floor from the probe's
+   ceiling (`== memory ==`) and the policy's headroom: `MEASURE_FLOOR_GIB`, 10% of the ceiling
+   under today's policy. Read the descriptor's "Run noise": its within-session and across-days
+   spreads, and which are provisional (rules.md, "Figures"). A descriptor with none is a pause.
 
 ## 2. What this measure runs
 
@@ -480,7 +509,7 @@ set. Where no commit holds the section without the keys, the arm is a temporary 
 branch, as a candidate's is (step 4), named in the brief. The pass ends with the clone on its
 default branch and the router restarted (step 9).
 
-**The pass**, in one session, the routing check and `tailscale ping` first:
+**The pass**, in one session, the routing check (`routing`) and `tailscale ping` first:
 
 1. **The anchors' repeats**: anchors A and B on the anchor section, twice, each pair from its own
    fresh load (`unload`, `load`, `cell <n>-anchor-a anchor-a`, `cell <n>-anchor-b anchor-b`, for
@@ -616,8 +645,10 @@ names the log's path and quotes its lines for each step, in order, the calls the
 architect made (the lines with no helper's name) and, under each, the commands a helper ran that
 changed or loaded the host (its `curl` to `/models/load` or `/models/unload`, its GuideLLM or tier
 command, an `ssh`), with their times. Polls and the monitor's samples are left out, as the log
-leaves them. Each figure the record gives is `summarize`'s, for the cell it names. A step run
-without the helpers sourced is not in the log, and the record says so beside it.
+leaves them. Each figure the record gives is `summarize`'s, for the cell it names, quoted from the
+log's `= ` lines, as are a load's time and arguments, a readout's, a memory read-out, and the
+routing check's result. A step run without the helpers sourced is not in the log, and the record
+says so beside it.
 
 The record's sections, in order; a section with nothing in this run says "None":
 
@@ -657,15 +688,15 @@ on the same build and kernel, and the spreads the descriptor takes from them.
 ## Engine move: <engine> <incumbent build> to <candidate build>
 The candidate and why (rules.md, "Default rules", item 1: the builds passed over, with the reads
 that showed them unimaged or failing). The build gate (step 5): its image row, one row per section
-it loaded, and the rollback as run when it failed. The pass's routing check, its kernel
-and host stack, and `tailscale ping -c 1`. Every command exactly as run: the incumbent build's
-cells, the move through the suite with its output and the build read back, the candidate build's
+it loaded, and the rollback as run when it failed. The pass's routing check (`routing`), its
+kernel and host stack, and `tailscale ping -c 1`. Every command exactly as run: the incumbent
+build's cells, the move through the suite with its output and the build read back, the candidate build's
 cells. One row per cell, as rules.md, "Figures", gives it for two builds. A purpose with no cells,
 named with its reason.
 
 ## Candidate screen: <candidate>, <section>
-The routing check, the engine build and host stack, and `tailscale ping -c 1`. Every command exactly
-as run, in order, with who ran it. Phase 1's cells, then phase 2's, each row as rules.md, "Figures",
+The routing check (`routing`), the engine build and host stack, and `tailscale ping -c 1`. Every
+command exactly as run, in order, with who ran it. Phase 1's cells, then phase 2's, each row as rules.md, "Figures",
 gives it, with the earlier claims beside it. Each agent tier's command as run, its accuracy on its
 whole list against its floor, and its time; conform's table, invalid requests, and fit. The local-
 only checks: cold start, each set's memory read-out, each slot's context as the router reports it,
