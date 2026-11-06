@@ -24,9 +24,8 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
   [framework's](docs/findings/verify-framework.md), and the screen records,
   `docs/screens/<host>/<YYYY-MM-DD>.md`, such as [framework's](docs/screens/framework/2026-11-04.md)
   and [gb10-1's](docs/screens/gb10-1/2026-11-05.md).
-
-- The convention: [`docs/convention.md`](docs/convention.md), when the skill runs, what sends an
-  item to the host's own cells, and the record an adoption leaves.
+- The convention: [`docs/convention.md`](docs/convention.md) states when the skill runs, what
+  sends an item to the host's own cells, and the record an adoption leaves.
 
 ## The answer
 

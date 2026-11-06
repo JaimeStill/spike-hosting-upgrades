@@ -161,6 +161,18 @@ Release: none.
     GRUB's Advanced options (still installed), packages by `apt install <pkg>=<version>`. Probe:
     running 7.0.0-1025-nvidia, booted 13:13:14, driver 580.178.04, `initcall_blacklist` on the
     command line, 0 pending, no failed units, router healthy on b12098 with its set listed.
+- Slice 1 done: the host updates above (`e52aee9`), and gb10-1's ten 2026-11-06 proposals
+  accepted and applied (`2c507cc`).
+- Slice 2 done: framework's second survey, 2026-11-06 (`d5d9825`), with its four pauses settled
+  (`1fc8aee`); gb10-1's, 2026-11-06-2 (`6859a30`), with its one pause settled (`acfb0b8`,
+  `2746fec`).
+- Slice 3 done: `docs/convention.md`, README "The answer", the answer section in Pending edits,
+  and the 0cc4m, slb350 and Liquid tier rulings in sources.md (`b977791`).
+- Standards review fixed in `0e8d7ed`: the one-line answer, citations that hold, and prose form.
+  Spec review fixed in `b24dc85` (hclsys's tier ruling in sources.md; the cadence stated without
+  a due date) and in the edit pass after it (the second surveys' open proposals listed item by
+  item; citations for "one measure a session" and the workloads only we can measure).
+- Next: slice 4, the architect's walkthrough.
 
 ## Decisions
 
@@ -779,6 +791,7 @@ Release: none.
 - answer: 0cc4m's statements are primary for Vulkan practice although the tracker marks him CONTRIBUTOR; slb350's Strix Halo benchmarks and Liquid's LFM3-VL Strix Halo chart stay leads (architect, 2026-11-06).
 - answer: a publisher's GGUF whose card gives only an averaged loss across its evals fails the floor's path 2, which asks each eval within the margin: Meta's own Muse Glimmer GGUFs fail, and ggml-org's Q8_0 stays the host file; rejected accepting an average within the margin (architect, 2026-11-06).
 - answer: a CONTRIBUTOR's measurement in a tracker comment that names hardware, version and method is an attributed benchmark (hclsys's GB10 FP8 table, vLLM #58989); rejected ruling it a lead (architect, 2026-11-06).
+
 ## Pending edits
 
 - Coordinator roadmap, `experiment.hosting.spike-model-layout`'s summary: weigh hosting the agent model alone on vLLM for concurrent-session throughput, with gb10-1's figures (gpt-oss-120b on vLLM v0.32.0: 34.0 vs llama.cpp's 50.0 tok/s at 1 stream, 168.2 vs 129.0 at 16; gb10-1 report 2026-10-31), the screen's finding that llama.cpp's idle-slot saves stalled multi-turn load before b12080, a published vLLM figure for an NVFP4 Gemma 4 26B-A4B on a DGX Spark of 303 tok/s aggregate at 16 concurrent (a lead) beside llama.cpp's 210.5 for Gemma's QAT section in gb10-1's sweep, and a llama.cpp maintainer's note that it "mostly optimizes upto 8 parallel sequences at the moment" (#31711) (screen, Decisions; `docs/screens/gb10-1/2026-11-05.md`, "Research read 2026-11-05").

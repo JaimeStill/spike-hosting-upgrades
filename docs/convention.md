@@ -75,14 +75,15 @@ pending updates to 0) ([framework](reports/framework/2026-11-06.md), "What moved
 - **A survey's verify item or Needs measurement entry.** A measure runs the host's items, an
   engine move the survey's engine conclusion or "Verify next" names, one candidate from "Needs
   measurement" or "Verify next", and a settings check of keys a decision left owed or the
-  configuration review ranks verify (measure.md, "2. What this measure runs"). Today both
-  surveys' "Verify next" names one item, the vision section's prompt-cache keys, and their
+  configuration review ranks verify (measure.md, "2. What this measure runs"). Each second
+  survey's "Verify next" names one item, the vision section's prompt-cache keys, and their
   "Needs measurement" lists the candidates no card settles
   ([framework](reports/framework/2026-11-06.md) and [gb10-1](reports/gb10-1/2026-11-06-2.md),
   "Needs measurement" and "Verify next").
-- **One measure a session.** A run writes one dated record per host
-  (Decisions, "skill-revision: one dated measure record per run per host"), and runs at most one
-  engine move, one candidate screen, and a settings check, each its own pass on one state
+- **One measure a session.** The answer task's brief sets this rule (goal record, "Task brief ·
+  answer", behavior 6). Within that measure, the run writes one dated record per host (Decisions,
+  "skill-revision: one dated measure record per run per host") and runs at most one engine move,
+  one candidate screen, and a settings check, each its own pass on one state
   ([SKILL.md](../.claude/skills/hosting-upgrades/SKILL.md), "A host's cycle", step 3). The one
   measure so far is framework's of 2026-11-06, a settings check alone
   ([measure](measures/framework/2026-11-06.md)).
@@ -143,25 +144,46 @@ the run (rules.md, "Pause").
 
 The architect accepts or rejects each proposal, one at a time, at the start of the next session
 and before the host's next survey. The session applies the accepted ones and logs each decision.
-Today showed this twice:
+The record shows this twice:
 
 - gb10-1's ten proposals of 2026-11-06 were all accepted and applied before its second survey
   (Decisions, "answer: gb10-1's 2026-11-06 proposals all accepted"; commit `2c507cc`). The
   second survey read the descriptor as they left it ([gb10-1](reports/gb10-1/2026-11-06-2.md),
   "What moved since 2026-11-06", "The descriptor and the skill").
-- framework's four pauses were settled after its survey: two by the session's no-root reads, and
-  two by the architect (commit `1fc8aee`; [framework](reports/framework/2026-11-06.md),
-  "Pauses"). One of the architect's rulings, 0cc4m's statements as primary for Vulkan practice,
-  is now in [sources.md](../.claude/skills/hosting-upgrades/sources.md). gb10-1's one pause was
-  settled by the architect (commit `acfb0b8`; [gb10-1](reports/gb10-1/2026-11-06-2.md),
-  "Pauses"), and its ruling, that a contributor's measurement naming hardware, version and
-  method is an attributed benchmark, is in sources.md too.
+- framework's four pauses were settled after its survey: pauses 1 and 2 by the session's no-root
+  reads, and pauses 3 and 4 by the architect (commit `1fc8aee`;
+  [framework](reports/framework/2026-11-06.md), "Pauses"). gb10-1's one pause was settled by the
+  architect (commit `acfb0b8`; [gb10-1](reports/gb10-1/2026-11-06-2.md), "Pauses").
 
-The second surveys' own proposals are open, for the next session's start: framework's six
-descriptor changes, its two source notes and its policy items, and gb10-1's two descriptor watch
-items, two sources, and one probe change
-([framework](reports/framework/2026-11-06.md) and [gb10-1](reports/gb10-1/2026-11-06-2.md),
-"Proposed changes").
+The session applied the architect's tier rulings from those pauses to
+[sources.md](../.claude/skills/hosting-upgrades/sources.md) the same day. Commit `b977791` made
+0cc4m's statements primary for Vulkan practice and listed slb350's Strix Halo benchmarks and
+Liquid's LFM3-VL Strix Halo chart as leads. Commit `b24dc85` made a contributor's tracker
+measurement that names its hardware, engine version and method an attributed benchmark. The
+ruling on framework's pause 4, that a publisher's GGUF whose card gives only an averaged loss fails the floor's
+path 2, is in Decisions; [policy.md](policy.md) asks every reported eval to be within the margin
+and doesn't name the averaged case.
+
+The second surveys' other proposals are open, for the architect to settle at the next session's
+start ([framework](reports/framework/2026-11-06.md) and [gb10-1](reports/gb10-1/2026-11-06-2.md),
+"Proposed changes"):
+
+- framework's descriptor, all six changes: the stale dfc1d3d line in Purposes, retiring the #31163
+  watch item, revising the #28495 item, and new watch items for Vulkan device loss on Linux 7.x,
+  Lemonade's gfx1151 images, and the Gemma 4 E4B tokenizer fix.
+- framework's trusted sources: a note that local-llm-benchmarks.dev's `results.json` no longer
+  fits one read, and Launchpad's mesa publishing history as primary.
+- framework's policy and gates: the default engine rule read against the register, and the probe
+  printing `/etc/pacman.conf`'s `[options]` lines and the version of a package Arch news names.
+- policy.md: stating the averaged-loss ruling under the floor's path 2.
+- gb10-1's descriptor: faults reported on 7.0.0-1025-nvidia, and the cuda13 image's CUDA 13.5
+  against the host's driver.
+- gb10-1's trusted sources: DGPP's repository and the NVIDIA forum's search endpoint.
+- gb10-1's probe: printing `/proc/cmdline`.
+
+Three of framework's proposals leave this project's lists: spike-model-engines' currency script
+is a requirement in the answer section, and the project's own granite conversion and an
+embedding scenario are gaps there (goal record, "Pending edits").
 
 ## The blocker register
 
@@ -215,7 +237,7 @@ runs b12098, and b12124 is one image behind the newest
 
 **What this shows of "only what moved", and what it doesn't.** Both second surveys researched in
 full, because the host stack had moved on both hosts. So no run has yet skipped the research for
-an unmoved inventory. Today's evidence for "only what moved" is the cache's reuse: framework cited
+an unmoved inventory. The evidence for "only what moved" is the cache's reuse: framework cited
 13 entries instead of re-reading them, and gb10-1 cited 23 sources and 29 model entries and read
 only 14 fresh. A repeat survey of a host whose stack, builds, and models haven't moved is still
 to run.
@@ -226,7 +248,7 @@ Each purpose in a host's descriptor carries a load target: the concurrent sessio
 purpose) or concurrent requests (for any other) it is sized for, and the context each reaches.
 Each figure cites where it comes from. A survey judges configuration, engine fit, capacity, and a
 set's memory at those targets ([rules.md](../.claude/skills/hosting-upgrades/rules.md), "Load
-targets"). Today both descriptors take their targets from spike-model-engines' shared preset at
+targets"). Both descriptors take their targets from spike-model-engines' shared preset at
 933ec0f: agent, 4 sessions sharing one 131,072-token pool; vision and audio, 4 requests of 8,192
 tokens each; embedding, 16 requests of 8,192 tokens each ([framework.md](hosts/framework.md) and
 [gb10-1.md](hosts/gb10-1.md), "Purposes").
@@ -242,9 +264,9 @@ purpose listed without a target is a pause (rules.md, "Load targets").
 The backlog goal `model-evaluation` (`standards-lab/context/roadmap.toml`, `[goals.model-evaluation]`)
 builds on this convention. It keeps:
 
-- **Workloads only we can measure.** No publisher can measure these, so no survey can read them.
-- **Our agents, and our role sets under our own sessions.** A measure screens one candidate beside
-  the host's set, on fixed BFCL samples, conform, and anchors A and B. It doesn't run our own
+- **Workloads only we can measure: our agents, and our role sets under our own sessions.** No
+  publisher can measure these, so no survey can read them, and the goal's roadmap summary names
+  them as its own. A measure screens one candidate beside the host's set, on fixed BFCL samples, conform, and anchors A and B. It doesn't run our own
   agents or a whole role set under concurrent sessions. The screens show where those tiers reach
   their limit. On gb10-1, BFCL multi-turn hit its 45-minute cap at 19 of 20 samples
   ([gb10-1 screen](screens/gb10-1/2026-11-05.md), "Verdict"). Each host's "Needs measurement"

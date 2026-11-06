@@ -40,8 +40,8 @@ model host, or its models) from what others publish rather than benchmarks of ou
    keeps only what both support.
 5. For each verified upgrade, the published claim beside our anchors: how far the sources can be
    trusted.
-6. The convention and its cadence: when the skill runs, what triggers a verification, and the
-   record an adoption leaves. What stays with the backlog goal `model-evaluation` is named.
+6. The convention and its cadence: when the skill runs, what triggers a measure, and the record
+   an adoption leaves. What stays with the backlog goal `model-evaluation` is named.
 
 ## Rules
 
@@ -106,7 +106,10 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
   `docs/screens/<host>/<YYYY-MM-DD>.md`, both named in `STANDARDS.md`.
 - **The gb10-2 alignment report:** `docs/findings/gb10-2-upgrade.md`, the steps that bring gb10-2
   in line with gb10-1, each with who runs it and its rollback, for spike-ai-pipeline to apply.
-- **The convention:** the method and its cadence.
+- **The convention:** `docs/convention.md`, how the project evaluates an upgrade. It states when
+  survey runs, what triggers a measure, the record an adoption leaves, how proposals are settled,
+  the blocker register, the research cache, per-host load targets, and what stays with
+  `model-evaluation`, each statement citing its record.
 
 ## Path
 
@@ -127,8 +130,10 @@ The tasks, in the order they run; each cites the evidence it proves.
    under one harness), with per-host load targets, a blocker register, a research cache, a build
    gate, per-host run noise, and logged step helpers; verified by a survey of gb10-1 and a
    measure on framework (evidence 1, 3, 4).
-6. `answer`: a second dated report per host from the revised survey, showing what moved, the
-   convention and its cadence, README "The answer", and the answer section (evidence 2, 6).
+6. `answer`: a second dated report per host from the revised survey, each stating what moved
+   since the host's last report; the convention and its cadence; README "The answer"; and the
+   answer section (evidence 2, 6). Its records are `docs/reports/framework/2026-11-06.md`,
+   `docs/reports/gb10-1/2026-11-06-2.md`, and `docs/convention.md`.
 
 ## References
 
