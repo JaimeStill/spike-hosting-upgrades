@@ -344,7 +344,9 @@ scenarios for, on the model that serves the purpose in the host's set (with step
 applied), each model gated (step 4):
 
 - agent: anchors A and B, on the agent purpose's section;
-- vision: shape A and B, on the vision purpose's model;
+- vision: shape A and B (`shape-a.yaml`, `shape-b.yaml`), on the vision purpose's model: the
+  anchors' text load, so a build's decode change shows on that model as it does on the agent's; the
+  image cells (`vision-a.yaml`, `vision-b.yaml`) are the candidate screen's (step 7);
 - transcription (audio): ASR A and B, on the audio purpose's model;
 - a purpose with no scenario (embedding) has no cells, and the record says so.
 
@@ -361,8 +363,8 @@ Engine move: llama.cpp b11669 -> b12033 (server-cuda13), kernel 7.0.0-1024, one 
 Each cell: GuideLLM 0.8.1 from this machine, http://gb10-1:8080, timeout 10m, fresh load.
   b11669   1 Anchor A  gpt-oss-120b MXFP4, agent section    1 x 8, 512 / 256
            2 Anchor B  gpt-oss-120b MXFP4, agent section    4 x 32, 512 / 256
-           3 Vision A  Gemma 4 26B-A4B QAT Q4_0             1 x 8, 512 / 256, thinking on
-           4 Vision B  Gemma 4 26B-A4B QAT Q4_0             4 x 32, 512 / 256, thinking on
+           3 Shape A   Gemma 4 26B-A4B QAT Q4_0, vision     1 x 8, 512 / 256, thinking on
+           4 Shape B   Gemma 4 26B-A4B QAT Q4_0, vision     4 x 32, 512 / 256, thinking on
            5 ASR A     Gemma 4 E4B Q8_0                     1 x 8 LibriSpeech clips, <=256 out
            6 ASR B     Gemma 4 E4B Q8_0                     4 x 32 clips, <=256 out
   image    image gb10 b12033 (step 5)
