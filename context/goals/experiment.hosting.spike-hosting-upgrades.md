@@ -782,3 +782,121 @@ Release: none.
 
 - Coordinator roadmap, `experiment.hosting.spike-model-layout`'s summary: weigh hosting the agent model alone on vLLM for concurrent-session throughput, with gb10-1's figures (gpt-oss-120b on vLLM v0.32.0: 34.0 vs llama.cpp's 50.0 tok/s at 1 stream, 168.2 vs 129.0 at 16; gb10-1 report 2026-10-31), the screen's finding that llama.cpp's idle-slot saves stalled multi-turn load before b12080, a published vLLM figure for an NVFP4 Gemma 4 26B-A4B on a DGX Spark of 303 tok/s aggregate at 16 concurrent (a lead) beside llama.cpp's 210.5 for Gemma's QAT section in gb10-1's sweep, and a llama.cpp maintainer's note that it "mostly optimizes upto 8 parallel sequences at the moment" (#31711) (screen, Decisions; `docs/screens/gb10-1/2026-11-05.md`, "Research read 2026-11-05").
 - Coordinator, for spike-model-hosting's agent-tier harness (`evaluation/suites/agent_quality.py`): propose that the harness set a `max_tokens` cap per tier, recorded with the tier's list, so a runaway reply is a counted cap hit rather than a lost sample. BFCL sends no `max_tokens` today, so a runaway reply runs until the model stops or the section's context ends it, and the tier's time cap is the only bound. On gb10-1 one BFCL multi-turn sample generated 23,306 output tokens over 21 calls, one reply of 7,326 tokens, in 1,049 s, and the tier hit its 45-minute cap at 19 of 20 samples; on the no-prompt-cache arm one sample generated 9,027 (`docs/screens/gb10-1/2026-11-05.md`, "BFCL and conform" and "Cells"). Until then, hosting-upgrades' measure mode counts a reply that stops at the context limit as a cap hit and reports each tier's largest reply (`rules.md`, "Caps") (skill-revision, Decisions, 2026-11-06).
+- Coordinator, `ai-hosting.md`, "### spike-hosting-upgrades": end the paragraph with "The spike has answered: "Answer · experiment.hosting.spike-hosting-upgrades", under "Answers · experiment.hosting" below.", as spike-model-engines' paragraph does (answer, 2026-11-06).
+- Coordinator, `ai-hosting.md`, under "## Answers · experiment.hosting", after spike-model-engines' answer: this spike's answer section (answer, behavior 8, 2026-11-06):
+
+  ```markdown
+  ### Answer · experiment.hosting.spike-hosting-upgrades
+
+  **Question:** What convention evaluates an upgrade to the hosting stack (a host's hardware
+  configuration, its model host, or its models) from what others publish rather than benchmarks
+  of our own?
+
+  **Answer:** Survey each host weekly, and on a host update, a register entry's fix reaching an
+  image, a changed load target, or before any change to the host. Do it with a skill that ranks
+  every item from cited public sources against the host's load targets, through a research cache
+  and a blocker register. Then measure on the host only what no source settles, one measure a
+  session, and adopt through a chain of dated records.
+
+  The answer is drawn from two hosts, framework (Strix Halo, llama.cpp Vulkan b11960) and gb10-1
+  (GB10, llama.cpp CUDA b12098). No figure is compared across sessions or builds.
+
+  1. The skill: one project-local Claude Code skill, `hosting-upgrades`, with three modes. `setup`
+     prints the permission rules it needs and never writes settings. `survey <host>` probes the
+     host read-only and without root and applies nothing. `measure <host>` runs local cells under
+     one harness, the engine rule for an engine move and the keep rule for a candidate. The skill
+     reads the host descriptors and the policy and cites every source with its URL and read time.
+     Proven by its runs: the probes
+     ([findings/skill.md](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/findings/skill.md)),
+     seven dated reports, and one measure record
+     ([skill](https://github.com/JaimeStill/spike-hosting-upgrades/tree/main/.claude/skills/hosting-upgrades)).
+  2. Dated, cited reports of ranked upgrades per host, each item given verify, take, hold, or
+     skip. Each covers four kinds: hardware configuration, system updates and debt, the engine,
+     and the models, with a flag-by-flag configuration review and model discovery. The two second
+     surveys of 2026-11-06 state what moved since the host's last report. Both researched in full,
+     because the host stack had moved. gb10-1's cited 23 sources and 29 model entries from the
+     cache and read only 14 fresh. Proven by the reports:
+     [framework 2026-11-06](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/reports/framework/2026-11-06.md)
+     and
+     [gb10-1 2026-11-06-2](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/reports/gb10-1/2026-11-06-2.md),
+     with the earlier reports beside them.
+  3. Each host's top upgrade, verified by anchors A and B before and after, then adopted or
+     rolled back. framework's E4B QAT as the audio model was rolled back on ASR B (−5.0%).
+     gb10-1's move from b11669 to b12063 was adopted on the architect's overrule of the engine
+     rule (ASR B −11.07%), to stay current. Under the revised skill, framework's settings check
+     confirmed set A's no-cache keys (20.1% less time, 19.2% faster long-reply decode), and the
+     host now serves them. Proven by measured runs:
+     [verify-framework](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/findings/verify-framework.md)
+     (b11960, 2026-11-02),
+     [verify-gb10-1](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/findings/verify-gb10-1.md)
+     (b11669 and b12063, 2026-11-03), and
+     [framework's measure](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/measures/framework/2026-11-06.md)
+     (b11960, 2026-11-06).
+  4. The pool screened per host class. The gates ran on every candidate. Gemma 4 26B-A4B QAT,
+     serving agent and vision, was measured beside gpt-oss-120b and dropped on both hosts: on
+     framework at the engine gate (b11960's Vulkan backend aborts with several slots), and on
+     gb10-1 on BFCL multi-turn's floor. Each host keeps set A, and the other candidates are hold
+     until measured. Proven by measured runs:
+     [framework's screen](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/screens/framework/2026-11-04.md)
+     (b11960, 2026-11-04) and
+     [gb10-1's screen](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/screens/gb10-1/2026-11-05.md)
+     (b12098, 2026-11-05).
+  5. The published claim beside our anchors, thin: three claims, all in the verify findings.
+     spike-model-engines' +56.6% for E4B QAT held within a point (+55.4%), but it said nothing of
+     the model's unprompted reasoning, which cost ASR B its lead. llama.cpp #31188's +17.2% MoE
+     prefill held in direction only (TTFT −0.6% to −3.2%). #29948's +7.1% dense prefill didn't
+     show (TTFT +5.2% and +23.3%). The screens set no published claim beside their cells. Sources
+     predicted a gain's direction more often than its size. Proven by measured runs: the verify
+     findings' "The claim beside the anchors" and "Cells".
+  6. The convention and its cadence, each statement citing its record. It states when survey
+     runs, what triggers a measure (a verify item or a "Needs measurement" entry, one measure a
+     session, its cells agreed in the plan round), and the record an adoption leaves: the report,
+     the measure record quoting its command log, then the descriptor, the pin, and the register
+     entry's state. It also covers how proposals are settled between surveys, the blocker
+     register's four states, the research cache's 14-day rule, per-host load targets, which
+     spike-model-layout owns, and what stays with model-evaluation. Proven by the two second
+     surveys and the records it cites:
+     [docs/convention.md](https://github.com/JaimeStill/spike-hosting-upgrades/blob/main/docs/convention.md).
+
+  Gaps in the answer:
+
+  - No repeat survey has run on an unmoved stack. Both second surveys researched in full, because
+    the host stack had moved, so "only what moved" is shown by the research cache's reuse, not by
+    a run that skipped research. The weekly cadence was decided on 2026-11-06 and hasn't run yet.
+  - No embedding scenario in `bench/`, so no embedding candidate can be measured on either host.
+  - The project's own conversions aren't built: Nemotron 3.5 Transcribe to Q8_0 (no publisher or
+    ggml-org GGUF), and granite-embedding-english-r2 from IBM's stored safetensors.
+  - The engines are held. framework is on b11960 and gb10-1 on b12098, behind the newest imaged
+    build, b12169, because builds from b12100 don't resolve Google's QAT GGUFs (#31620, #31639,
+    open in the register). #30137's fix is in b12169, and its move is skip until that clears.
+  - The vision section's prompt-cache keys (`cache-ram 0`, `cache-idle-slots false`,
+    `ctx-checkpoints 2`) are still to verify on both hosts, the one verify item of each second
+    survey.
+  - The measure mode has run once, as a settings check. No engine move or candidate screen has run
+    under it, and no register entry has reached "cleared on the host".
+  - The published claims beside our anchors are three, from two sessions (evidence 5).
+
+  Requirements for the intake to route:
+
+  - spike-model-hosting's agent-tier harness (`evaluation/suites/agent_quality.py`): a `max_tokens`
+    cap per tier, recorded with the tier's list, so a runaway reply is a counted cap hit, not a
+    lost sample. BFCL sends none today. On gb10-1 one multi-turn sample generated 23,306 output
+    tokens, and the tier hit its 45-minute cap at 19 of 20 samples (this goal's pending edit for
+    the harness, and gb10-1's screen of 2026-11-05).
+  - spike-model-engines' `scripts/currency.sh`: name the newest imaged build from ghcr.io's tag
+    list, as this spike's `fix-in-image.sh` does. Walking GitHub's releases list, it names b12124
+    and can't see b12169, an image built with no release (framework's report of 2026-11-06,
+    "Blockers").
+  - The skill's plugin form, routed to claude-plugins. The spike kept it project-local and left
+    the plugin to the intake.
+  - spike-model-layout: the descriptors' purposes and load targets follow its layout, and a change
+    there changes them. It also weighs hosting the agent model alone on vLLM for concurrent
+    sessions, this goal's other pending edit.
+  - model-evaluation: workloads only we can measure (our agents, and our role sets under our own
+    sessions), and tuning at scale. That includes the candidate backlog, which one screen a session
+    can't clear: framework's second survey lists over twenty agent candidates as needing
+    measurement.
+
+  [The answer](https://github.com/JaimeStill/spike-hosting-upgrades#the-answer) ·
+  [spike-hosting-upgrades](https://github.com/JaimeStill/spike-hosting-upgrades)
+  ```

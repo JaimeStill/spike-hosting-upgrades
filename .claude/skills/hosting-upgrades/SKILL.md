@@ -20,7 +20,7 @@ The first argument, `$0`, names the mode, and the second, `$1`, the host by its 
 | Mode | When | Reads | Writes |
 |---|---|---|---|
 | `setup` | a new workspace, a new host, or a changed rule set | the descriptors and the settings | nothing |
-| `survey <host>` | on a cadence, or before any change to the host | the probe and the public record | `docs/reports/<host>/<YYYY-MM-DD>.md` |
+| `survey <host>` | on the project's cadence (`docs/convention.md`), or before any change to the host | the probe and the public record | `docs/reports/<host>/<YYYY-MM-DD>.md` |
 | `measure <host>` | after a survey, to settle its items on the host | the last survey and local cells | `docs/measures/<host>/<YYYY-MM-DD>.md` |
 
 - **`setup`** runs the readiness check alone, for every host and both modes, prints the permission

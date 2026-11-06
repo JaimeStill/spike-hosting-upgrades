@@ -23,7 +23,8 @@ without the page's layout, and a query can be repeated exactly.
   register (`--json state,closedAt,updatedAt`, or `--json state,mergedAt,mergeCommit`), and its
   comments for a maintainer's word (`--json comments`, each comment's `authorAssociation`:
   `MEMBER`, `OWNER`, or `COLLABORATOR` is the project's own, a maintainer and a primary source;
-  anyone else's, `CONTRIBUTOR` included, is a lead).
+  anyone else's, `CONTRIBUTOR` included, is a lead, except a maintainer the architect has ruled
+  primary, "Configuration practice").
 - **`gh api` is only a fallback**, for when api.github.com's unauthenticated reads (60 an hour)
   run out. It asks permission each time, since the readiness check prints no rule for it
   ([setup.md](setup.md), "Readiness check").
@@ -212,6 +213,8 @@ something to check, and never carries a verify verdict alone.
 | llama.cpp #31266's author table | <https://github.com/ggml-org/llama.cpp/pull/31266> | The author's table names some of the hardware, the version, and the method, but not all three, so the default holds. The attributed tables in #31163 are not affected. | 2026-10-30 |
 | AMD-named CONTRIBUTOR replies on ROCm/TheRock | <https://github.com/ROCm/TheRock/issues> | An account that names AMD but that the tracker marks CONTRIBUTOR isn't shown to be AMD staff, so its replies are leads, not primary. | 2026-10-30 |
 | NVIDIA Local AI Inference Recipes, the GB10 figures | <https://github.com/NVIDIA/local-ai-inference-recipes>; the DGX Spark page at <https://nvidia.github.io/local-ai-inference-recipes/hardware/dgx-spark/index.html> | It measures vLLM in a community nightly image, with MTP, from a repository that says it was "created with AI assistance" (gb10-1's run). | 2026-10-31 |
+| slb350, Strix Halo benchmarks | <https://slb350.github.io/strix-benchmarks/> | It names the hardware, the kernel (6.17.0-29) and Mesa RADV 25.2.3, and builds for some runs, but no command or build per row. | 2026-11-06 |
+| Liquid, the LFM3-VL card's Strix Halo chart | <https://huggingface.co/LiquidAI/LFM3-VL-2B> | It charts Strix Halo prefill and decode in an image, with no engine build. | 2026-11-06 |
 
 ## Configuration practice
 
@@ -227,6 +230,7 @@ command is attributed, and operating advice no one measured is a lead.
 | The engine project's own benches on the class | GB10 | ggml-org's DGX Spark benches ("Benchmarks"), and the discussion it links, [#16578](https://github.com/ggml-org/llama.cpp/discussions/16578) | The file names the build and the flags it ran (`-ub 2048`, `-fa`); a flag it runs and a section doesn't is a configuration row, and each model it benches is a discovery candidate. Attributed. |
 | The build's argument list | any | llama.cpp `common/arg.cpp` and `common/common.h` at the probed build ("Engines"); `tools/server/README.md` at the build (`https://raw.githubusercontent.com/ggml-org/llama.cpp/<build>/tools/server/README.md`); vLLM's engine arguments in its docs at the probed tag (`https://docs.vllm.ai/en/<tag>/`) | Every flag's default and help text at the build the host runs, which is what a section's unset key runs. Primary. |
 | Maintainers' tracker comments | any | the engine's tracker ("Engines"), with `gh issue view <n> --repo <owner>/<repo> --json comments` | A comment whose `authorAssociation` is `MEMBER`, `OWNER`, or `COLLABORATOR` states the project's practice (a tuning range, a flag to set or avoid); find them with `gh search issues` on the class and the flag. Primary for what it states; a gain it claims without a measurement is a claim. |
+| 0cc4m's comments on llama.cpp's Vulkan backend | Strix Halo (Vulkan) | the llama.cpp tracker ("Engines"), with `gh issue view <n> --repo ggml-org/llama.cpp --json comments` | 0cc4m approves and merges in the Vulkan backend (#31266), though the tracker marks him `CONTRIBUTOR`. His statements of Vulkan practice in llama.cpp are primary, by the architect's ruling of 2026-11-06 (framework's report of 2026-11-06, "Pauses", 3); a gain he claims without a measurement is a claim. |
 | The class's bench threads | GB10 | NVIDIA's DGX Spark forum ("Hardware and host stack"); llama.cpp performance discussions ("Benchmarks") | Each post that names hardware, build, and command is attributed; the models posts run are discovery candidates. Staff posts are primary; the rest are leads unless attributed. |
 | Strix Halo community benches | Strix Halo | local-llm-benchmarks.dev, kyuz0's toolboxes, llama.cpp discussion #27219 ("Benchmarks") | Each run's flags and model; a Vulkan figure names its driver, or it is a lead. kyuz0's flag advice is a lead until measured. The models they run are discovery candidates. |
 
