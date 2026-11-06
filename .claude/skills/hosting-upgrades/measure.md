@@ -351,8 +351,8 @@ applied), each model gated (step 4):
 Each cell is one `cell` call, named by its build and cell (`cell b12098-asr-a audio-a
 ggml-org/gemma-4-E4B-it-GGUF:Q8_0 google/gemma-4-E4B-it`), each pair after `unload` and `load` of
 its model. Each cell's row is as rules.md, "Figures", gives it for two builds. The reasoning check
-runs on each build's ASR cells, and the transcripts compare the audio model's ASR B on each build (rules.md,
-"Reasoning check", "Transcripts").
+runs on each build's ASR cells, and the transcripts compare the audio model's ASR B on each build
+(rules.md, "Reasoning check", "Transcripts").
 
 Print the pass before it runs. For example, on gb10-1 against its 2026-10-31 report:
 
@@ -628,12 +628,12 @@ leaves the branch's pull request open; the brief says which.
 ## 10. Write the record
 
 The record is measure's own write: a dated record at `docs/measures/<host>/<YYYY-MM-DD>.md`
-(rules.md, "Dated records"). Beside it, measure updates only the blocker register's entries for
-this host in place (step 1, item 5). It is written once, when the measure ends (after the end state is read
-back, or when the architect stops it, saying where it stopped), and never edited. A measure stopped
-before any decision writes no record unless the architect asks for one. It writes nothing else: not
-the survey, the pool, the descriptor, the policy, the skill, or its conform profiles, and nothing on
-the host beyond the steps the record gives as run.
+(rules.md, "Dated records"). Beside it, measure updates only the blocker register's entries
+for this host in place (step 1, item 5). It is written once, when the measure ends (after the
+end state is read back, or when the architect stops it, saying where it stopped), and never
+edited. A measure stopped before any decision writes no record unless the architect asks for
+one. It writes nothing else: not the survey, the pool, the descriptor, the policy, the skill,
+or its conform profiles, and nothing on the host beyond the steps the record gives as run.
 
 The descriptor's run noise is the one exception the record leads to: when the measure repeated
 cells, the record states each spread the repeats give and the descriptor's figures they set
@@ -686,21 +686,22 @@ each repeated cell's readings and spread, the first anchors against the host's e
 on the same build and kernel, and the spreads the descriptor takes from them.
 
 ## Engine move: <engine> <incumbent build> to <candidate build>
-The candidate and why (rules.md, "Default rules", item 1: the builds passed over, with the reads
-that showed them unimaged or failing). The build gate (step 5): its image row, one row per section
-it loaded, and the rollback as run when it failed. The pass's routing check (`routing`), its
-kernel and host stack, and `tailscale ping -c 1`. Every command exactly as run: the incumbent
-build's cells, the move through the suite with its output and the build read back, the candidate build's
-cells. One row per cell, as rules.md, "Figures", gives it for two builds. A purpose with no cells,
-named with its reason.
+The candidate and why (rules.md, "Default rules", item 1: the builds passed over, with the
+reads that showed them unimaged or failing). The build gate (step 5): its image row, one
+row per section it loaded, and the rollback as run when it failed. The pass's routing check
+(`routing`), its kernel and host stack, and `tailscale ping -c 1`. Every command exactly as
+run: the incumbent build's cells, the move through the suite with its output and the build
+read back, the candidate build's cells. One row per cell, as rules.md, "Figures", gives it
+for two builds. A purpose with no cells, named with its reason.
 
 ## Candidate screen: <candidate>, <section>
 The routing check (`routing`), the engine build and host stack, and `tailscale ping -c 1`. Every
-command exactly as run, in order, with who ran it. Phase 1's cells, then phase 2's, each row as rules.md, "Figures",
-gives it, with the earlier claims beside it. Each agent tier's command as run, its accuracy on its
-whole list against its floor, and its time; conform's table, invalid requests, and fit. The local-
-only checks: cold start, each set's memory read-out, each slot's context as the router reports it,
-the API surface, and whether each feature works, each with its command as run.
+command exactly as run, in order, with who ran it. Phase 1's cells, then phase 2's, each row as
+rules.md, "Figures", gives it, with the earlier claims beside it. Each agent tier's command
+as run, its accuracy on its whole list against its floor, and its time; conform's table,
+invalid requests, and fit. The local-only checks: cold start, each set's memory read-out,
+each slot's context as the router reports it, the API surface, and whether each feature works,
+each with its command as run.
 
 ## Settings check: <section>, <keys>
 The two arms, each by its clone commit and its loaded arguments as `load` read them; the anchors'
@@ -722,11 +723,11 @@ Each time a default rule applied (rules.md, "Default rules"): the step, what fai
 the retry as run, and what the verdict's rule read from it.
 
 ## Verdict
-For each pass, its rule (the engine rule, the keep rule, or the settings rule), what it gave on each condition with its
-figures, the outcome (adopt or roll back; keep or drop), and any overrule by the architect with its
-reason beside what the rule gave. On an engine adopt, the rollback exactly as printed; on roll
-back, the update as run and the probe reading the incumbent back. On a candidate's adoption, the
-architect's decision with its date.
+For each pass, its rule (the engine rule, the keep rule, or the settings rule), what it gave
+on each condition with its figures, the outcome (adopt or roll back; keep or drop), and any
+overrule by the architect with its reason beside what the rule gave. On an engine adopt,
+the rollback exactly as printed; on roll back, the update as run and the probe reading the
+incumbent back. On a candidate's adoption, the architect's decision with its date.
 
 ## The claim beside the anchors
 The published claim the survey cited for each measured item, with its source, beside what this

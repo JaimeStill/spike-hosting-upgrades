@@ -16,10 +16,11 @@ runs it, and records each as it was run:
 - **A tool's first use** on a host, a new tool's or concept's first walk, and any step the
   architect asks to keep are the architect's.
 
-The bundled scripts only read. The commands that change a host are the host's own tools (the
-package manager, `docker`, `hf`, the engine's API), and an engine changes only through
-spike-model-engines' `engines` suite, run from the host's clone of it with the version as its
-argument.
+The bundled scripts only read, except measure's step helpers (measure.md, "Step helpers"), whose
+`load`, `unload` and `gate` load and unload models through the router's API. The commands that
+change a host are the host's own tools (the package manager, `docker`, `hf`, the engine's API),
+and an engine changes only through spike-model-engines' `engines` suite, run from the host's
+clone of it with the version as its argument.
 
 ## Default rules
 
@@ -362,14 +363,15 @@ don't settle:
    A version conflict among vendor notes that no verdict depends on is not a pause: the probe's
    installed versions decide, and the record keeps the conflict ([sources.md](sources.md),
    "Tiers"). One that changes a verdict still is.
-3. **A policy question**: the policy lacks a value a step needs, a purpose lacks a load target, a
-   descriptor lacks its run noise, or a candidate sits on a rule's edge: a format the floor doesn't name, a file whose floor path its
-   build doesn't settle, or a scanner message under a "safe" status other than the one the policy
-   passes by name. Origin is never a pause: a model with involvement found at a level the policy
-   excludes on, or that fails its compliance gate, is excluded on origin; involvement at a level
-   the policy only records, and adversary-generated data in a training mix, go in the model's row;
-   and a model short of the pass bar is researched further and, only if the research can't settle
-   it, held out as "origin unclear" (survey.md, step 8).
+3. **A policy question**: the policy lacks a value a step needs, a purpose lacks a load target,
+   a descriptor lacks its run noise, or a candidate sits on a rule's edge: a format the floor
+   doesn't name, a file whose floor path its build doesn't settle, or a scanner message under
+   a "safe" status other than the one the policy passes by name. Origin is never a pause:
+   a model with involvement found at a level the policy excludes on, or that fails its
+   compliance gate, is excluded on origin; involvement at a level the policy only records,
+   and adversary-generated data in a training mix, go in the model's row; and a model short of
+   the pass bar is researched further and, only if the research can't settle it, held out as
+   "origin unclear" (survey.md, step 8).
 4. **A source's tier is unclear**: the run can't tell whether a source is primary, an attributed
    benchmark, or a lead.
 5. **The host can't serve**: the router down, SSH or the probe failing mid-run ("Default rules",

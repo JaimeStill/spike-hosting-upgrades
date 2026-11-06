@@ -272,15 +272,15 @@ and bar"): set A's gpt-oss-120b, measured twice on llama.cpp b11715, less its tw
 sampling, on the served build.
 
 **What counts against a floor** (the architect's decision, 2026-10-30). The publisher's own card's
-published BFCL figure for the matching category counts; a third party's card (a quantizer's,
-such as Red Hat's NVFP4 card for Gemma 4) is a lead only, which can rank a candidate for
-measurement but never passes the bar alone (the architect's decision, 2026-11-06). It counts: BFCL v3 or v4, single-turn against the single-turn
-floor and multi-turn against the multi-turn floor, at the card's own precision. A card's BFCL
-overall score, or another category, does not count. A card figure is not a measurement on the
-floors' basis, so each row that uses one states the gap: the floor is gpt-oss-120b's score on
-spike-model-hosting's 100- and 20-item samples (Gorilla `dac44e7`, seed 20261016), while the
-card may use another BFCL version or the full set, and measures the model at its native
-precision rather than the build the host would serve.
+published BFCL figure for the matching category counts; a third party's card (a quantizer's, such
+as Red Hat's NVFP4 card for Gemma 4) is a lead only, which can rank a candidate for measurement
+but never passes the bar alone (the architect's decision, 2026-11-06). It counts: BFCL v3 or v4,
+single-turn against the single-turn floor and multi-turn against the multi-turn floor, at the
+card's own precision. A card's BFCL overall score, or another category, does not count. A card
+figure is not a measurement on the floors' basis, so each row that uses one states the gap:
+the floor is gpt-oss-120b's score on spike-model-hosting's 100- and 20-item samples (Gorilla
+`dac44e7`, seed 20261016), while the card may use another BFCL version or the full set, and
+measures the model at its native precision rather than the build the host would serve.
 
 **The tool-reliability check.** The model, on the host's engine, fits the consumer harness:
 `conform` pass^5 through Pi, every capability that applies passing 5 of 5 trials, with 0 invalid

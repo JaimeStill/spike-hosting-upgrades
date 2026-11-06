@@ -14,7 +14,7 @@
 # every section's KV cache is split across its slots (kv = "per-slot") and the loader bounds c by
 # the card's context. The section's own c, its slots' total, is in each c_reason.
 #
-# Validated read-only from spike-model-hosting's clone, as measure mode gives it:
+# Validated read-only from spike-model-hosting's clone, as the measure mode gives it:
 #   mise exec -- go run ./hosting/cmd/profile validate <this file's absolute path>
 host_class = "strix-halo"
 bind = "tailnet"

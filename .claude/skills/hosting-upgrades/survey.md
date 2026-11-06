@@ -139,8 +139,8 @@ chain (step 8, item 5) and rebuilds only under item 1's rules, the model's recor
    Never cached, read every run: what says what is newest (a release list, a registry's tags, a
    publisher's model list, a package's or firmware's pending update), and the newest fact itself,
    even where an entry's source also gives it; the foreign-adversary list and the screening list
-   ([sources.md](sources.md), "Origin and build checks"); and the register's upstream states. A newest-version read is also how a survey sees that a cached
-   entry's subject has changed.
+   ([sources.md](sources.md), "Origin and build checks"); and the register's upstream states. A
+   newest-version read is also how a survey sees that a cached entry's subject has changed.
 2. **After a read**, replace the source's entry whole, with the read's UTC time: what it says
    now, not what it said then. A source read for the first time gets a new entry, under its
    kind's heading (an engine, the engine choice and models, model cards and origin chains, the
@@ -562,8 +562,8 @@ and their checks are in [models.md](models.md); this step says what the section 
    "Origin", gives it), starting from the model's entry in the research cache ("Research cache",
    "Model entries"): a fresh entry's chain is cited, with its read time, and only a stale or
    missing entry, or a level the entry doesn't settle, is read again; each chain built or extended
-   replaces the model's entry. A model with any disclosed or detected involvement of an adversarial entity
-   at a level the policy excludes on, or a publisher or uploader that fails the policy's compliance
+   replaces the model's entry. A model with any disclosed or detected involvement of an
+   adversarial entity at a level the policy excludes on, or a publisher or uploader that fails the policy's compliance
    gate, goes in the section's "excluded on origin" list and never reaches a verdict. Each entry
    names the level and cites, inline, the URL and read date of the source that shows it. A teacher
    is read by its role, not by its label. Involvement at a level the policy only records, and
@@ -802,4 +802,5 @@ header or a redirect WebFetch can't handle, goes through a narrow script bundled
 which reads one source and is granted by its own rule, naming its path. There are three:
 `scripts/screen.sh` reads the screening list, `scripts/magic.sh` reads a Hub file's first 4 bytes
 past the xet CDN's 302, and `scripts/fix-in-image.sh` reads ghcr.io's tag list with a pull token
-and GitHub's compare ("Blocker register"). With the probe, they hold the skill's only curl.
+and GitHub's compare ("Blocker register"). With the probe, they hold the survey's only curl;
+measure's step helpers (measure.md, "Step helpers") carry their own, run in the architect's view.

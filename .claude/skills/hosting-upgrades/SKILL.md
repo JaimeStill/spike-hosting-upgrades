@@ -27,16 +27,17 @@ The first argument, `$0`, names the mode, and the second, `$1`, the host by its 
   rules the workspace needs, each marked present or missing, and stops. Read
   [setup.md](setup.md), "Readiness check".
 - **`survey <host>`** is the public record: the probe, the system's debt, the hardware
-  configuration, the engine, a flag-by-flag configuration review, the models (discovery and the
-  pool a descriptor names among them), and the blocker register's upstream states, each item cited
-  and given verify, take, hold, or skip, judged against the host's load targets. It applies
-  nothing; it reads sources through the project's research cache. Read [setup.md](setup.md), then [survey.md](survey.md).
-- **`measure <host>`** is local cells: it takes the last survey's host items to a decision, moves
-  the engine to a newer build under the engine rule, screens one candidate model beside the
-  host's set under the keep rule, and checks a section's keys with and without them. Its shipped
-  step helpers run each step, one call at a time, and log every command. It changes the host only
-  by commands it prints and records as run, and ends with the host serving its set. Read [setup.md](setup.md), then
-  [measure.md](measure.md).
+  configuration, the engine, a flag-by-flag configuration review, the models (discovery
+  and the pool a descriptor names among them), and the blocker register's upstream states,
+  each item cited and given verify, take, hold, or skip, judged against the host's load
+  targets. It applies nothing; it reads sources through the project's research cache. Read
+  [setup.md](setup.md), then [survey.md](survey.md).
+- **`measure <host>`** is local cells: it takes the last survey's host items to a decision,
+  moves the engine to a newer build under the engine rule, screens one candidate model beside
+  the host's set under the keep rule, and checks a section's keys with and without them. Its
+  shipped step helpers run each step, one call at a time, and log every command. It changes
+  the host only by commands it prints and records as run, and ends with the host serving its
+  set. Read [setup.md](setup.md), then [measure.md](measure.md).
 
 With no mode, or a host alone, ask which mode to run; the default is `survey`. With a mode and no
 host, list the descriptors in `docs/hosts/` by their short names and ask which host to run on; a
@@ -128,7 +129,8 @@ asks for it and records the answer as the architect's; it never invents one.
 - `survey` writes its dated report, and updates in place the research cache (`docs/research.md`)
   and the blocker register (`docs/blockers.md`); not the descriptor, the policy, the pool, or the
   skill, and nothing on the host. Changes it would make to any of them are proposals.
-- `measure` writes its dated measure record, and updates its host's register entries. The commands
+- `measure` writes its dated measure record, and updates its host's register entries and, when it
+  repeated cells, the descriptor's run noise (measure.md, "Write the record"). The commands
   that change the host are printed, run as rules.md, "Who runs what", assigns them, and recorded in
   the record as run.
 
