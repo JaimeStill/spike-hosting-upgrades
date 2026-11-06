@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
-- **Task:** skill-revision
-- **Branch:** skill-revision
+- **State:** idle
+- **Task:** none
+- **Branch:** none
 
 ## Tasks
 
@@ -10,7 +10,7 @@
 2. [x] verify-framework
 3. [x] verify-gb10
 4. [x] screen
-5. [ ] skill-revision
+5. [x] skill-revision
 6. [ ] answer
 
 ## Task brief · skill-revision
@@ -178,15 +178,6 @@ Door          two-way: the skill, its records and the descriptors are this
 ```
 
 ## Progress
-
-- Slices 1–3 are committed with their demos. Slice 1 (layout and load targets) is 8669dcd.
-  Slice 2 (survey) is 6ed89e2; its demo, gb10-1's paper survey (`docs/reports/gb10-1/2026-11-06.md`,
-  dfd8d91), surfaced all six behavior-15 items, and c463da3 closed the gaps it found. Slice 3
-  (measure) is 1357b7d; its demo, framework's settings check
-  (`docs/measures/framework/2026-11-06.md`, b5ac226), confirmed the keys and set framework's
-  spreads.
-- The reviews are done; their fixes are 4fb2c48 through 4f8f0a2.
-- Next: slice 4, the architect's walkthrough.
 
 ## Decisions
 
