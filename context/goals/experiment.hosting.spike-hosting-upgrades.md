@@ -179,6 +179,8 @@ Door          two-way: the skill, its records and the descriptors are this
 
 ## Progress
 
+- Slice 1 (layout and load targets) committed, 8669dcd: SKILL.md 129 lines; setup.md, survey.md, measure.md, rules.md; descriptors' Purposes carry load targets from models.ini at 933ec0f; measure records at `docs/measures/<host>/<YYYY-MM-DD>.md`; `TODO(slice 2|3)` stubs mark where later slices land.
+
 ## Decisions
 
 - setup: evidence is six items (the skill; the dated ranked report; top upgrade verified per host
