@@ -144,6 +144,24 @@ Release: none.
 
 ## Progress
 
+- Slice 1, host updates (architect, root, 2026-11-06), read back by the probe (`.state/answer/probe-<host>.txt`):
+  - framework: `sudo fwupdmgr refresh --force`; `fwupdmgr get-updates` listed no update, and its
+    "System Firmware 0.0.3.5 -> 0.0.3.6 updated successfully" is history (BIOS 03.06 dated
+    07/13/2026 already running, booted 2026-11-02). `omarchy update`: mise-bin 2026.11.1-1 ->
+    2026.11.2-1, pnpm 12.16.1 -> 12.18.0 (mise), 3 cached packages pruned, a snapper snapshot
+    taken. No reboot (kernel 7.2.15-1-omarchy and firmware unchanged). Rollback: the snapshot from
+    Limine, or `pacman -U` mise-bin 2026.11.1-1. Probe: 0 pending, no failed units, router on
+    b11960 with set A's no-cache keys.
+  - gb10-1: `sudo apt update && sudo apt upgrade`: 12 upgraded, 8 new; kernel 7.0.0-1024 ->
+    7.0.0-1025-nvidia (image, modules, nvidia-580-open, nvidia-fs, headers, tools), ca-certificates
+    20260816ubuntu0.24.04.2, ca-certificates-java 20240118ubuntu0.24.04.1, sqlite3/libsqlite3-0
+    3.45.1-1ubuntu2.9, linux-crashdump/libc-dev/tools-common 6.8.0-149 (2 LTS security updates).
+    `sudo apt autoremove`: kernel 7.0.0-1019 removed. `fwupdmgr get-updates`: none. No driver or
+    container-toolkit change, so no CDI regenerate. `sudo reboot`. Rollback: boot 7.0.0-1024 from
+    GRUB's Advanced options (still installed), packages by `apt install <pkg>=<version>`. Probe:
+    running 7.0.0-1025-nvidia, booted 13:13:14, driver 580.178.04, `initcall_blacklist` on the
+    command line, 0 pending, no failed units, router healthy on b12098 with its set listed.
+
 ## Decisions
 
 - setup: evidence is six items (the skill; the dated ranked report; top upgrade verified per host
@@ -755,6 +773,7 @@ Release: none.
 - answer: the convention is its own document, `docs/convention.md`, linked from README "The answer", the answer section and the skill's entry file; rejected writing it only into the README (architect, 2026-11-06).
 - answer: BFCL's max_tokens per tier goes under the answer section's "Requirements for the intake to route", which settles where that pending edit lands; rejected a line in model-evaluation's roadmap summary (architect, 2026-11-06).
 - answer: currency on start reported python 3.14.10 -> 3.15.2 (mise.bench.toml), still held: torchcodec 0.17.0 has no cp315 wheel (PyPI, 2026-11-06) (session, 2026-11-06).
+- answer: gb10-1's 2026-11-06 proposals all accepted: watch items for the Gemma 4 E4B tokenizer fix and reconversion, NVIDIA's reboot fix (folded into the reboot item), and vLLM's EmbeddingGemma fix on SM121 (#60942); #29510 retired; trusted sources Ubuntu security notices, ghcr.io's llama.cpp container versions, vLLM's GPT-OSS recipe, and Launchpad bug pages; site-one-liart-13.vercel.app blocklisted; DGPP seeded as an engine. Its own-conversion and embedding-scenario proposals are new work and go to the answer's gaps (architect, 2026-11-06).
 
 ## Pending edits
 
