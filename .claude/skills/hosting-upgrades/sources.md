@@ -3,7 +3,7 @@
 The trusted sources a run reads, keyed by kind and by vendor or project, each with its URL and
 how to read it. Authority belongs to the vendor or project that ships a thing, not to an
 environment, so this list belongs to the skill and holds for every host. A run reads a source
-fresh each time and cites the date it read it (see [SKILL.md](SKILL.md), "Citing").
+fresh each time and cites the date it read it (see [rules.md](rules.md), "Citing").
 
 Prefer the machine-readable endpoint where one exists: it returns the same facts as the page,
 without the page's layout, and a query can be repeated exactly.
@@ -19,10 +19,10 @@ without the page's layout, and a query can be repeated exactly.
   `gh search issues --repo <owner>/<repo> <terms> --sort updated`.
 - **`gh api` is only a fallback**, for when api.github.com's unauthenticated reads (60 an hour)
   run out. It asks permission each time, since the readiness check prints no rule for it
-  ([SKILL.md](SKILL.md), "Readiness check").
+  ([setup.md](setup.md), "Readiness check").
 - **No source is read with curl or jq through Bash.** A source too large for WebFetch, or one that
   needs a header or a redirect WebFetch can't handle, is read by a narrow script bundled with the
-  skill, or not at all until one exists ([SKILL.md](SKILL.md), "Research"). The Consolidated
+  skill, or not at all until one exists ([survey.md](survey.md), "Research"). The Consolidated
   Screening List is read so, by `scripts/screen.sh`, and a Hugging Face file's first 4 bytes by
   `scripts/magic.sh` ("Origin and build checks").
 
@@ -45,7 +45,7 @@ support.
   own for a verify verdict; the report says what would confirm it.
 
 A source that names some of the three but not all (the hardware and the method, but not the
-engine build) is a tier question: pause and ask (SKILL.md, "When to pause"), with lead as the
+engine build) is a tier question: pause and ask (rules.md, "Pause"), with lead as the
 default.
 
 Three rules settle common cases without a pause:
@@ -62,8 +62,8 @@ Three rules settle common cases without a pause:
   right, the probe's reading of what the host has installed settles it, as the architect ruled
   in gb10-1's run of 2026-10-30. The report records both pages, cited, and the probe's reading,
   and goes on without a pause. A conflict whose answer would change a verdict (whether an update
-  is pending, whether a fix is in the installed version) is still a pause (SKILL.md, "When to
-  pause").
+  is pending, whether a fix is in the installed version) is still a pause (rules.md,
+  "Pause").
 
 The same site can hold sources of different tiers: a vendor forum's release announcement is
 primary, and a user's reply under it is a lead.

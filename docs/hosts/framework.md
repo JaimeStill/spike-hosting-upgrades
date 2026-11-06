@@ -11,13 +11,29 @@ models) comes from the probe a run takes.
 
 ## Purposes
 
-The model purposes the host serves, seeded from model set A's roles (`ai-hosting.md`, "The
-existing setup: personal-agents").
+The purposes the host serves today, each with its load target: the concurrent sessions or
+requests it is sized for, and the context each reaches. Today the host serves model set A, as its
+screen record's end state reads it back (`docs/screens/framework/2026-11-04.md`, "End state"),
+reloaded when its clone returned to main at dfc1d3d (`docs/screens/gb10-1/2026-11-05.md`, "End
+state"), from the shared preset, spike-model-engines `host/llama-preset/models.ini`, whose
+sections give each target. The figures below are main's at 933ec0f (read 2026-11-06), whose
+sections differ from dfc1d3d's only by set A's cache keys, not by slots or context. Which purposes
+this host serves, and at what load, is spike-model-layout's to decide; a change there changes this
+list.
 
-- **agent**: the main chat and tool-calling model the consumers' agent sessions run on.
-- **vision**: image input beside text.
-- **audio**: speech and audio input beside text.
-- **embedding**: text embeddings for retrieval.
+- **agent**: the main chat and tool-calling model the consumers' agent sessions run on. Load
+  target: 4 concurrent sessions sharing one 131,072-token context pool (a unified KV cache), so
+  one session reaches up to 131,072 tokens and each of four full sessions 32,768. From the
+  `gpt-oss-120b-MXFP4-set-a` section: `c = 131072`, `parallel = 4`, `kv-unified = true`.
+- **vision**: image input beside text. Load target: 4 concurrent requests of 8,192 tokens each.
+  From the `google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0` section: `c = 32768`, `parallel = 4`,
+  split evenly across the slots (the preset's comment on its Gemma 4 sections).
+- **audio**: speech and audio input beside text. Load target: 4 concurrent requests of 8,192
+  tokens each. From the `ggml-org/gemma-4-E4B-it-GGUF:Q8_0` section: `c = 32768`,
+  `parallel = 4`, split the same way.
+- **embedding**: text embeddings for retrieval. Load target: 16 concurrent requests of 8,192
+  tokens each. From the `mrutkows/granite-embedding-english-r2-GGUF:BF16` section:
+  `c = 131072`, `parallel = 16`.
 
 ## Watch items
 
@@ -55,7 +71,7 @@ it. Each is the reference name (the coordinator's `references.toml`) plus its pa
 
 ## Pool
 
-The model pool the screen mode (`/hosting-upgrades screen`) gates for this host's class, as the
-reference name (the coordinator's `references.toml`) plus its path. No other mode reads it.
+The model pool whose rows the survey (`/hosting-upgrades survey`) gates as candidates for this
+host's class, as the reference name (the coordinator's `references.toml`) plus its path.
 
 - spike-model-hosting `docs/pool.md`

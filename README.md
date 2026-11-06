@@ -8,24 +8,22 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
 `experiment.hosting` intake, which decides the upgrade-evaluation convention and cadence
 `v1.ai.hosting` specifies.
 
-- The skill: `.claude/skills/hosting-upgrades/`. It probes one host a run, read-only and
-  without root, and reads the project's host descriptors (`docs/hosts/`) and policy
-  (`docs/policy.md`). Beside the upgrades, it finds and ranks what the host has fallen behind on,
-  such as pending system updates and failed units, and applies nothing. Before each run, its readiness check prints the permission rules the
-  workspace needs and never writes settings; `/hosting-upgrades setup` runs the check alone.
-- The dated reports: `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md` for a later run
-  the same day.
-- The verify mode: `/hosting-upgrades verify <host>` takes a host's last report to a decision on
-  each item, prints the commands, rollbacks, and anchor cells, and writes the host's verification
-  finding; it changes nothing on the host itself.
-- The verification findings: `docs/findings/verify-<host>.md`, such as
-  [framework's](docs/findings/verify-framework.md).
-- The screen mode: `/hosting-upgrades screen <host>` gates the model pool a host's descriptor
-  names for the host's class, measures one agent candidate beside the host's served set, and
-  writes the host's screen record; it changes no served set.
-- The screen records: `docs/screens/<host>/<YYYY-MM-DD>.md`, such as
-  [framework's](docs/screens/framework/2026-11-04.md) and
-  [gb10-1's](docs/screens/gb10-1/2026-11-05.md).
+- The skill: `.claude/skills/hosting-upgrades/`. It runs on one host at a time, reading the
+  project's host descriptors (`docs/hosts/`, each purpose with its load target) and policy
+  (`docs/policy.md`). `/hosting-upgrades setup` prints the permission rules the workspace needs and
+  never writes settings.
+- The survey mode: `/hosting-upgrades survey <host>` probes the host read-only and without root,
+  ranks upgrades and what the host has fallen behind on, such as pending system updates and failed
+  units, from what others publish, and applies nothing. It writes a dated report,
+  `docs/reports/<host>/<YYYY-MM-DD>.md`, or `<YYYY-MM-DD>-N.md` for a later run the same day.
+- The measure mode: `/hosting-upgrades measure <host>` settles the last survey's items on the host
+  with local cells (an engine move under the engine rule, a candidate model under the keep rule)
+  and writes a dated record, `docs/measures/<host>/<YYYY-MM-DD>.md`.
+- The verify and screen modes measure replaced left their records as history: the verification
+  findings, `docs/findings/verify-<host>.md`, such as
+  [framework's](docs/findings/verify-framework.md), and the screen records,
+  `docs/screens/<host>/<YYYY-MM-DD>.md`, such as [framework's](docs/screens/framework/2026-11-04.md)
+  and [gb10-1's](docs/screens/gb10-1/2026-11-05.md).
 
 ## The answer
 

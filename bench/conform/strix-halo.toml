@@ -1,8 +1,8 @@
 # framework's conform profile: the strix-halo host class, in spike-model-hosting's profile schema
 # (hosting/profile/profile.go), modelled on its devices/strix-halo/profile.toml. Its one use is
 # conform, the agent bar's tool-reliability check (docs/policy.md, "Agent quality bar"), which the
-# screen mode runs from spike-model-hosting's clone with -profile naming this file
-# (.claude/skills/hosting-upgrades/SKILL.md, "The screen mode"). conform reads a profile's set
+# measure mode's candidate screen runs from spike-model-hosting's clone with -profile naming this
+# file (.claude/skills/hosting-upgrades/measure.md, steps 4 and 7). conform reads a profile's set
 # alone: its models, which it checks the router has loaded, and its roles, the model each of the
 # consumers' requests goes to. So each model's id is its section's name in the router's preset,
 # spike-model-engines' host/llama-preset/models.ini, which framework's router serves, and the set
@@ -14,7 +14,7 @@
 # every section's KV cache is split across its slots (kv = "per-slot") and the loader bounds c by
 # the card's context. The section's own c, its slots' total, is in each c_reason.
 #
-# Validated read-only from spike-model-hosting's clone, as the screen mode gives it:
+# Validated read-only from spike-model-hosting's clone, as measure mode gives it:
 #   mise exec -- go run ./hosting/cmd/profile validate <this file's absolute path>
 host_class = "strix-halo"
 bind = "tailnet"
