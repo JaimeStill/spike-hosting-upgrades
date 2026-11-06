@@ -181,6 +181,7 @@ Door          two-way: the skill, its records and the descriptors are this
 
 - Slice 1 (layout and load targets) committed, 8669dcd: SKILL.md 129 lines; setup.md, survey.md, measure.md, rules.md; descriptors' Purposes carry load targets from models.ini at 933ec0f; measure records at `docs/measures/<host>/<YYYY-MM-DD>.md`; `TODO(slice 2|3)` stubs mark where later slices land.
 - Slice 2 (survey) committed, 6ed89e2: configuration review (step 7), discovery, `docs/research.md` (16 entries), `docs/blockers.md` (6 entries, gh-checked 2026-11-06), `scripts/fix-in-image.sh`, probe's run flags and env; demo (gb10-1 paper survey) pending.
+- Slice 3 (measure) committed, 1357b7d: `scripts/measure-lib.sh` (sourced step helpers, xtrace log at `.state/measure/<host>/<date>.log`), build gate, per-host noise (gb10-1 2.2%/5.0%; framework 1.1%/2.6% provisional), watch with memory floor, the sweep's two figures, the settings check (default-cache arm = framework's spike-model-engines clone detached at dfc1d3d, no-cache arm = main 933ec0f); BFCL max_tokens pending edit added; demo (framework, behavior 16) pending.
 
 ## Decisions
 
