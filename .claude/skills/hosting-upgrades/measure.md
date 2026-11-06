@@ -74,6 +74,12 @@ check's lines. A helper called inside another (`cell`'s `watch` and `summarize`)
 under the outer one's name, once. What a helper prints to standard error, and what a command
 outside the helpers prints, isn't marked; `set +x` stops both.
 
+In an interactive shell the prompt's hooks (starship's, mise's, zoxide's, the terminal title's)
+run untraced: sourcing puts `set +x` first in `PROMPT_COMMAND` and turns xtrace back on before
+the first command of each line typed, so the log holds one `set +x` line a prompt among the calls,
+the helpers' commands and their `= ` lines, and a line starting with `set +x` or `set -x` stops
+or resumes the log there as it does in the session's shell.
+
 The log holds no tailnet address, so a record can quote it (STANDARDS.md rules out committing
 tailnet identifiers): `routing` looks up the host's tailnet addresses and compares the bare name's
 untraced, and logs only its labels (`tailnet`, `NOT-TAILNET`) on its `= ` line. A command outside

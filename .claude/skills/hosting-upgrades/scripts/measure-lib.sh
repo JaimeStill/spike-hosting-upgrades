@@ -510,13 +510,69 @@ gate() {
   return "$rc"
 }
 
+# In an interactive shell, the prompt's hooks (PROMPT_COMMAND's entries and the functions they
+# call, PS0's command substitutions) would otherwise run traced after every command, a hundred
+# lines of them a prompt. _measure_prompt_hooks puts `set +x` first in PROMPT_COMMAND, its one
+# line the only one the prompt logs, and _MEASURE_ARM last, which sets a DEBUG trap, after any
+# DEBUG trap already set, for the first command of the next line typed. PS0, which bash expands
+# only for a line with a command, marks that line (_measure_typed, set by an arithmetic expansion
+# in the shell itself, as starship sets its start time), so the trap does nothing for the prompt's
+# own hooks after an empty line. On the line's first command the trap puts the earlier trap back
+# and _measure_resume turns xtrace on again while the log is on (_measure_logging). The prompt
+# can't tell whether the line before it ended with xtrace off, so the log's state is the flag's:
+# sourcing sets it, MEASURE_LOG=off clears it, and a line that starts with `set +x` or `set -x`
+# stops or resumes it, as the same command does in a non-interactive shell.
+#
+# Both traps are set at the top level, not in a function: a function (without functrace) neither
+# sees the DEBUG trap set outside it nor keeps one it sets over one that was.
+# shellcheck disable=SC2016
+_MEASURE_ARM='_measure_arm "$(trap -p DEBUG)" && trap -- "$_measure_trap" DEBUG'
+_measure_prompt_hooks() {
+  local pc
+  pc=$(declare -p PROMPT_COMMAND 2>/dev/null)
+  # PROMPT_COMMAND is an array (bash 5.1+, as starship sets it) or a string; the elif is the string.
+  # shellcheck disable=SC2128,SC2178
+  if [[ $pc == 'declare -a'* ]]; then
+    [[ ${PROMPT_COMMAND[0]} == 'set +x' ]] || PROMPT_COMMAND=('set +x' "${PROMPT_COMMAND[@]}")
+    [[ ${PROMPT_COMMAND[-1]} == "$_MEASURE_ARM" ]] || PROMPT_COMMAND+=("$_MEASURE_ARM")
+  elif [[ $PROMPT_COMMAND != 'set +x'$'\n'* ]]; then
+    PROMPT_COMMAND="set +x${PROMPT_COMMAND:+$'\n'$PROMPT_COMMAND}"$'\n'$_MEASURE_ARM
+  fi
+  # Expands to nothing; PS0 is never empty once this is in it, so the offset is evaluated.
+  # shellcheck disable=SC2016
+  [[ $PS0 == *_measure_typed* ]] || PS0+='${PS0:$((_measure_typed=1,0)):0}'
+}
+# Given `trap -p DEBUG`, sets _measure_trap to the trap _MEASURE_ARM sets, or returns 1 when it is
+# still set (after an empty line).
+_measure_arm() {
+  local restore='trap - DEBUG'
+  _measure_typed=
+  [[ $1 != *_measure_resume* ]] || return 1
+  # trap -p prints `trap -- '<command>' DEBUG`; set -- takes its words apart in this function only.
+  eval "set -- $1"
+  [[ -z ${3-} ]] || printf -v restore 'trap -- %q DEBUG' "$3"
+  # It returns 0 either way: under extdebug a DEBUG trap that returns nonzero skips the command.
+  _measure_trap="${3:+$3$'\n'}if [[ -n \$_measure_typed ]]; then $restore; _measure_resume; fi"
+}
+_measure_resume() {
+  case $BASH_COMMAND in
+    'set +x'*) _measure_logging= ;;
+    'set -x'*) _measure_logging=on ;;
+  esac
+  # Last, so nothing after it is traced; a `set +x` is traced, so the log shows where it stopped.
+  if [[ -n $_measure_logging || $BASH_COMMAND == 'set +x'* ]]; then set -x; fi
+}
+
 if [[ ${MEASURE_LOG-} == off ]]; then
   # Read-only: no log, and xtrace off if an earlier sourcing in this shell turned it on.
+  _measure_logging=
   _measure_marking=off
   { set +x; } 2>/dev/null
   return 0
 fi
 unset _measure_marking
+_measure_logging=on
+[[ $- != *i* ]] || _measure_prompt_hooks
 mkdir -p "$MEASURE_STATE"
 exec {MEASURE_XTRACE_FD}>>"$MEASURE_LOG_FILE"
 BASH_XTRACEFD=$MEASURE_XTRACE_FD
