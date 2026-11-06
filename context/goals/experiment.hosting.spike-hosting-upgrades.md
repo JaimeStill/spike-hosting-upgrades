@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** idle
-- **Task:** none
-- **Branch:** none
+- **State:** building
+- **Task:** skill-revision
+- **Branch:** skill-revision
 
 ## Tasks
 
@@ -762,6 +762,7 @@ Door          two-way: the skill, its records and the descriptors are this
 - skill-revision: BFCL's missing max_tokens goes to the coordinator as a pending edit for spike-model-hosting's harness, and measure treats a runaway as a cap hit; rejected n_predict in the presets (a host configuration change) (architect, 2026-11-06).
 - skill-revision: verified by a paper survey of gb10-1 that must surface the screen's configuration findings, and a measure on framework discharging its owed no-cache check (anchors A and B twice each from fresh loads; BFCL multi-turn's first 4 samples on default cache and no-cache keys, 10-minute cap each); no new tool (architect, 2026-11-06).
 - skill-revision: `answer`'s roadmap entry sharpened now (coordinator PR #120): its second report is the revised survey on both hosts, and it gained a proof line (architect, 2026-11-06).
+- skill-revision: currency on start reported only python 3.14.10 -> 3.15.2 in mise.bench.toml, still held: torchcodec 0.17.0, its latest, publishes no cp315 wheel (PyPI, 2026-11-06); no round opened, the approved brief stood (architect, 2026-11-06).
 
 ## Pending edits
 
