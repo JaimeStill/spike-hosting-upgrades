@@ -51,14 +51,21 @@ durable grants are these settings rules.
    - one rule per pool a descriptor names, for reading it outside the project:
      `Read(<the pool's absolute path>)`, written with `~/` for a path under the home directory. It
      names the architect's own checkout, so it belongs in `.claude/settings.local.json`
-   - TODO(slice 2): the blocker register's gh rules and the image script's rule
+   - `Bash(gh issue view *)` and `Bash(gh pr view *)`, for the blocker register's upstream checks
+     and a maintainer's comments (survey.md, "Blocker register"); both only read
+   - `Bash(.claude/skills/hosting-upgrades/scripts/fix-in-image.sh *)`, for the script that reads
+     whether a merged fix is in the newest build with an image for a host class (survey.md,
+     "Blocker register"), named the same way; it takes a repository, a fix, and a class, never a
+     URL, and its own `gh api` and registry reads are GETs
+   - `Edit(docs/research.md)` and `Edit(docs/blockers.md)`, for the research cache and the blocker
+     register, which a survey updates in place and a measure's re-check updates too
 
    **Measure's rules** are every one of survey's (its probe, and its gate re-checks' reads and
    scripts), and these beside them:
    - one exact rule per host with a descriptor, named by its SSH short name:
      `Bash(tailscale ping -c 1 <host>)`, for the network path each pass records (rules.md,
      "Cells")
-   - `Edit(docs/measures/**)`, for the dated measure record, the mode's only write
+   - `Edit(docs/measures/**)`, for the dated measure record, the mode's own write
 
    Reading the project's own files needs no rule.
 2. **Read the settings.** Read `.claude/settings.json` and `.claude/settings.local.json` at the
@@ -73,11 +80,11 @@ durable grants are these settings rules.
    rule missing from either. A mode prints its own set the same way. For example:
 
    ```text
-   Readiness check, survey's rules: 9 of 10 present.
+   Readiness check, survey's rules: 14 of 15 present.
      present  "Bash(ssh framework bash -s < .claude/skills/hosting-upgrades/scripts/probe.sh)"
      ...
      missing  "Read(~/experiments/spike-model-hosting/docs/pool.md)"
-   Readiness check, measure's rules (survey's 10, and these): 1 missing.
+   Readiness check, measure's rules (survey's 15, and these): 1 missing.
      present  "Bash(tailscale ping -c 1 framework)"
      present  "Bash(tailscale ping -c 1 gb10-1)"
      missing  "Edit(docs/measures/**)"
@@ -98,7 +105,10 @@ Three rules the check never prints:
 
 - **No rule for `gh api`.** Settings rules apply to every agent in the workspace, not only to this
   skill, and `gh api` writes as readily as it reads (`-X POST`, `-f`), with the architect's GitHub
-  token. So a `gh api` call, the fallback once unauthenticated reads run out, asks each time.
+  token. So a `gh api` call, the fallback once unauthenticated reads run out, asks each time. The
+  register's reads that need it (the releases list and the compare) run inside
+  `scripts/fix-in-image.sh`, whose own rule grants only those GETs; `gh issue view` and
+  `gh pr view` only read, so they get rules of their own.
 - **No wildcard ssh host.** A rule such as `Bash(ssh * bash -s < <probe path>)` also matches ssh
   options riding along in the wildcard (`-o ProxyCommand=<any command>` runs that command on this
   machine), so each host gets its own exact rule, and a new host's descriptor brings a new rule
@@ -146,6 +156,15 @@ labeled sections (`== os ==`, `== kernel ==`, `== firmware ==`, `== gpu ==`, `==
   engine's default unless it was set another way the probe doesn't read (an environment variable
   such as `LLAMA_ARG_CTX_SIZE`, a config file); a flag outside the filter's list doesn't show
   either.
+- **Run flags.** Each engine container also carries a `run flags` line: the flags `docker run`
+  took that shape serving beside the engine's arguments, in `docker run`'s terms (`--gpus`,
+  `--device`, `--ipc`, `--shm-size`, `--ulimit`, memory and CPU limits, `--network`,
+  `--runtime`, `--privileged`, `--cap-add`, `--group-add`), each only when it differs from
+  docker's default, or `docker's defaults`. A `run env` line gives each environment variable the
+  run set beyond the image's: an engine or GPU-stack variable (`LLAMA_ARG_`, `VLLM_`, `GGML_`,
+  `CUDA_`, `NVIDIA_`, `HIP_`, `HSA_`, `ROCR_`, `OMP_`) as `NAME=value` when its name names no
+  secret, address, model, or path and its value is short and plain, and any other by name alone,
+  `(value not shown)`. The configuration review reads both (survey.md, step 7).
 - **Drafters.** Each container, each preset section, and each model a router lists also carries a
   `drafter` line: the drafter models its arguments load for speculative decoding, each by its file
   or repository name only, or `none`, then in parentheses any other speculative key by name; a

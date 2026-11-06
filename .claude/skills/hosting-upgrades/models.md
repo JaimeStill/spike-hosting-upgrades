@@ -19,6 +19,13 @@ registry records a model's origin, so the run builds the evidence chain itself, 
 authoritative source first, and cites each link inline. "Origin" here is who was involved in a
 model; "build" (Quantization floor) is how the file the host would load was made.
 
+A pass the policy grants a publisher by name settles the origin gate in the policy's own words
+and scope, quoted in the row: as of 2026-11-06, every model NVIDIA publishes, Nemotron or not, and
+a conversion whose weights item 4 shows to be NVIDIA's. The pass covers the levels a teacher or
+data generator would otherwise reach, not the uploader's compliance (item 1 still screens the
+uploader), not a model another publisher derived from those weights (judged at every level), and
+not the later gates. A survey's discovery and pool rows take it like any other candidate.
+
 1. **Publisher identity.** Establish who published the model and who uploaded the file the host
    would load, which can differ for a conversion or quantization:
    - the Hugging Face organization and whether it is verified (sources.md, "Origin and build

@@ -48,8 +48,9 @@ pause: step 5 lists it as a configuration difference, and step 6 weighs it.
 Gather the public record for what the probe found, from the sources in [sources.md](sources.md),
 which lists each by kind (hardware and host stack, engines, models, benchmarks) and by vendor or
 project, with its URL and how to read it. Read the machine-readable endpoint where one exists (the
-GitHub releases API, the Hugging Face API, Arch's package JSON), and read it fresh: what a source
-said on an earlier run is not evidence today.
+GitHub releases API, the Hugging Face API, Arch's package JSON). A source goes through the research
+cache ("Research cache", below): one read within 14 days whose subject hasn't changed is cited from
+the cache with its read date, and every other source is read fresh and its entry replaced.
 
 **When the inventory hasn't moved.** Compare the probe with the Inventory of the host's last
 report. When the two match on the engine builds (each container's image and the build an endpoint
@@ -64,6 +65,8 @@ inventory shows, because the outside world moves:
   their origin chains (models.md, "Origin")
 - the descriptor's watch items, of every kind, each answered by name in its kind's step (4, 5, or
   6)
+- every blocker register entry's upstream state ("Blocker register")
+- the configuration review (step 7) and discovery (step 8), through the research cache
 
 A row the survey carries from the last report says so, with that report's citation, and keeps its
 verdict unless something researched in this run changes it. When any of the three differs, the
@@ -72,10 +75,12 @@ two the survey did.
 
 Read with WebFetch and search with WebSearch, GitHub included: release pages, api.github.com JSON,
 and raw files from raw.githubusercontent.com or the contents API. Search a project's tracker with
-`gh search issues` and `gh search prs`. A `gh api` call is only the fallback once unauthenticated
-API reads (60 an hour) run out, and it asks permission each time, since the readiness check prints
-no rule for it ([sources.md](sources.md), "Reading a source"). When the research is split across
-subagents, split it as "Research" says, with the tools it names.
+`gh search issues` and `gh search prs`, and read one issue or pull request, its state and its
+comments, with `gh issue view` and `gh pr view` (`--json`). A `gh api` call is only the fallback
+once unauthenticated API reads (60 an hour) run out, and it asks permission each time, since the
+readiness check prints no rule for it ([sources.md](sources.md), "Reading a source"); the image
+script makes its own reads, under its own rule. When the research is split across subagents, split
+it as "Research" says, with the tools it names.
 
 - **Read for the probed versions.** For each component the probe names (OS image, kernel,
   firmware, BIOS, driver or Mesa, each engine and its build), find what is newer, what changed
@@ -98,15 +103,86 @@ Every claim cites its source as rules.md, "Citing", says.
 
 ### Research cache
 
-TODO(slice 2): the committed research cache, one entry per source with its read date and what it
-said; a source re-read only after 14 days or when its subject changed. Until slice 2 writes it,
-the survey reads every source fresh, as above.
+The project's committed `docs/research.md` holds one entry per source a survey read: its URL, its
+read date, the hosts and subject it concerns, its tier, and what it said, in the source's own
+figures and words. It is one file, updated in place; git keeps the old text. Every host's surveys
+share it, so a source read for one host is cited for another while it is fresh.
+
+1. **Before reading a source**, look for its entry. Cite the entry, with its read date and the
+   source's URL, instead of reading again, unless one of these holds; then read the source fresh:
+   - the entry is 14 days old or more
+   - its subject has changed since the read: the issue or pull request was updated after it (its
+     `updatedAt`, which a `gh issue view` or `gh pr view` gives), the release list or the model's
+     record (`lastModified`) has moved past what the entry names, or the probe shows the host
+     running something the entry doesn't cover (a newer build, another model file)
+   - the claim the survey would cite from it is not in the entry
+
+   Never cached, read every run: what says what is newest (a release list, a registry's tags, a
+   publisher's model list, a package's or firmware's pending update), the foreign-adversary list
+   and the screening list ([sources.md](sources.md), "Origin and build checks"), and the
+   register's upstream states. A newest-version read is also how a survey sees that a cached
+   entry's subject has changed.
+2. **After a read**, replace the source's entry whole, with today's date: what it says now, not
+   what it said then. A source read for the first time gets a new entry, under its kind's heading
+   (an engine, the engine choice and models, the host stack).
+3. **Delete** an entry whose subject no longer concerns any host: a model no host serves or
+   screens and no survey ranks, a build two images behind the newest for every class it names, or
+   a register entry that is deleted. The report's Inventory names the entries deleted.
+
+A cached figure keeps its tier, and a lead stays a lead. The cache holds what a source said, never
+the survey's verdicts, and never a register entry's state: the register's upstream checks run every
+survey ("Blocker register"). The survey reads the cache first and writes it last, once the
+report's research is done (step 13).
+
+The report's Sources table gives each source's read date, from the cache or from this run, and
+the Inventory counts the entries cited from the cache, the ones read fresh, and the ones deleted.
 
 ### Blocker register
 
-TODO(slice 2): the committed `docs/blockers.md`, each open entry's upstream state checked with gh
-every survey, and a blocker whose fix reaches an image for the class made an upgrade item. Until
-slice 2 writes it, the descriptor's watch items carry what blocks the host.
+The project's committed `docs/blockers.md` holds what blocks its hosts from an upgrade, one entry
+per blocker, with the fields and the four states its head gives (open, fix merged, fix in an image
+build, cleared on the host). The descriptors' watch items hold possible upgrades; a blocker lives
+in the register, and a descriptor points to it.
+
+1. **Check every entry upstream, every survey**, whatever the research cache holds, with `gh`,
+   for each issue and pull request the entry names:
+
+   ```sh
+   gh issue view <n> --repo <owner>/<repo> --json state,closedAt,updatedAt
+   gh pr view <n> --repo <owner>/<repo> --json state,mergedAt,mergeCommit
+   ```
+
+2. **A merged fix: is it in an image?** For each entry whose fix is merged, run the image script
+   from the project root, once per host class the entry's hosts belong to (gb10, strix-halo):
+
+   ```sh
+   .claude/skills/hosting-upgrades/scripts/fix-in-image.sh "<owner>/<repo>" "<pr or commit>" "<class>"
+   ```
+
+   It names the newest build with the class's image (the ghcr.io manifest check spike-model-engines'
+   `scripts/currency.sh` uses) and reads GitHub's compare of the fix's merge commit against it:
+   `in image: yes` when the build is ahead of the fix or identical to it. Quote its lines, with
+   their read date.
+3. **Move the state.** An open entry whose fix merged becomes **fix merged**; a fix-merged entry
+   whose fix the script finds in the class's newest imaged build becomes **fix in an image
+   build**. A state never moves back without a cited reason (a revert, a reopened issue), which
+   the entry's upstream line gives. **cleared on the host** is measure's to set, from a measure
+   record showing the blocked thing working on a build with the fix; an entry cleared on every
+   host it names is deleted. Update each entry's upstream line and its last-checked date in place,
+   and write nothing else to it from the check.
+4. **A fix in an image is an upgrade item.** An entry at **fix in an image build** becomes an item
+   for each host it names that doesn't run that build: the move to the imaged build (step 6, an
+   engine item, verify or hold by "Verdicts", never take), with what it unblocks and what else the
+   build brings, and every other open entry on the host that the move would cross (a build past a
+   blocker's last good build is skip until that entry clears). The item cites the entry and the
+   script's output.
+5. **New entries.** The survey adds an entry when a record of this project measured what the
+   blocker costs (a measure record, a screen record, a finding), with that record linked. A
+   public report alone of something that would block a host is a watch item or a configuration
+   finding, proposed under "Proposed changes", not an entry.
+
+The report's "Blockers" section lists every entry with its state, its upstream line as checked,
+and what moved since the last report.
 
 ## 4. Hardware configuration
 
@@ -351,10 +427,62 @@ architect answers, the adjustment is hold.
 
 ## 7. Configuration review
 
-TODO(slice 2): each served section's arguments, the container's run flags the probe reads, and the
-engine choice at the host's load targets, flag by flag against published practice for the class
-and engine, each flag cited and ranked; the review only proposes. Until slice 2 writes it, step 6's
-incumbent and conclusion carry the configuration's judgment against the load targets.
+Every survey reviews how the host serves, flag by flag, against what others publish for the same
+host class and engine, at the load targets of the purposes the host serves (rules.md, "Load
+targets"). Step 6 names the incumbent and weighs engines; this step weighs each argument. The
+review only proposes: a change is the owner's (the preset belongs to whoever owns it, such as
+spike-model-engines), and measure settles it on the host.
+
+1. **What is reviewed.**
+   - **Each served section's arguments**: every key of each preset section that serves a purpose
+     (the probe's `preset` block), with the `[*]` section's keys it inherits, and each argument
+     the section leaves at its default where published practice for the class names a value (the
+     batch and ubatch, flash attention, the KV cache's type and whether it is unified, the
+     prompt cache and its idle-slot saves, the context checkpoints, offload, mmap). A default is
+     read from the build's own argument list (`common/arg.cpp`, `common/common.h` at the probed
+     build) and cited as a default read, not a probed value.
+   - **The container's run flags**: the probe's `run flags` and `run env` lines for each engine
+     container (GPUs, devices, IPC mode, shared memory, ulimits, memory limits, the network, the
+     runtime, and an engine argument set through the environment), and its `flags` line.
+   - **The engine choice at the load target**: for each purpose, whether the incumbent engine
+     fits the load target as published practice and this host's measurements read it, beside
+     each engine step 6 kept: its measured figure at the target's concurrency where a source
+     gives one, and its fit at the target's sessions and context. An engine that runs one model
+     per process with its own reservation (vLLM's `--gpu-memory-utilization`, its
+     `--max-model-len` and `--max-num-seqs`) is set at the purpose's target (the target's
+     context per session and its sessions) and its reservation weighed against the policy's
+     headroom beside the set's other models (step 10, item 4). A maintainer's stated tuning range
+     (a number of parallel sequences the engine optimizes for) is set beside each section's
+     slots.
+2. **Published practice, by source kind** ([sources.md](sources.md), "Configuration practice"):
+   the vendor's playbooks for the class (NVIDIA's DGX Spark playbooks), the engine project's own
+   benches on the class (ggml-org's DGX Spark benches, which name their flags), the build's own
+   argument list and help text, maintainers' comments on the tracker (`gh issue view <n>
+   --comments`, a maintainer's comment by its author association), and on Strix Halo the
+   community benches the sources list. Each is read through the research cache. A blocker
+   register entry is a source too: a flag that works around an open entry (`cache-ram = 0` for a
+   prompt-cache bug) is cited to it, and its removal is proposed only once the entry reaches "fix
+   in an image build" and the host can run that build.
+3. **One row per flag.** Each row gives the section (or container), the flag, its value now
+   (probed, or a default read), the practice and its source (cited, with its tier), what the
+   difference means at the purpose's load target, a rank, and a verdict by "Verdicts". A flag
+   that matches practice gets one line saying so, cited. A flag no source speaks to is listed as
+   "no published practice found", with what was searched.
+4. **Rank.** Rank the rows that differ from practice, 1 first, by their evidence and their reach:
+   - first, a fault measured on this host (a register entry, a record's finding) that the flag
+     causes or would remove
+   - then an attributed measurement on the same class and engine showing a gain from the
+     practice's value
+   - then a maintainer's stated practice or the build's own documentation
+   - then a lead
+   Within one kind, the agent purpose first, then the purpose with the largest load target, then
+   the lower risk (a key in one section, before a key in `[*]`, before a container's run flag).
+   The verdicts follow "Verdicts": a flag change with an attributed gain on the class is verify,
+   one backed only by a maintainer's word or documentation is hold, and none is take (it changes
+   how the engine serves). A row that rests on a measured fault on this host names the record.
+5. **What it proposes.** The top-ranked verify row is a candidate for "Verify next" (step 11).
+   Every row that would change a document or a preset goes under "Proposed changes" as a change
+   for its owner, with its rollback (restoring the key or flag). The review applies nothing.
 
 ## 8. Models
 
@@ -371,8 +499,16 @@ and their checks are in [models.md](models.md); this step says what the section 
    pool (step 1). A model whose card serves several purposes (a multimodal model that takes text,
    images, and audio) is a candidate for each the host serves, and the report says which
    incumbents it would replace.
-   TODO(slice 2): discovery, the models others run on the host class (playbooks, the class's bench
-   threads), joins the candidates here.
+   **Discovery**, every survey: the models others run on the host class join the candidates, read
+   through the research cache: each model the vendor's playbooks for the class name, each model
+   the class's bench threads and community benches measure (ggml-org's DGX Spark benches and the
+   discussion they link, the vendor's forum, and on Strix Halo the community benches,
+   [sources.md](sources.md), "Configuration practice"), and each model a playbook or bench names
+   for the engine the host runs. A discovered model is a candidate for each purpose its card
+   serves, cites where it was found, and goes through every gate below like any other candidate
+   (origin, artifact integrity, the floor, fit at the load target, the engine, the agent bar, and
+   speed); a published figure on the class is its speed source. The candidates list says which
+   came from discovery, from the publishers, from a search, and from the pool.
 3. **The pool's rows.** Every row of the pool, in every purpose's table, is one or more candidates:
    a row that names several models is one candidate per model, and the rows the pool excluded are
    candidates too. Each names the file the host would load today: the exact repository and file,
@@ -502,11 +638,12 @@ empty:
 
 ## 13. Write the report
 
-The report is the survey's only write: a dated record at `docs/reports/<host>/<YYYY-MM-DD>.md`
-(rules.md, "Dated records"). A survey reads the last report only to say what changed, and, when the
-inventory hasn't moved, to cite for what it didn't research (step 3). It writes nothing else: not
-the descriptor, the policy, the pool, or the skill, and nothing on the host. Changes it would make
-to any of them go into the report as proposals.
+The survey writes three files: the dated report at `docs/reports/<host>/<YYYY-MM-DD>.md` (rules.md,
+"Dated records"), and, in place, the research cache (`docs/research.md`, "Research cache") and the
+blocker register (`docs/blockers.md`, "Blocker register"). A survey reads the last report only to
+say what changed, and, when the inventory hasn't moved, to cite for what it didn't research (step
+3). It writes nothing else: not the descriptor, the policy, the pool, or the skill, and nothing on
+the host. Changes it would make to any of them go into the report as proposals.
 
 The report's sections, in order; within every section, items are ordered verify, take, hold, skip:
 
@@ -520,7 +657,14 @@ plainly when nothing serves, and what the survey ranks against instead. Lists th
 readiness check found missing (or "none") and the architect's answer, every probe skip, every fact
 that needed root (with the architect's read-out or "declined"), and every pause with its answer.
 Says whether the inventory matched the last report's, and so whether the survey researched in full
-or only what moved, citing that report (step 3).
+or only what moved, citing that report (step 3). Counts the research cache's entries cited, read
+fresh, and deleted, and names the deleted ones.
+
+## Blockers
+The register's entries (`docs/blockers.md`) that name this host or its class, each with its state,
+its upstream line as checked this run (with the image script's lines for a merged fix), its last
+checked date, and what moved since the last report; an entry now at "fix in an image build" names
+the upgrade item it became.
 
 ## Hardware configuration
 Step 4's adjustments, then each hardware watch item by name.
@@ -537,7 +681,10 @@ Step 6: the incumbent with each section beside its purpose's load target, the se
 each engine watch item by name, and the conclusion.
 
 ## Configuration review
-Step 7. TODO(slice 2): its rows.
+Step 7: per purpose, each served section's arguments, then each engine container's run flags and
+environment, then the engine choice at the load target, one row per flag (its value now, the
+practice and its source, what it means at the load target, its rank, and its verdict), the rows
+that differ from practice ordered by rank; then the flags that match practice, one line each.
 
 ## Models
 Step 8: per purpose, the incumbent and its candidates (the pool's rows among them, with the pool's
@@ -572,11 +719,12 @@ splits it into these five parts, so that runs are repeatable:
 1. **Hardware and system**: the OS image, kernel, firmware, BIOS, driver or Mesa, and memory
    ceiling (step 4), and the system's pending updates, firmware updates, and container images'
    newest tags (step 5), with the hardware and system watch items.
-2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items (step 6).
+2. **Engines**: the incumbent engine, the seed list, the scan, and the engine watch items (step 6),
+   and the configuration review's published practice for each flag and engine choice (step 7).
 3. **Agent models**: where the host serves the agent purpose, its candidates (the pool's agent rows
-   among them), their speed on the class, and their cards' BFCL figures against the policy's agent
-   quality bar, each with its gap (step 8).
-4. **Other models**: every other purpose's candidates (step 8).
+   and the discovered models among them), their speed on the class, and their cards' BFCL figures
+   against the policy's agent quality bar, each with its gap (step 8).
+4. **Other models**: every other purpose's candidates, the discovered models among them (step 8).
 5. **Origin**: the evidence chain for every model the model parts name (models.md, "Origin").
 
 **A second, narrower round.** The model parts find candidates as they go, so some reach the survey
@@ -590,11 +738,15 @@ other.
 
 **What each part gets.**
 
-- Its inputs: the probe's inventory, the host descriptor (with its load targets), the policy, and
-  the pool's rows for a model part.
+- Its inputs: the probe's inventory, the host descriptor (with its load targets), the policy, the
+  pool's rows for a model part, and the research cache's entries for its kind, each with whether
+  it is fresh ("Research cache"), so a part reads only the stale and the new. A part returns each
+  source it read as an entry for the cache; the survey writes the cache. The register's upstream
+  checks are the survey's own, not a part's.
 - The source tiers and the sources for its kind, from [sources.md](sources.md), and the blocklist
   ([blocklist.md](blocklist.md)).
-- The tools it may use: WebSearch, WebFetch, `gh search issues`, and `gh search prs`. The origin
+- The tools it may use: WebSearch, WebFetch, `gh search issues`, `gh search prs`, `gh issue view`,
+  and `gh pr view`. The origin
   part may also run the screening-list script. The origin part and the model parts (3 and 4), which
   check each file's artifact integrity, may also run the first-bytes script. Each script runs from
   the project root by exactly the path its readiness rule names, with each argument quoted:
@@ -609,6 +761,7 @@ in the form rules.md, "Citing", gives. The survey, not the part, gives verdicts.
 **No curl.** No subagent uses curl or jq through Bash: the readiness check prints no rule for them,
 so they would run outside the rules the architect granted. Data too large for WebFetch, or behind a
 header or a redirect WebFetch can't handle, goes through a narrow script bundled with the skill,
-which reads one source and is granted by its own rule, naming its path. There are two:
-`scripts/screen.sh` reads the screening list, and `scripts/magic.sh` reads a Hub file's first 4
-bytes past the xet CDN's 302. With the probe, they hold the skill's only curl.
+which reads one source and is granted by its own rule, naming its path. There are three:
+`scripts/screen.sh` reads the screening list, `scripts/magic.sh` reads a Hub file's first 4 bytes
+past the xet CDN's 302, and `scripts/fix-in-image.sh` reads ghcr.io's manifests with a pull token
+and GitHub's compare ("Blocker register"). With the probe, they hold the skill's only curl.

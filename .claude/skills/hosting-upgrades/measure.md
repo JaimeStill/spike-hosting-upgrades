@@ -45,8 +45,17 @@ says. At its end the host serves the set it served at the start, or the set a ve
        7.2.14, which hadn't reached it.
    Not moved: the other ten items.
    ```
-5. **Blockers.** TODO(slice 2): re-check the blocker register's entries that name this host with
-   gh before the first load (survey.md, "Blocker register").
+5. **Blockers, before the first load.** Re-check every entry of the blocker register
+   (`docs/blockers.md`) that names this host, as survey.md, "Blocker register", items 1 to 3, say:
+   each issue and pull request with `gh issue view` or `gh pr view`, and a merged fix with
+   `scripts/fix-in-image.sh` for the host's class. Move each entry's state, upstream line, and
+   last-checked date in place, and list the entries in the record with their states. An entry
+   whose state moved since the last survey is a pause when it bears on what this measure runs (a
+   fix now in the build an engine move would take, a blocker the move would cross); otherwise it
+   is noted and the measure goes on. When a pass shows a blocked thing working on a build with the
+   fix, the entry becomes **cleared on the host** for this host, citing this record, and is
+   deleted once cleared on every host it names. A pass that measures a new blocker's cost adds its
+   entry, linked to this record.
 
 ## 2. What this measure runs
 
@@ -382,8 +391,9 @@ leaves the branch's pull request open; the brief says which.
 
 ## 10. Write the record
 
-The record is measure's only write: a dated record at `docs/measures/<host>/<YYYY-MM-DD>.md`
-(rules.md, "Dated records"). It is written once, when the measure ends (after the end state is read
+The record is measure's own write: a dated record at `docs/measures/<host>/<YYYY-MM-DD>.md`
+(rules.md, "Dated records"). Beside it, measure updates only the blocker register's entries for
+this host in place (step 1, item 5). It is written once, when the measure ends (after the end state is read
 back, or when the architect stops it, saying where it stopped), and never edited. A measure stopped
 before any decision writes no record unless the architect asks for one. It writes nothing else: not
 the survey, the pool, the descriptor, the policy, the skill, or its conform profiles, and nothing on

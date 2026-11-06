@@ -37,7 +37,13 @@ list.
 
 ## Watch items
 
-Named things every run checks, beside its own scan.
+Named things every run checks, beside its own scan. What blocks this host from an upgrade is in
+the blocker register, [blockers.md](../blockers.md), which every survey checks upstream: Gemma 4
+26B-A4B's Vulkan abort with several slots (#29221, its fix #25584), Vulkan's batched tensor copy
+(#31418), both of which re-open Gemma's screen here when they reach a `server-vulkan` image, the
+prompt-cache bugs with a unified KV cache (#30961, #27148), and Google's QAT GGUFs on b12100 and
+later (#31620, #31639), which this host meets when its build passes b12100. Those were watch items here until
+2026-11-06.
 
 - vLLM support for Vulkan or ROCm on Strix Halo (gfx1151)
 - llama.cpp concurrent-session (parallel slots, continuous batching) throughput
@@ -52,14 +58,6 @@ Named things every run checks, beside its own scan.
 - The Omarchy stable mirror's snapshot date (what the host can update to)
 - A revision of `google/gemma-4-E4B-it-qat-q4_0-gguf` that fixes its unprompted reasoning, which
   rolled E4B QAT back as the audio model (`docs/findings/verify-framework.md`, "Verdict")
-- llama.cpp Vulkan "tensor not allocated" abort on Gemma 4 26B-A4B's second request with several
-  slots ([#29221](https://github.com/ggml-org/llama.cpp/issues/29221), fix
-  [#25584](https://github.com/ggml-org/llama.cpp/pull/25584)), which dropped Gemma's agent
-  section at Gate 3 (`docs/screens/framework/2026-11-04.md`); with #31418, its merge re-opens
-  Gemma's screen here
-- llama.cpp Vulkan support for the batched tensor copy API
-  ([#31418](https://github.com/ggml-org/llama.cpp/pull/31418)), which cuts the multi-slot
-  prompt-save time; with #25584, its merge re-opens Gemma's screen here
 
 ## Measurements
 

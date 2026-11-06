@@ -27,9 +27,10 @@ The first argument, `$0`, names the mode, and the second, `$1`, the host by its 
   rules the workspace needs, each marked present or missing, and stops. Read
   [setup.md](setup.md), "Readiness check".
 - **`survey <host>`** is the public record: the probe, the system's debt, the hardware
-  configuration, the engine, the models (the pool a descriptor names among them), each item cited
+  configuration, the engine, a flag-by-flag configuration review, the models (discovery and the
+  pool a descriptor names among them), and the blocker register's upstream states, each item cited
   and given verify, take, hold, or skip, judged against the host's load targets. It applies
-  nothing. Read [setup.md](setup.md), then [survey.md](survey.md).
+  nothing; it reads sources through the project's research cache. Read [setup.md](setup.md), then [survey.md](survey.md).
 - **`measure <host>`** is local cells: it takes the last survey's host items to a decision, moves
   the engine to a newer build under the engine rule, and screens one candidate model beside the
   host's set under the keep rule. It changes the host only by commands it prints and records as
@@ -87,6 +88,7 @@ and assumes no fixed set of purposes.
 | [scripts/probe.sh](scripts/probe.sh) | the read-only, no-root host probe | setup.md, step 3 |
 | [scripts/screen.sh](scripts/screen.sh) | reads the screening list for the origin research | models.md, "Origin" |
 | [scripts/magic.sh](scripts/magic.sh) | reads a Hub file's first 4 bytes | models.md, "Artifact integrity" |
+| [scripts/fix-in-image.sh](scripts/fix-in-image.sh) | reads whether a merged fix is in a class's newest imaged build | survey.md, "Blocker register" |
 | [templates/host.md](templates/host.md), [templates/policy.md](templates/policy.md) | the shapes of the two inputs | when a project writes its own |
 
 ## A host's cycle
@@ -119,10 +121,12 @@ asks for it and records the answer as the architect's; it never invents one.
 ## What a run writes
 
 - `setup` writes nothing.
-- `survey` writes only its dated report: not the descriptor, the policy, the pool, or the skill,
-  and nothing on the host. Changes it would make to any of them go into the report as proposals.
-- `measure` writes only its dated measure record. The commands that change the host are printed,
-  run as rules.md, "Who runs what", assigns them, and recorded in the record as run.
+- `survey` writes its dated report, and updates in place the research cache (`docs/research.md`)
+  and the blocker register (`docs/blockers.md`); not the descriptor, the policy, the pool, or the
+  skill, and nothing on the host. Changes it would make to any of them are proposals.
+- `measure` writes its dated measure record, and updates its host's register entries. The commands
+  that change the host are printed, run as rules.md, "Who runs what", assigns them, and recorded in
+  the record as run.
 
 The verify findings (`docs/findings/verify-<host>.md`) and screen records
 (`docs/screens/<host>/<YYYY-MM-DD>.md`) the earlier modes wrote stay as history: no run edits them,
