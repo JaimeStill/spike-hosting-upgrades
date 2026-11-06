@@ -185,8 +185,8 @@ whether a merged fix is in the class's newest imaged build (survey.md, "Blocker 
 Both second surveys checked all seven entries, framework's at about 18:18Z and gb10-1's at
 18:49Z, and **no entry changed state** ([framework](reports/framework/2026-11-06.md) and
 [gb10-1](reports/gb10-1/2026-11-06-2.md), "Blockers"). Six entries are open. #30137 is at "fix in
-an image build", where it moved on gb10-1's first survey that day. No entry has reached "cleared on
-the host", and none has been deleted.
+an image build", where it moved that day when gb10-1's first survey's Pause 2 was settled. No
+entry has reached "cleared on the host", and none has been deleted.
 
 ## The research cache
 
@@ -207,8 +207,8 @@ The second surveys' counts:
 | [gb10-1, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) | 23 source and 29 model entries | 14 | 8 | 6 | 0 |
 
 gb10-1's survey ran about half an hour after framework's, so it cited what framework's had just
-read or refreshed. It read only 14 sources fresh, against framework's 54, and 18 new entries on
-gb10-1's first survey that morning ([gb10-1, 2026-11-06](reports/gb10-1/2026-11-06.md),
+read or refreshed. It read 14 entries fresh, against framework's 54 and the 18 new entries
+gb10-1's own first survey wrote that morning ([gb10-1, 2026-11-06](reports/gb10-1/2026-11-06.md),
 "The research"). No entry was deleted, because every entry's subject still concerns a host: gb10-1
 runs b12098, and b12124 is one image behind the newest
 ([gb10-1](reports/gb10-1/2026-11-06-2.md), "The research").

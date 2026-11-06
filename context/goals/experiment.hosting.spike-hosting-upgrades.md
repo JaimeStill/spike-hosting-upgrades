@@ -793,14 +793,13 @@ Release: none.
   configuration, its model host, or its models) from what others publish rather than benchmarks
   of our own?
 
-  **Answer:** Survey each host weekly, and on a host update, a register entry's fix reaching an
-  image, a changed load target, or before any change to the host. Do it with a skill that ranks
-  every item from cited public sources against the host's load targets, through a research cache
-  and a blocker register. Then measure on the host only what no source settles, one measure a
-  session, and adopt through a chain of dated records.
+  **Answer:** A skill surveys each host weekly and on events, ranking every upgrade from cited
+  public sources against the host's load targets; the host measures only what no source settles,
+  and an adoption leaves a chain of dated records.
 
   The answer is drawn from two hosts, framework (Strix Halo, llama.cpp Vulkan b11960) and gb10-1
-  (GB10, llama.cpp CUDA b12098). No figure is compared across sessions or builds.
+  (GB10, llama.cpp CUDA b12098). No figure is compared across sessions, and two builds are
+  compared only within one session.
 
   1. The skill: one project-local Claude Code skill, `hosting-upgrades`, with three modes. `setup`
      prints the permission rules it needs and never writes settings. `survey <host>` probes the
@@ -850,8 +849,10 @@ Release: none.
      predicted a gain's direction more often than its size. Proven by measured runs: the verify
      findings' "The claim beside the anchors" and "Cells".
   6. The convention and its cadence, each statement citing its record. It states when survey
-     runs, what triggers a measure (a verify item or a "Needs measurement" entry, one measure a
-     session, its cells agreed in the plan round), and the record an adoption leaves: the report,
+     runs (weekly per host, and on a host update, a register entry's fix reaching an image, a
+     changed purpose or load target, and before any change to the host), what triggers a
+     measure (a verify item or a "Needs measurement" entry, one measure a session, its cells
+     agreed in the plan round), and the record an adoption leaves: the report,
      the measure record quoting its command log, then the descriptor, the pin, and the register
      entry's state. It also covers how proposals are settled between surveys, the blocker
      register's four states, the research cache's 14-day rule, per-host load targets, which

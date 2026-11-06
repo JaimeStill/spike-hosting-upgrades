@@ -34,11 +34,9 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
 configuration, its model host, or its models) from what others publish rather than benchmarks of
 our own?
 
-**Answer:** Survey each host weekly, and on a host update, a register entry's fix reaching an
-image, a changed load target, or before any change to the host. Do it with a skill that ranks
-every item from cited public sources against the host's load targets, through a research cache
-and a blocker register. Then measure on the host only what no source settles, one measure a
-session, and adopt through a chain of dated records.
+**Answer:** A skill surveys each host weekly and on events, ranking every upgrade from cited
+public sources against the host's load targets; the host measures only what no source settles,
+and an adoption leaves a chain of dated records.
 
 1. **The skill.** One project-local Claude Code skill,
    [`.claude/skills/hosting-upgrades/`](.claude/skills/hosting-upgrades/SKILL.md), has three
@@ -95,7 +93,8 @@ session, and adopt through a chain of dated records.
    text missed a behavior that changes the length of a reply.
 6. **The convention and its cadence.** [`docs/convention.md`](docs/convention.md) states it, each
    statement citing its record:
-   - when survey runs: weekly per host, and on four triggers;
+   - when survey runs: weekly per host, and on a host update, a register entry's fix reaching an
+     image, a changed purpose or load target, and before any change to the host;
    - what triggers a measure: a verify item or a "Needs measurement" entry, one a session, with
      its cells agreed in the plan round;
    - the record an adoption leaves: the report, the measure record quoting its command log, then

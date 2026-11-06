@@ -394,10 +394,11 @@ of the purposes the host serves (rules.md, "Load targets").
    published images list for the probed gfx target. DGPP is a GB10-specific C++/CUDA engine with
    an OpenAI-compatible server; it was skip on 2026-11-06 because it is built from source, an
    install method the host doesn't use (below), and is weighed again each run
-   ([gb10-1's 2026-11-06 report](../../../docs/reports/gb10-1/2026-11-06.md), "The scan"). ggml-hrx is AMD's HRX backend for llama.cpp, built for gfx1100 and gfx1151;
-   its published figures measure it against HIP, but it is judged against the backend the host
-   serves on, which on Strix Halo is Vulkan, so a gain over HIP is not a gain here. Judge a
-   packager (Ollama, LM Studio) by the engine and build it embeds, not as an engine of its own. For
+   ([gb10-1's 2026-11-06 report](../../../docs/reports/gb10-1/2026-11-06.md), "The scan").
+   ggml-hrx is AMD's HRX backend for llama.cpp, built for gfx1100 and gfx1151; its published
+   figures measure it against HIP, but it is judged against the backend the host serves on, which
+   on Strix Halo is Vulkan, so a gain over HIP is not a gain here. Judge a packager (Ollama, LM
+   Studio) by the engine and build it embeds, not as an engine of its own. For
    each engine kept, say whether its newest release supports the backend, how the host would
    install it, and what any attributed benchmark on the same hardware class measured against the
    incumbent, at the concurrency the load targets name where a source gives it.

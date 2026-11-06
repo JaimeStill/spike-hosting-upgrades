@@ -51,7 +51,8 @@ open, last checked on the date of the record it came from.
 - **Reopens it:** a later build that narrows tag matching again, or a new Google QAT file that
   puts `_` before its tag.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 31620`, `31639`:
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 31620`, `31639`:
   merged as above; a tracker search found no change after #31639 that restores `_`, read 18:52Z).
   The newest gb10 image, `server-cuda13-b12169` (`fix-in-image.sh`, 18:49Z), is past b12100, as is
   `-b12124`, the newest released build with an image; b12177, the newest release, has no image.
@@ -77,7 +78,8 @@ open, last checked on the date of the record it came from.
   gpt-oss-120b serves agent.
 - **Reopens it:** the abort recurring on a later build at several slots.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 29221`: open,
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 29221`: open,
   updated 2026-10-28; `gh pr view 25584`: open, updated 2026-10-31).
 
 ## Vulkan's batched tensor copy API
@@ -94,7 +96,8 @@ open, last checked on the date of the record it came from.
 - **Workaround:** none needed for set A; the re-screen waits.
 - **Reopens it:** the records state none.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 31418`: open,
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 31418`: open,
   updated 2026-10-30). Its base, "ggml : add batched tensor copy API (#30881)", is in b12098; the
   Vulkan side is not.
 
@@ -122,7 +125,8 @@ open, last checked on the date of the record it came from.
   on framework since its clone was pulled to 933ec0f on 2026-11-06 (the architect's decision).
 - **Reopens it:** turning the prompt cache back on for a unified-KV section.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 30961`: open, updated
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 30961`: open, updated
   2026-11-03T10:51Z; `27148`: open, updated 2026-11-06T16:16Z, no comment since; `gh pr view 27624`:
   open, updated 2026-10-10). The probe reads `--cache-ram 0 --no-cache-idle-slots` on set A's
   section on gb10-1, the clone at 933ec0f.
@@ -152,7 +156,8 @@ open, last checked on the date of the record it came from.
 - **Workaround:** `ctx-checkpoints = 2` on a no-cache section with large checkpoints.
 - **Reopens it:** a no-cache section losing its checkpoint cap on a build without the fix.
 - **State:** fix in an image build (b12169, gb10 and strix-halo).
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 30137`: merged;
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh pr view 30137`: merged;
   `fix-in-image.sh` for gb10: "newest imaged build: b12169 (ghcr.io/ggml-org/llama.cpp:server-cuda13-b12169)
   … compare e152332a1598...b12169: ahead (ahead by 28, behind by 0) … in image: yes"; for
   strix-halo the same against `server-vulkan-b12169`, both read 18:49Z). For gb10-1 it is an
@@ -177,7 +182,8 @@ open, last checked on the date of the record it came from.
 - **Workaround:** gpt-oss-120b stays the agent model; Gemma serves vision.
 - **Reopens it:** the records state none.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (nothing upstream to check).
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (nothing upstream to check).
 
 ## Idle-slot saves stall decode on CUDA
 
@@ -205,6 +211,7 @@ open, last checked on the date of the record it came from.
   took them.
 - **Reopens it:** turning the prompt cache back on for a multi-slot section on CUDA.
 - **State:** open.
-- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey, 2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 30252`: closed
+- **Last checked:** 2026-11-06T18:49Z, [gb10-1 survey,
+  2026-11-06-2](reports/gb10-1/2026-11-06-2.md) (`gh issue view 30252`: closed
   2026-11-04T02:18:07Z; `gh pr view 31391`: merged 2026-11-03T10:01:50Z; `fix-in-image.sh` for gb10:
   b12169 ahead by 89, in image, as b12098 already is).
