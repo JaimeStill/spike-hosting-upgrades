@@ -389,9 +389,12 @@ of the purposes the host serves (rules.md, "Load targets").
    section under the policy's minimum, is hold, with the figure, the target, and the fix stated;
    step 10 checks the fix's memory, and step 5 lists it by reference.
 2. **The seed list, filtered to the backend.** Weigh the incumbent against llama.cpp, vLLM,
-   SGLang, TensorRT-LLM, and ggml-hrx, keeping only what the probed backend supports: TensorRT-LLM
-   only on NVIDIA, and on AMD only what the engine's own docs or published images list for the
-   probed gfx target. ggml-hrx is AMD's HRX backend for llama.cpp, built for gfx1100 and gfx1151;
+   SGLang, TensorRT-LLM, ggml-hrx, and DGPP, keeping only what the probed backend supports:
+   TensorRT-LLM only on NVIDIA, DGPP only on GB10, and on AMD only what the engine's own docs or
+   published images list for the probed gfx target. DGPP is a GB10-specific C++/CUDA engine with
+   an OpenAI-compatible server; it was skip on 2026-11-06 because it is built from source, an
+   install method the host doesn't use (below), and is weighed again each run
+   ([gb10-1's 2026-11-06 report](../../../docs/reports/gb10-1/2026-11-06.md), "The scan"). ggml-hrx is AMD's HRX backend for llama.cpp, built for gfx1100 and gfx1151;
    its published figures measure it against HIP, but it is judged against the backend the host
    serves on, which on Strix Halo is Vulkan, so a gain over HIP is not a gain here. Judge a
    packager (Ollama, LM Studio) by the engine and build it embeds, not as an engine of its own. For
