@@ -1,9 +1,10 @@
 # Models: gates, sort, and memory
 
-How steps 7 and 8 of [SKILL.md](SKILL.md), and its screen mode, judge a model. Every value a
+How the survey's models and model set steps ([survey.md](survey.md), steps 8 and 10), and
+measure's gate re-checks ([measure.md](measure.md), step 4), judge a model. Every value a
 gate compares against comes from the project's `docs/policy.md` or from the probe, never from
 this page; this page says how to read the sources that settle each gate. A gate that needs a
-value the policy doesn't state is a pause (SKILL.md, "When to pause"), and the run never fills
+value the policy doesn't state is a pause ([rules.md](rules.md), "Pause"), and the run never fills
 the value in itself.
 
 ## Gate 1: the policy
@@ -17,6 +18,16 @@ excludes it and those at which it is only recorded, and the bar a model must cle
 registry records a model's origin, so the run builds the evidence chain itself, most
 authoritative source first, and cites each link inline. "Origin" here is who was involved in a
 model; "build" (Quantization floor) is how the file the host would load was made.
+
+A pass the policy grants a publisher by name settles the origin gate in the policy's own words
+and scope, quoted in the row: as of 2026-11-06, every model NVIDIA publishes on its own weights,
+Nemotron or not, and a conversion whose weights item 4 shows to be NVIDIA's. The pass follows the
+weights, not the uploader's name: an NVIDIA quantization or republication of another publisher's
+weights (an NVFP4 of a Qwen model, say) is judged by its base at every level, so one on
+adversary-origin weights is excluded at level 1. The pass covers the levels a teacher or
+data generator would otherwise reach, not the uploader's compliance (item 1 still screens the
+uploader), not a model another publisher derived from those weights (judged at every level), and
+not the later gates. A survey's discovery and pool rows take it like any other candidate.
 
 1. **Publisher identity.** Establish who published the model and who uploaded the file the host
    would load, which can differ for a conversion or quantization:
@@ -121,7 +132,7 @@ output path, and conventions), and records adversary-generated data in a trainin
   component in the inference path excludes the model even when a flag would leave it out. A
   component outside the output path (a speculative-decoding drafter) is recorded, and the row
   says the preset must not load an excluded one. A preset that loads one is a host configuration
-  fault (SKILL.md, step 5b), not an exclusion: the model stays eligible.
+  fault (survey.md, step 5), not an exclusion: the model stays eligible.
 - **Dataset sources**: training data excludes only through a teacher. A dataset an
   adversary-origin model generated, one among others in the mix, goes in the row under "dataset
   sources", cited, and excludes nothing.
@@ -203,7 +214,7 @@ raw bytes alike.
    read.
 3. **Scanner messages under "safe".** Protect AI's "PAIT-GGUF-100" under an overall "safe"
    status is recorded in the row and passes, by that name only. Any other scanner message under
-   "safe" is a rule's edge (SKILL.md, "When to pause"): the file fails until the architect
+   "safe" is a rule's edge (rules.md, "Pause"): the file fails until the architect
    answers, and the row quotes the message.
 4. **The chat template**, for a GGUF: compare its embedded template, the Hub record's
    `gguf.chat_template` (`https://huggingface.co/api/models/<id>?expand[]=gguf`), with the
@@ -219,7 +230,7 @@ pickle with imports (a `pickleImportScan` that lists any), or a model whose card
 `trust_remote_code` or other shipped code fails unless the code is on the policy's "Accepted code"
 list: the same repository, at the exact revision the host would load, and the file the architect
 reviewed. A model whose code isn't listed is skip, failed at artifact integrity, and the run
-proposes the acceptance under "Proposed changes", "Policy and the model gates" (SKILL.md, step 10),
+proposes the acceptance under "Proposed changes", "Policy and the model gates" (survey.md, step 12),
 naming the repository, the revision, and the file to review. The run never adds to the list.
 
 ### Quantization floor
@@ -277,7 +288,7 @@ it beside the weights' format. It is not a gate of its own.
 ## Gate 2: fit
 
 A model fits when its memory estimate leaves the policy's headroom of the probed ceiling free
-with that model alone. Step 8 checks the set together.
+with that model alone. The survey's model set step (survey.md, step 10) checks the set together.
 
 ### Memory estimate
 
@@ -288,19 +299,19 @@ Always marked **estimate**, naming this method:
   for one not stored.
   Include any projector (`mmproj`) or drafter the purpose needs.
 - **KV cache**: 2 x layers x KV heads x head dimension x bytes per element x tokens, from
-  `config.json`, for the configured context and slots. Count only the window for sliding-window
-  layers, and nothing for recurrent (Mamba) layers beyond their fixed state. When no configuration
-  is known, use the purpose's working context: the incumbent's, or the engine's default.
+  `config.json`, for the purpose's load target (its slots and context, rules.md, "Load
+  targets"). Count only the window for sliding-window layers, and nothing for recurrent (Mamba)
+  layers beyond their fixed state.
 - **Engine reservation**: on vLLM, `--gpu-memory-utilization` x the ceiling, which replaces the
   sum above, because vLLM claims that share whatever the model needs. On llama.cpp, the weights
   and KV cache plus a compute buffer, about 1 to 2 GiB per loaded model (estimate).
-- **A model serving two purposes** is estimated once, at the more demanding purpose's
-  configuration: the larger context and the more slots of the two.
+- **A model serving two purposes** is estimated once, at the more demanding purpose's load
+  target: the larger context and the more slots of the two.
 
 ## Gate 3: the engine
 
-The host's engine, which is the incumbent or the conclusion of step 6, must serve the
-architecture on the probed backend:
+The host's engine, which is the incumbent or the conclusion of the survey's engines step
+(survey.md, step 6), must serve the architecture on the probed backend:
 
 - **llama.cpp**: the architecture is in the release notes' "New models" at or before the build,
   or in `src/llama-arch.cpp` at the build. A GGUF of it exists, and a multimodal purpose has its
@@ -329,7 +340,7 @@ holds:
   Because the check has no published equivalent, no candidate leaves this gate as verify until
   the local check has run.
 
-When the policy states no agent quality bar, the gate is a pause (SKILL.md, "When to pause").
+When the policy states no agent quality bar, the gate is a pause (rules.md, "Pause").
 
 ## Gate 5: the speed floor
 
@@ -385,12 +396,12 @@ A model that covers several purposes is sorted in each.
 
 ## Verdicts for a model
 
-The verdict rules are the same as SKILL.md's "Verdicts". For a model:
+The verdict rules are the same as survey.md's "Verdicts". For a model:
 
 - **verify**: an attributed benchmark on the same host class and backend measured it ahead of the
   incumbent, or at the incumbent's speed with better card evals for the purpose.
 - **take**: a new revision of the incumbent's own file (the same repository, the same build)
-  that meets SKILL.md's "Verdicts" for take, its known rollback included; applied with the next
+  that meets survey.md's "Verdicts" for take, its known rollback included; applied with the next
   host update.
 - **hold**: its speed on the class is unpublished, comes from another class, is a lead, or is a
   stand-in estimate from another quantization (Sort); or it is an agent candidate that needs

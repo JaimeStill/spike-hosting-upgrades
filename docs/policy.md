@@ -104,13 +104,37 @@ a sibling's blog saying its teachers branch from its own checkpoint settles only
 
 **Compliance, a gate of its own.** Apart from the threat above, the project deals with no
 adversarial entity. A publisher or an uploader that is an adversarial entity, by the lists above,
-excludes the model whatever its levels show.
+excludes the model whatever its levels show. An uploader's membership in a Hugging Face
+organization, an adversary-linked one included, doesn't bear on the gate: the gate is the lists,
+and the conversion check (weights matching the publisher's) guards the weights (the architect's
+decision, 2026-11-06).
 
 **The pass bar.** A model passes only when its publisher is an identified entity that is not an
 adversarial entity, the publisher's own documents establish its lineage and its teachers, and no
 check finds involvement at an excluding level. A pass means "no disclosed or detected involvement
 at an excluding level", and no more: no public source certifies a model's training data, and
 undisclosed synthetic data is common.
+
+**NVIDIA's models pass on origin.** In the architect's words, of 2026-11-06:
+
+> Nemotron models are acceptable by origin for any platform that can run them.
+
+> NVIDIA models in general should be seen as credible
+
+A model NVIDIA publishes, whether in its Nemotron family or not, passes the origin gate. It passes
+even when its own documents name an adversary-origin model as a teacher, which until now excluded
+Nemotron at level 2 (framework's report of 2026-10-30, "Excluded on origin"). A quantization or
+conversion of an NVIDIA model takes the same pass when the further research below shows its
+weights are NVIDIA's. The pass doesn't cover the compliance gate: an uploader that is an
+adversarial entity still excludes the conversion. It also doesn't cover a model another publisher
+derived from NVIDIA's weights, which is judged at every level. Every other gate still applies
+(quantization, fit, engine, agent bar, and speed), and the engine and fit gates decide which
+platforms can run the model.
+
+The pass follows the weights, not the uploader's name: an NVIDIA quantization or republication of
+another publisher's weights, such as `nvidia/Qwen3.6-35B-A3B-NVFP4` or
+`nvidia/Cosmos-Reason2-8B` on Qwen3-VL-8B, is judged by its base at every level, so one on
+adversary-origin weights is excluded at level 1 (the architect's decision, 2026-11-06).
 
 **Further research.** The architect decided on 2026-10-30 that an unestablished origin is not an
 immediate hold-out. When the evidence chain leaves a model short of the pass bar with no
@@ -212,7 +236,9 @@ meets the floor by one of three paths, and the file's build decides which, not i
    training (QAT), such as Google's Gemma 4 QAT Q4_0. The report quotes the publisher's quality
    statement for the format. A quantization-aware distillation (QAD) build, such as Liquid's QAD
    Q4_0, is not trained-in: it takes path 3, so a QAD Q4_0 fails the floor (the architect's
-   decision, 2026-10-30).
+   decision, 2026-10-30). A publisher calling a QAD build "native" doesn't change that: Nemotron
+   3.5 Bolt 74B's QAD IQ2-XXS takes path 3 and fails the floor (the architect's decision,
+   2026-11-06).
 2. **Post-training checkpoints from the publisher** (NVFP4, FP8, a GGUF the publisher made) pass
    only when every eval the checkpoint's card reports is within about 1% of its BF16 score,
    relative (|quantized - BF16| / BF16). A checkpoint with any eval outside it, or with no evals
@@ -245,14 +271,16 @@ and bar"): set A's gpt-oss-120b, measured twice on llama.cpp b11715, less its tw
 100 and multi-turn 20, from Gorilla at `dac44e7`, drawn with seed 20261016, at the card's
 sampling, on the served build.
 
-**What counts against a floor** (the architect's decision, 2026-10-30). A card's published BFCL
-figure for the matching category counts: BFCL v3 or v4, single-turn against the single-turn
-floor and multi-turn against the multi-turn floor, at the card's own precision. A card's BFCL
-overall score, or another category, does not count. A card figure is not a measurement on the
-floors' basis, so each row that uses one states the gap: the floor is gpt-oss-120b's score on
-spike-model-hosting's 100- and 20-item samples (Gorilla `dac44e7`, seed 20261016), while the
-card may use another BFCL version or the full set, and measures the model at its native
-precision rather than the build the host would serve.
+**What counts against a floor** (the architect's decision, 2026-10-30). The publisher's own card's
+published BFCL figure for the matching category counts; a third party's card (a quantizer's, such
+as Red Hat's NVFP4 card for Gemma 4) is a lead only, which can rank a candidate for measurement
+but never passes the bar alone (the architect's decision, 2026-11-06). It counts: BFCL v3 or v4,
+single-turn against the single-turn floor and multi-turn against the multi-turn floor, at the
+card's own precision. A card's BFCL overall score, or another category, does not count. A card
+figure is not a measurement on the floors' basis, so each row that uses one states the gap:
+the floor is gpt-oss-120b's score on spike-model-hosting's 100- and 20-item samples (Gorilla
+`dac44e7`, seed 20261016), while the card may use another BFCL version or the full set, and
+measures the model at its native precision rather than the build the host would serve.
 
 **The tool-reliability check.** The model, on the host's engine, fits the consumer harness:
 `conform` pass^5 through Pi, every capability that applies passing 5 of 5 trials, with 0 invalid

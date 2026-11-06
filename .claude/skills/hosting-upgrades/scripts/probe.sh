@@ -6,7 +6,9 @@
 #
 # It prints plain labeled sections (== name ==): the OS, the kernel, firmware and BIOS, the GPU
 # and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
-# engine containers (with their presets' serving keys and the drafters each section loads) and
+# engine containers (with their presets' serving keys, the drafters each section loads, and the
+# run flags and engine environment docker run gave them, and the commit of the clone each preset
+# is mounted from) and
 # systemd units, each running engine's build and served models, the models in the host's local
 # stores (with each GGUF file's first 4 bytes), and what the host has fallen behind on: the
 # package channel and mirror, pending package and firmware updates, failed units, and docker's
@@ -63,7 +65,8 @@ probe() {
           "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
           "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
           "--attention-backend --enforce-eager " \
-          "--cache-ram -cram --ctx-checkpoints --swa-checkpoints --checkpoint-min-step " \
+          "--cache-ram -cram --cache-idle-slots --no-cache-idle-slots --ctx-checkpoints " \
+          "--swa-checkpoints --checkpoint-min-step " \
           "--cache-prompt --no-cache-prompt --context-shift --no-context-shift --keep " \
           "--models-max --sleep-idle-seconds --mmproj-offload --no-mmproj-offload " \
           "--draft-max --draft-min --draft-p-min --n-predict -n --jinja --no-jinja " \
@@ -95,6 +98,96 @@ probe() {
         }
         print (out == "" ? " none of the serving flags" : out)
       }'
+  }
+
+  # Prints a container's run flags, the ones docker run took that shape serving beside the
+  # engine's own arguments, in docker run's terms, on a `run flags` line: GPUs (--gpus), devices
+  # (--device, by the host path), IPC and PID mode, shared memory, ulimits, memory and CPU limits,
+  # the network mode, the runtime, privileged, added capabilities and groups. A value at docker's
+  # default doesn't print, so the line names only what the run set, or "docker's defaults". Then a
+  # `run env` line: each environment variable the run set (in the container's env but not its
+  # image's), for the prefixes that tune an engine or its GPU stack (LLAMA_ARG_, VLLM_, GGML_,
+  # CUDA_, NVIDIA_, HIP_, HSA_, ROCR_, OMP_), as NAME=value only when its name names no secret,
+  # address, model, or path and its value is short and plain; otherwise by name alone, "(value
+  # not shown)". Any other variable the run set prints by name alone. So the review reads an engine
+  # flag set through the environment (LLAMA_ARG_CTX_SIZE) and never a token.
+  #
+  # The template only prints fields and compares none: a docker that decodes inspect's JSON into
+  # untyped values (29.6.2 reads .Count as a json.Number) fails any comparison against a literal,
+  # so awk reads the count (-1 is all). A read that fails still prints both lines, as "not
+  # readable" with docker's first error line, so a missing line never passes for a clean one.
+  run_flags() {
+    local hc err
+    if ! hc=$(docker inspect "$1" --format '{{with .HostConfig}}{{range .DeviceRequests}}gpus {{.Count}}{{range .DeviceIDs}},{{.}}{{end}}
+{{end}}{{range .Devices}}device {{.PathOnHost}}
+{{end}}ipc {{.IpcMode}}
+pid {{.PidMode}}
+shm-size {{.ShmSize}}
+{{range .Ulimits}}ulimit {{.Name}}={{.Soft}}:{{.Hard}}
+{{end}}memory {{.Memory}}
+memory-swap {{.MemorySwap}}
+cpus {{.NanoCpus}}
+cpuset-cpus {{.CpusetCpus}}
+network {{.NetworkMode}}
+runtime {{.Runtime}}
+privileged {{.Privileged}}
+{{range .CapAdd}}cap-add {{.}}
+{{end}}{{range .GroupAdd}}group-add {{.}}
+{{end}}{{end}}' 2>&1); then
+      err=$(grep -m 1 . <<<"$hc")
+      printf '  run flags not readable: %s\n' "${err:-docker inspect failed}"
+      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+      return
+    fi
+    printf '  run flags%s\n' "$(awk '
+      $1 == "gpus" {
+        sub(/^gpus /, ""); sub(/,/, " device=")
+        if ($0 ~ /^-1( |$)/) sub(/^-1/, "all")
+        out = out " --gpus " $0; next }
+      $1 == "device" { out = out " --device " $2; next }
+      $1 == "ipc" && $2 != "" && $2 != "private" && $2 != "shareable" { out = out " --ipc " $2 }
+      $1 == "pid" && $2 != "" { out = out " --pid " $2 }
+      $1 == "shm-size" && $2 != "" && $2 != 0 && $2 != 67108864 {
+        out = out sprintf(" --shm-size %.0fm", $2 / 1048576) }
+      $1 == "ulimit" { out = out " --ulimit " $2 }
+      $1 == "memory" && $2 != 0 { out = out sprintf(" --memory %.0fm", $2 / 1048576) }
+      $1 == "memory-swap" && $2 != 0 { out = out " --memory-swap " $2 }
+      $1 == "cpus" && $2 != 0 { out = out sprintf(" --cpus %g", $2 / 1e9) }
+      $1 == "cpuset-cpus" && $2 != "" { out = out " --cpuset-cpus " $2 }
+      $1 == "network" && $2 != "" && $2 != "default" && $2 != "bridge" { out = out " --network " $2 }
+      $1 == "runtime" && $2 != "" && $2 != "runc" { out = out " --runtime " $2 }
+      $1 == "privileged" && $2 == "true" { out = out " --privileged" }
+      $1 == "cap-add" { out = out " --cap-add " $2 }
+      $1 == "group-add" { out = out " --group-add " $2 }
+      END { print (out == "" ? " docker'\''s defaults" : out) }' <<<"$hc")"
+    local image_env run_env line name value shown=()
+    image_env=$(docker image inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
+      "$(docker inspect --format '{{.Image}}' "$1")" 2>/dev/null)
+    if ! run_env=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1" 2>&1); then
+      err=$(grep -m 1 . <<<"$run_env")
+      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+      return
+    fi
+    while IFS= read -r line; do
+      [[ -n $line ]] || continue
+      grep -qxF -- "$line" <<<"$image_env" && continue
+      name=${line%%=*} value=${line#*=}
+      if [[ $name =~ ^(LLAMA_ARG_|VLLM_|GGML_|CUDA_|NVIDIA_|HIP_|HSA_|ROCR_|OMP_) &&
+        ! $name =~ (KEY|TOKEN|SECRET|PASS|AUTH|CRED|HOST|ADDR|URL|MODEL|REPO|PATH|DIR|FILE|ALIAS|HOME) &&
+        $value =~ ^[A-Za-z0-9._,:=+-]{0,64}$ ]]; then
+        shown+=("$name=$value")
+      else
+        shown+=("$name (value not shown)")
+      fi
+    done <<<"$run_env"
+    if ((${#shown[@]})); then
+      # Joined with "; ", since a value may hold a comma (CUDA_VISIBLE_DEVICES=0,1).
+      local joined
+      printf -v joined '%s; ' "${shown[@]}"
+      printf '  run env %s\n' "${joined%; }"
+    else
+      echo "  run env none beyond the image's"
+    fi
   }
 
   # Reads the same launch arguments as serving_flags and prints on one line the drafter models
@@ -261,9 +354,41 @@ probe() {
       else
         skip "preset $dest (container $cname): its host-side source is unreadable without root"
       fi
+      preset_clone "$src"
     done < <(docker inspect "$cname" \
       --format '{{range .Mounts}}{{.Source}}{{"\t"}}{{.Destination}}{{"\n"}}{{end}}')
     ((found)) || echo "  preset none mounted"
+  }
+
+  # Prints the git clone a preset is mounted from (the host's spike-model-engines checkout), once
+  # per clone: its commit, its branch, and how many tracked files differ from that commit. So the
+  # configuration review reads the preset the host serves, at the host's commit, and not the
+  # workstation's checkout. GIT_OPTIONAL_LOCKS=0 keeps git status from refreshing the index, so
+  # the read writes nothing. A preset outside any clone prints "not in a git clone".
+  local seen_clones=" "
+  preset_clone() {
+    local dir=$1 top head branch changed
+    [[ -d $dir ]] || dir=$(dirname "$1")
+    if ! have git; then
+      echo "  preset clone not readable: git absent"
+      return
+    fi
+    if ! top=$(git -C "$dir" rev-parse --show-toplevel 2>&1); then
+      if [[ $top == *"not a git repository"* ]]; then
+        echo "  preset clone none: not in a git clone"
+      else
+        printf '  preset clone not readable: %s\n' "$(head -n 1 <<<"$top")"
+      fi
+      return
+    fi
+    [[ $seen_clones == *" $top "* ]] && return
+    seen_clones+="$top "
+    head=$(git -C "$top" rev-parse --short HEAD 2>/dev/null)
+    branch=$(git -C "$top" symbolic-ref --short -q HEAD 2>/dev/null || echo "detached")
+    changed=$(GIT_OPTIONAL_LOCKS=0 git -C "$top" status --porcelain --untracked-files=no \
+      2>/dev/null | wc -l)
+    printf '  preset clone %s: commit %s, branch %s, %s tracked files changed\n' \
+      "$top" "${head:-unknown}" "$branch" "$changed"
   }
 
   # Prints the installed version of each named package (globs allowed), on pacman or dpkg hosts,
@@ -477,6 +602,7 @@ probe() {
       presets "$name"
       # Its restart policy: a container set to restart (always, unless-stopped) is meant to run.
       docker inspect --format '  restart policy {{.HostConfig.RestartPolicy.Name}}' "$name"
+      run_flags "$name"
       # Its ports: what it publishes now (docker port), and the bindings it is configured with
       # (HostConfig.PortBindings), each by bind class. A running container that publishes nothing,
       # or has no network at all, is the boot-order failure: healthy, but unreachable.

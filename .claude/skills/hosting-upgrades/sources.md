@@ -3,7 +3,9 @@
 The trusted sources a run reads, keyed by kind and by vendor or project, each with its URL and
 how to read it. Authority belongs to the vendor or project that ships a thing, not to an
 environment, so this list belongs to the skill and holds for every host. A run reads a source
-fresh each time and cites the date it read it (see [SKILL.md](SKILL.md), "Citing").
+through the project's research cache (`docs/research.md`; [survey.md](survey.md), "Research
+cache"), fresh when its entry is 14 days old or its subject has changed, and cites the date it was
+read (see [rules.md](rules.md), "Citing").
 
 Prefer the machine-readable endpoint where one exists: it returns the same facts as the page,
 without the page's layout, and a query can be repeated exactly.
@@ -17,14 +19,20 @@ without the page's layout, and a query can be repeated exactly.
 - **WebSearch finds** what the list doesn't hold; a found page is then read with WebFetch.
 - **`gh search issues` and `gh search prs` search a tracker**, such as
   `gh search issues --repo <owner>/<repo> <terms> --sort updated`.
+- **`gh issue view` and `gh pr view` read one issue or pull request**: its state for the blocker
+  register (`--json state,closedAt,updatedAt`, or `--json state,mergedAt,mergeCommit`), and its
+  comments for a maintainer's word (`--json comments`, each comment's `authorAssociation`:
+  `MEMBER`, `OWNER`, or `COLLABORATOR` is the project's own, a maintainer and a primary source;
+  anyone else's, `CONTRIBUTOR` included, is a lead).
 - **`gh api` is only a fallback**, for when api.github.com's unauthenticated reads (60 an hour)
   run out. It asks permission each time, since the readiness check prints no rule for it
-  ([SKILL.md](SKILL.md), "Readiness check").
+  ([setup.md](setup.md), "Readiness check").
 - **No source is read with curl or jq through Bash.** A source too large for WebFetch, or one that
   needs a header or a redirect WebFetch can't handle, is read by a narrow script bundled with the
-  skill, or not at all until one exists ([SKILL.md](SKILL.md), "Research"). The Consolidated
-  Screening List is read so, by `scripts/screen.sh`, and a Hugging Face file's first 4 bytes by
-  `scripts/magic.sh` ("Origin and build checks").
+  skill, or not at all until one exists ([survey.md](survey.md), "Research"). The Consolidated
+  Screening List is read so, by `scripts/screen.sh`, a Hugging Face file's first 4 bytes by
+  `scripts/magic.sh` ("Origin and build checks"), and whether a merged fix is in a class's newest
+  imaged build by `scripts/fix-in-image.sh` ("Engines", the ghcr.io tag list).
 
 ## Tiers
 
@@ -45,7 +53,7 @@ support.
   own for a verify verdict; the report says what would confirm it.
 
 A source that names some of the three but not all (the hardware and the method, but not the
-engine build) is a tier question: pause and ask (SKILL.md, "When to pause"), with lead as the
+engine build) is a tier question: pause and ask (rules.md, "Pause"), with lead as the
 default.
 
 Three rules settle common cases without a pause:
@@ -62,8 +70,8 @@ Three rules settle common cases without a pause:
   right, the probe's reading of what the host has installed settles it, as the architect ruled
   in gb10-1's run of 2026-10-30. The report records both pages, cited, and the probe's reading,
   and goes on without a pause. A conflict whose answer would change a verdict (whether an update
-  is pending, whether a fix is in the installed version) is still a pause (SKILL.md, "When to
-  pause").
+  is pending, whether a fix is in the installed version) is still a pause (rules.md,
+  "Pause").
 
 The same site can hold sources of different tiers: a vendor forum's release announcement is
 primary, and a user's reply under it is a lead.
@@ -131,7 +139,7 @@ primary, and a user's reply under it is a lead.
 | llama.cpp | source, at a build | `https://github.com/ggml-org/llama.cpp/blob/<build>/common/arg.cpp` | Raw with WebFetch, `https://raw.githubusercontent.com/ggml-org/llama.cpp/<build>/common/arg.cpp`; every server flag's help text and default, at the probed build. |
 | llama.cpp | tracker | <https://github.com/ggml-org/llama.cpp/issues> | `gh search issues --repo ggml-org/llama.cpp <terms> --sort updated`; `gh search prs` likewise. |
 | llama.cpp | container images | <https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp> | Tags `server-<backend>-<build>`, such as `server-vulkan-b11960`. |
-| llama.cpp | ghcr.io manifest check | `https://ghcr.io/v2/ggml-org/llama.cpp/manifests/server-<backend>-<build>` | Whether a build's image was published for a backend: the registry answers the manifest for a published tag and 404 for one that isn't. It needs an anonymous pull token (`https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull`) sent as a header, which WebFetch can't send, so until a bundled script carries it, a run reads the package page above for the tag and says the manifest wasn't checked. |
+| llama.cpp | ghcr.io tag list and manifest check | `https://ghcr.io/v2/ggml-org/llama.cpp/tags/list`, `https://ghcr.io/v2/ggml-org/llama.cpp/manifests/server-<backend>-<build>` | Which builds' images were published for a backend: the tag list (paged by its `Link` header) holds every published tag, including a build's with no GitHub release (`server-cuda13-b12169` had none), and the registry answers a published tag's manifest and 404 for one that isn't. It needs an anonymous pull token (`https://ghcr.io/token?scope=repository:ggml-org/llama.cpp:pull`) sent as a header, which WebFetch can't send, so the bundled [scripts/fix-in-image.sh](scripts/fix-in-image.sh) carries it, as spike-model-engines' `scripts/currency.sh` does: run `.claude/skills/hosting-upgrades/scripts/fix-in-image.sh "ggml-org/llama.cpp" "<pr or commit>" "<gb10 or strix-halo>"` from the project root. It names the newest b-build in the tag list with the class's image (`server-cuda13-` for gb10, `server-vulkan-` for strix-halo) and reads GitHub's compare of the fix against the build's git tag, which exists with or without a release (`ahead` or `identical`: in the image). As run 2026-11-06, #30137 for gb10: newest imaged build b12169, `ahead` by 28, in the image (the releases list's walk had named b12124, `behind` by 17). |
 | llama.cpp (HRX) | ggml-hrx builds | <https://github.com/ROCm/ggml-staging-automation/releases> | Releases page or API (`https://api.github.com/repos/ROCm/ggml-staging-automation/releases`), with WebFetch: AMD's HRX backend builds (`hrx-bNNN`), their dates, and their target list. As read 2026-10-30 they ship as tarballs only, "not a stable distribution channel", with no container image. |
 | vLLM | releases | <https://api.github.com/repos/vllm-project/vllm/releases> | Release notes group changes by hardware (an "AMD ROCm" paragraph); each change cites its pull request. |
 | vLLM | ROCm install doc, at a tag | `https://github.com/vllm-project/vllm/blob/<tag>/docs/getting_started/installation/gpu.rocm.inc.md` | Raw with WebFetch from `https://raw.githubusercontent.com/vllm-project/vllm/<tag>/...`. Lists the supported AMD GPUs by gfx target. `docker/Dockerfile.rocm_base` at the tag names the `PYTORCH_ROCM_ARCH` the published image builds. |
@@ -200,6 +208,23 @@ something to check, and never carries a verify verdict alone.
 | llama.cpp #31266's author table | <https://github.com/ggml-org/llama.cpp/pull/31266> | The author's table names some of the hardware, the version, and the method, but not all three, so the default holds. The attributed tables in #31163 are not affected. | 2026-10-30 |
 | AMD-named CONTRIBUTOR replies on ROCm/TheRock | <https://github.com/ROCm/TheRock/issues> | An account that names AMD but that the tracker marks CONTRIBUTOR isn't shown to be AMD staff, so its replies are leads, not primary. | 2026-10-30 |
 | NVIDIA Local AI Inference Recipes, the GB10 figures | <https://github.com/NVIDIA/local-ai-inference-recipes>; the DGX Spark page at <https://nvidia.github.io/local-ai-inference-recipes/hardware/dgx-spark/index.html> | It measures vLLM in a community nightly image, with MTP, from a repository that says it was "created with AI assistance" (gb10-1's run). | 2026-10-31 |
+
+## Configuration practice
+
+What others run on a host class, for the configuration review ([survey.md](survey.md), step 7)
+and for discovery (step 8): the flags, the run flags, the engine at a concurrency, and the models.
+Each is read through the research cache. Its tier is by "Tiers": a vendor's playbook and the
+build's own argument list are primary for what they state, a bench that names hardware, build, and
+command is attributed, and operating advice no one measured is a lead.
+
+| Source kind | Class | Where | How to read it |
+|---|---|---|---|
+| The vendor's playbooks | GB10 | NVIDIA DGX Spark playbooks ("Hardware and host stack") | Each engine's `nvidia/<engine>/README.md`: the image, its `docker run` flags, the server's arguments, and the models it names, which discovery takes as candidates. Primary for what NVIDIA states. |
+| The engine project's own benches on the class | GB10 | ggml-org's DGX Spark benches ("Benchmarks"), and the discussion it links, [#16578](https://github.com/ggml-org/llama.cpp/discussions/16578) | The file names the build and the flags it ran (`-ub 2048`, `-fa`); a flag it runs and a section doesn't is a configuration row, and each model it benches is a discovery candidate. Attributed. |
+| The build's argument list | any | llama.cpp `common/arg.cpp` and `common/common.h` at the probed build ("Engines"); `tools/server/README.md` at the build (`https://raw.githubusercontent.com/ggml-org/llama.cpp/<build>/tools/server/README.md`); vLLM's engine arguments in its docs at the probed tag (`https://docs.vllm.ai/en/<tag>/`) | Every flag's default and help text at the build the host runs, which is what a section's unset key runs. Primary. |
+| Maintainers' tracker comments | any | the engine's tracker ("Engines"), with `gh issue view <n> --repo <owner>/<repo> --json comments` | A comment whose `authorAssociation` is `MEMBER`, `OWNER`, or `COLLABORATOR` states the project's practice (a tuning range, a flag to set or avoid); find them with `gh search issues` on the class and the flag. Primary for what it states; a gain it claims without a measurement is a claim. |
+| The class's bench threads | GB10 | NVIDIA's DGX Spark forum ("Hardware and host stack"); llama.cpp performance discussions ("Benchmarks") | Each post that names hardware, build, and command is attributed; the models posts run are discovery candidates. Staff posts are primary; the rest are leads unless attributed. |
+| Strix Halo community benches | Strix Halo | local-llm-benchmarks.dev, kyuz0's toolboxes, llama.cpp discussion #27219 ("Benchmarks") | Each run's flags and model; a Vulkan figure names its driver, or it is a lead. kyuz0's flag advice is a lead until measured. The models they run are discovery candidates. |
 
 ## Finding a new source
 
