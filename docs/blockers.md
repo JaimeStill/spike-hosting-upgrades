@@ -53,7 +53,9 @@ open, last checked on the date of the record it came from.
 - **State:** open.
 - **Last checked:** 2026-11-06, survey (`gh pr view 31620`, `31639`: both merged as above; no change
   that restores `_` found). Every newer gb10 image (b12124, and b12169 on the package page) is past
-  b12100.
+  b12100. Re-checked 2026-11-06 ~16:28Z by [framework measure,
+  2026-11-06](measures/framework/2026-11-06.md) (`gh pr view 31620`, `31639`: merged, no change);
+  framework still runs b11960, before b12100.
 
 ## Gemma 4 26B-A4B aborts on Vulkan with several slots
 
@@ -75,8 +77,9 @@ open, last checked on the date of the record it came from.
   gpt-oss-120b serves agent.
 - **Reopens it:** the abort recurring on a later build at several slots.
 - **State:** open.
-- **Last checked:** 2026-11-06, survey (`gh issue view 29221`: open, updated 2026-10-28;
-  `gh pr view 25584`: open, updated 2026-10-31).
+- **Last checked:** 2026-11-06 ~16:28Z, [framework measure,
+  2026-11-06](measures/framework/2026-11-06.md) (`gh issue view 29221`: open; `gh pr view 25584`:
+  open).
 
 ## Vulkan's batched tensor copy API
 
@@ -92,7 +95,8 @@ open, last checked on the date of the record it came from.
 - **Workaround:** none needed for set A; the re-screen waits.
 - **Reopens it:** the records state none.
 - **State:** open.
-- **Last checked:** 2026-11-06, survey (`gh pr view 31418`: open, updated 2026-10-30).
+- **Last checked:** 2026-11-06 ~16:28Z, [framework measure,
+  2026-11-06](measures/framework/2026-11-06.md) (`gh pr view 31418`: open).
 
 ## The prompt cache with a unified KV cache
 
@@ -114,16 +118,19 @@ open, last checked on the date of the record it came from.
   [#27624](https://github.com/ggml-org/llama.cpp/pull/27624) open (updated 2026-10-10).
 - **Clears when:** a fix for each merges and an image for the host's class carries it.
 - **Workaround:** `cache-ram = 0` and `cache-idle-slots = false` on set A's section, in the shared
-  preset (spike-model-engines `host/llama-preset/models.ini` at 933ec0f).
+  preset (spike-model-engines `host/llama-preset/models.ini` at 933ec0f); served on gb10-1, not
+  yet on framework, whose clone is at dfc1d3d, before 933ec0f.
 - **Reopens it:** turning the prompt cache back on for a unified-KV section.
 - **State:** open.
-- **Last checked:** 2026-11-06, survey (`gh issue view 30961`, `27148`, `gh pr view 27624`: all
-  open).
+- **Last checked:** 2026-11-06 ~16:28Z, [framework measure,
+  2026-11-06](measures/framework/2026-11-06.md) (`gh issue view 30961`, `27148`, `gh pr view 27624`:
+  all open; #27148 updated 16:16Z). That measure confirmed the workaround's keys on framework, which
+  doesn't run them yet: its clone is at dfc1d3d, before 933ec0f.
 
 ## Context checkpoints unbounded with no prompt cache
 
-- **Hosts:** gb10-1 (measured). framework's set A section takes the same no-cache keys, at the
-  4.5 MiB checkpoints the preset's comment gives, not measured there.
+- **Hosts:** gb10-1 (measured). framework's set A section takes the same no-cache keys once its
+  clone reaches 933ec0f, at the 4.5 MiB checkpoints the preset's comment gives, not measured there.
 - **Blocks:** a section with no prompt cache, many slots, and large checkpoints at the default
   `ctx-checkpoints` (32 at b12098, `common.h`): with no prompt cache nothing evicts a slot's
   checkpoints. It blocked Gemma 4 26B-A4B's 16-slot agent section until its checkpoints were
@@ -144,9 +151,11 @@ open, last checked on the date of the record it came from.
   unmeasured.
 - **Workaround:** `ctx-checkpoints = 2` on a no-cache section with large checkpoints.
 - **Reopens it:** a no-cache section losing its checkpoint cap on a build without the fix.
-- **State:** fix in an image build (b12169, gb10).
+- **State:** fix in an image build (b12169, gb10 and strix-halo).
 - **Last checked:** 2026-11-06T16:22Z (`gh pr view 30137`: merged; `fix-in-image.sh` for gb10:
-  b12169, in image: yes).
+  b12169, in image: yes). Re-checked 2026-11-06T16:28Z by [framework measure,
+  2026-11-06](measures/framework/2026-11-06.md): `fix-in-image.sh` for strix-halo reads #30137 in
+  `server-vulkan-b12169` too; framework runs b11960.
 
 ## Gemma 4's multi-turn gap on llama.cpp
 

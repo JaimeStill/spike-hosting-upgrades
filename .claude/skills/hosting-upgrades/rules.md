@@ -333,7 +333,13 @@ t=$(tailscale ip <host>); echo "bare name: $(getent ahosts <host> | cut -d' ' -f
 for i in $(seq 1 50); do curl -s -o /dev/null -w '%{time_connect} ' --connect-timeout 5 http://<host>:<port>/health || echo -n "FAIL "; done | tr ' ' '\n' | awk 'NF{n++; if($NF=="FAIL")f++; else if($NF>0.05)s++; if($NF>m)m=$NF} END{print n" connects, "f+0" failed, "s+0" over 50 ms, max "m" s"}'
 ```
 
-A failed check is a pause. The fix verify-framework recorded (`docs/findings/verify-framework.md`,
+A LAN record for `<host>.lan`, a bare name that resolves off the tailnet, or a failed connect is
+a failed check, and a failed check is a pause. Connects over 50 ms with none failed, when
+`tailscale ping -c 1 <host>` answers through a DERP relay (no direct connection), are not: the
+relay adds the same latency to both sides of a comparison within one session, so the check records
+the relay, its region and the ping, and the pass goes on. An across-days comparison names each
+reading's path, direct or relayed (the architect's decision, 2026-11-06). Connects over 50 ms on a
+direct path are a pause. The fix verify-framework recorded (`docs/findings/verify-framework.md`,
 "Routing") keeps the LAN from answering for the host, and both steps need root, so both are the
 architect's: the host stops sending its hostname in DHCP (NetworkManager's
 `ipv4.dhcp-send-hostname` and `ipv6.dhcp-send-hostname` set to `no` on each of its connections,

@@ -183,6 +183,7 @@ Door          two-way: the skill, its records and the descriptors are this
 - Slice 2 (survey) committed, 6ed89e2: configuration review (step 7), discovery, `docs/research.md` (16 entries), `docs/blockers.md` (6 entries, gh-checked 2026-11-06), `scripts/fix-in-image.sh`, probe's run flags and env; demo (gb10-1 paper survey) pending.
 - Slice 3 (measure) committed, 1357b7d: `scripts/measure-lib.sh` (sourced step helpers, xtrace log at `.state/measure/<host>/<date>.log`), build gate, per-host noise (gb10-1 2.2%/5.0%; framework 1.1%/2.6% provisional), watch with memory floor, the sweep's two figures, the settings check (default-cache arm = framework's spike-model-engines clone detached at dfc1d3d, no-cache arm = main 933ec0f); BFCL max_tokens pending edit added; demo (framework, behavior 16) pending.
 - Slice 2 demo: survey gb10-1 2026-11-06 committed, dfd8d91; all six behavior-15 items surfaced. Gaps it found closed in c463da3 (probe run flags on docker 29.x, cache-idle-slots in the filter, preset clone line; fix-in-image.sh reads ghcr tags, b12169; UTC read times; model and origin entries cached; verify-next fallback; set pruning; maintainer tiering). Probe confirmed on gb10-1 (docker 29.6.2) 2026-11-06. Escalation settled (Decisions): policy.md gained the NVIDIA weights rule, the QAD case, uploader membership and whose BFCL counts; the report's pauses are answered and #30137 moved to fix in an image build (b12169).
+- Slice 3 demo: framework settings check 2026-11-06, `docs/measures/framework/2026-11-06.md`; keys confirmed; spreads set (1.1% within-session, 2.8% across-days). Command log now marks helpers' output and a `routing` helper (e8abe00).
 
 ## Decisions
 
@@ -774,6 +775,9 @@ Door          two-way: the skill, its records and the descriptors are this
 - skill-revision: an uploader's membership in a Hugging Face organization, adversary-linked included, doesn't bear on the compliance gate; the gate stays the lists, the conversion check guards the weights; rejected a membership check (architect, 2026-11-06).
 - skill-revision: only the publisher's own card's BFCL figure counts against the agent bar; a third party's card is a lead that can rank a candidate for measurement (architect, 2026-11-06).
 - skill-revision: the session ran two no-root reads on gb10-1 for the survey's open asks (`dpkg-query -W nvidia-spark-initcall-bl`, the user journal for update-notifier-crash.service), plus `/proc/cmdline` and `/var/crash`; answers in the gb10-1 report of 2026-11-06 (architect, 2026-11-06).
+- skill-revision: framework's settings check ran with the clone at dfc1d3d (the keys never pulled there) as the default arm and 933ec0f detached as the no-cache arm; the clone was restored to dfc1d3d, since a host configuration change is out of scope; pulling it to 933ec0f is an item for the next survey or measure (session, 2026-11-06).
+- skill-revision: framework's settings check, run over the DERP relay with its routing check run late, stands: keys confirmed (303 vs 379 s, 21.7 vs 18.2 tok/s), the relay recorded (architect, 2026-11-06).
+- skill-revision: the routing check records a DERP-relayed path and goes on for comparisons within one session; a LAN record, a bare name off the tailnet, a failed connect, or over 50 ms on a direct path stays a pause; rejected keeping every slow connect a pause (architect, 2026-11-06).
 
 ## Pending edits
 

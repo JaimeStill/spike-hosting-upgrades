@@ -39,19 +39,22 @@ list.
 
 Each spread is the widest relative spread, (highest − lowest) / lowest, between readings of one
 cell on one engine build and one kernel (the skill's `rules.md`, "Figures", "Run noise"). Both
-are **provisional**, from few readings; the next measure that repeats cells sets them (anchors A
-and B twice each from fresh loads, the no-cache check's).
+are **set**, by framework's measure of 2026-11-06, which repeated anchors A and B from fresh loads
+([measure record](../measures/framework/2026-11-06.md), "Run noise"); a set spread widens when a
+later same-build spread exceeds it and never narrows by one quiet run.
 
-- **Within-session**: 1.1%, provisional. Anchor B on b11960-8642541b2, kernel 7.2.15-1-omarchy,
+- **Within-session**: 1.1%, set 2026-11-06. Anchor B on b11960-8642541b2, kernel 7.2.15-1-omarchy,
   in verify-framework's 2026-11-02 session (runs 3 and 4): 77.14, 77.31, 76.73 and 76.46 tok/s
   ([verify-framework](../findings/verify-framework.md), "Cells" and "Run 4: E4B QAT with reasoning
-  off"). Anchor A's readings in that session, 44.86, 44.66, 44.91, 44.66 and 44.74 (the last in
-  its "Walkthrough"), spread 0.6%, and the shape cells repeated across runs 3 and 4 at most 0.8%
-  (Q8_0 shape B, 126.65 and 125.65).
-- **Across-days**: 2.6%, provisional. Anchor A on the same build and kernel: 44.91 at most on
-  2026-11-02 (verify-framework) and 43.79 on 2026-11-04
-  ([framework's screen record](../screens/framework/2026-11-04.md), "Cells", phase 1, run over
-  DERP rather than the direct path); anchor B 77.31 and 75.94, 1.8%.
+  off"). The measure's repeats on the same build and kernel, each from a fresh load, spread less:
+  anchor A 43.87 and 43.70 (0.39%), anchor B 75.43 and 75.65 (0.29%)
+  ([measure record](../measures/framework/2026-11-06.md), "Run noise").
+- **Across-days**: 2.8%, set 2026-11-06. Anchor A on the same build and kernel: 44.91 at most on
+  2026-11-02 (verify-framework), 43.79 on 2026-11-04
+  ([framework's screen record](../screens/framework/2026-11-04.md), "Cells", phase 1), and 43.87
+  and 43.70 on 2026-11-06 (the measure record), 2.8% from 44.91 to 43.70; anchor B 77.31, 75.94,
+  and 75.43 and 75.65, 2.5%. The 2026-11-04 and 2026-11-06 readings ran over DERP, the
+  2026-11-02 ones over the direct path.
 
 ## Watch items
 
