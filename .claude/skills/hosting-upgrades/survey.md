@@ -17,7 +17,10 @@ that needs root (rules.md, "Root").
    3 compares the probe with its Inventory.
 3. **The pool.** When the descriptor has a Pool section (a reference name and a path, as its
    Measurements give a finding), resolve the name to the local checkout the coordinator's
-   `references.local.toml` maps it to, the key its `references.toml` names. If the key has no
+   `references.local.toml` maps it to, the key its `references.toml` names. The project names its
+   coordinator in its own notes (`CLAUDE.md` or `context/README.md`, such as
+   `standards-lab/context/roadmap.toml`); find that checkout from there, not by searching. Without
+   one, the pool's `Read` rule (setup.md, step 2) names the checkout's path. If the key has no
    checkout, or the file isn't there, name the path tried and go on without it. Name the pool by
    its reference, its path, and the commit its checkout is at; then what it says of itself: its
    date, the host class and build it was judged for, and the rules it was judged by. Read its rows,
