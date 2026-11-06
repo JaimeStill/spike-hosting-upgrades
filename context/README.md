@@ -117,8 +117,13 @@ The tasks, in the order they run; each cites the evidence it proves.
 4. `screen`: the pool's candidates screened for both host classes, each supported one verified
    beside its role's incumbent (evidence 4). Its records are
    `docs/screens/framework/2026-11-04.md` and `docs/screens/gb10-1/2026-11-05.md`.
-5. `answer`: a second dated report showing what moved, the cadence, README "The answer", and the
-   answer section (evidence 2, 6).
+5. `skill-revision`: the skill redesigned from the screen's evaluation into two modes, `survey`
+   (the public record, with a configuration review and discovery) and `measure` (local cells
+   under one harness), with per-host load targets, a blocker register, a research cache, a build
+   gate, per-host run noise, and logged step helpers; verified by a survey of gb10-1 and a
+   measure on framework (evidence 1, 3, 4).
+6. `answer`: a second dated report per host from the revised survey, showing what moved, the
+   convention and its cadence, README "The answer", and the answer section (evidence 2, 6).
 
 ## References
 
