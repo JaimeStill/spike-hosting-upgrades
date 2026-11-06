@@ -780,6 +780,7 @@ Door          two-way: the skill, its records and the descriptors are this
 - skill-revision: a settings check selects each arm by the preset clone's commit, since a router load takes only a section name; one arm is the clone as found, the other arm the other commit, detached after a fetch, and the pass restores the clone to the branch and commit it was found at (session, 2026-11-06).
 - skill-revision: an engine move's vision cells are shape A and B, named so, as the verify mode ran them (session, 2026-11-06).
 - skill-revision: framework's run noise is 1.1% within a session and 2.8% across days, set by its 2026-11-06 measure from the repeated anchors and the earlier same-build readings, no longer provisional (session, 2026-11-06).
+- skill-revision, after ship: framework's spike-model-engines clone pulled from dfc1d3d to 933ec0f and the router restarted, so set A's section serves the confirmed no-cache keys (`--cache-ram 0 --no-cache-idle-slots`, read back by the probe); the strix-halo pin and image (b11960) unchanged. framework's DERP relay is the laptop's network, not the host: the laptop's netcheck reads MappingVariesByDestIP true (a hard NAT), framework's false with UPnP and PCP, so nothing on framework to fix (architect's direction, 2026-11-06).
 
 ## Pending edits
 

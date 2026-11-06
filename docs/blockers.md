@@ -118,19 +118,20 @@ open, last checked on the date of the record it came from.
   [#27624](https://github.com/ggml-org/llama.cpp/pull/27624) open (updated 2026-10-10).
 - **Clears when:** a fix for each merges and an image for the host's class carries it.
 - **Workaround:** `cache-ram = 0` and `cache-idle-slots = false` on set A's section, in the shared
-  preset (spike-model-engines `host/llama-preset/models.ini` at 933ec0f); served on gb10-1, not
-  yet on framework, whose clone is at dfc1d3d, before 933ec0f.
+  preset (spike-model-engines `host/llama-preset/models.ini` at 933ec0f); served on both hosts,
+  on framework since its clone was pulled to 933ec0f on 2026-11-06 (the architect's decision).
 - **Reopens it:** turning the prompt cache back on for a unified-KV section.
 - **State:** open.
 - **Last checked:** 2026-11-06 ~16:28Z, [framework measure,
   2026-11-06](measures/framework/2026-11-06.md) (`gh issue view 30961`, `27148`, `gh pr view 27624`:
   all open; #27148 updated 16:16Z). That measure confirmed the workaround's keys on framework, which
-  doesn't run them yet: its clone is at dfc1d3d, before 933ec0f.
+  serves them since its clone was pulled to 933ec0f the same day: the router reads
+  `--cache-ram 0 --no-cache-idle-slots` on set A's section (probe, 2026-11-06).
 
 ## Context checkpoints unbounded with no prompt cache
 
-- **Hosts:** gb10-1 (measured). framework's set A section takes the same no-cache keys once its
-  clone reaches 933ec0f, at the 4.5 MiB checkpoints the preset's comment gives, not measured there.
+- **Hosts:** gb10-1 (measured). framework's set A section serves the same no-cache keys (its
+  clone at 933ec0f since 2026-11-06), at the 4.5 MiB checkpoints the preset's comment gives, not measured there.
 - **Blocks:** a section with no prompt cache, many slots, and large checkpoints at the default
   `ctx-checkpoints` (32 at b12098, `common.h`): with no prompt cache nothing evicts a slot's
   checkpoints. It blocked Gemma 4 26B-A4B's 16-slot agent section until its checkpoints were
