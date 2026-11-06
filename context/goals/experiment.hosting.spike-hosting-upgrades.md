@@ -180,6 +180,7 @@ Door          two-way: the skill, its records and the descriptors are this
 ## Progress
 
 - Slice 1 (layout and load targets) committed, 8669dcd: SKILL.md 129 lines; setup.md, survey.md, measure.md, rules.md; descriptors' Purposes carry load targets from models.ini at 933ec0f; measure records at `docs/measures/<host>/<YYYY-MM-DD>.md`; `TODO(slice 2|3)` stubs mark where later slices land.
+- Slice 2 (survey) committed, 6ed89e2: configuration review (step 7), discovery, `docs/research.md` (16 entries), `docs/blockers.md` (6 entries, gh-checked 2026-11-06), `scripts/fix-in-image.sh`, probe's run flags and env; demo (gb10-1 paper survey) pending.
 
 ## Decisions
 
@@ -765,6 +766,7 @@ Door          two-way: the skill, its records and the descriptors are this
 - skill-revision: verified by a paper survey of gb10-1 that must surface the screen's configuration findings, and a measure on framework discharging its owed no-cache check (anchors A and B twice each from fresh loads; BFCL multi-turn's first 4 samples on default cache and no-cache keys, 10-minute cap each); no new tool (architect, 2026-11-06).
 - skill-revision: `answer`'s roadmap entry sharpened now (coordinator PR #120): its second report is the revised survey on both hosts, and it gained a proof line (architect, 2026-11-06).
 - skill-revision: currency on start reported only python 3.14.10 -> 3.15.2 in mise.bench.toml, still held: torchcodec 0.17.0, its latest, publishes no cp315 wheel (PyPI, 2026-11-06); no round opened, the approved brief stood (architect, 2026-11-06).
+- skill-revision: any model NVIDIA publishes, Nemotron or not, passes the origin gate, even when its documents name an adversary-origin teacher; a conversion passes when its weights are shown to be NVIDIA's; uploader compliance, models others derive from NVIDIA weights, and every later gate still apply. In the architect's words: "Nemotron models are acceptable by origin for any platform that can run them" and "NVIDIA models in general should be seen as credible"; `docs/policy.md`, Model origin (architect, 2026-11-06).
 
 ## Pending edits
 

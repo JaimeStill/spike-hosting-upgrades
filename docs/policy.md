@@ -112,6 +112,22 @@ check finds involvement at an excluding level. A pass means "no disclosed or det
 at an excluding level", and no more: no public source certifies a model's training data, and
 undisclosed synthetic data is common.
 
+**NVIDIA's models pass on origin.** In the architect's words, of 2026-11-06:
+
+> Nemotron models are acceptable by origin for any platform that can run them.
+
+> NVIDIA models in general should be seen as credible
+
+A model NVIDIA publishes, whether in its Nemotron family or not, passes the origin gate. It passes
+even when its own documents name an adversary-origin model as a teacher, which until now excluded
+Nemotron at level 2 (framework's report of 2026-10-30, "Excluded on origin"). A quantization or
+conversion of an NVIDIA model takes the same pass when the further research below shows its
+weights are NVIDIA's. The pass doesn't cover the compliance gate: an uploader that is an
+adversarial entity still excludes the conversion. It also doesn't cover a model another publisher
+derived from NVIDIA's weights, which is judged at every level. Every other gate still applies
+(quantization, fit, engine, agent bar, and speed), and the engine and fit gates decide which
+platforms can run the model.
+
 **Further research.** The architect decided on 2026-10-30 that an unestablished origin is not an
 immediate hold-out. When the evidence chain leaves a model short of the pass bar with no
 involvement found at an excluding level, the run researches further to reach a definitive
