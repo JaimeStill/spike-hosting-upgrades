@@ -75,8 +75,8 @@ and the last reports of both hosts.
 
 - **URL:** <https://github.com/ggml-org/llama.cpp/issues/27148>; its fix
   <https://github.com/ggml-org/llama.cpp/pull/27624>
-- **Read:** 2026-11-06T18:21Z (framework survey; updated upstream 2026-11-06T16:16:53Z, after the
-  gb10-1 survey's read)
+- **Read:** 2026-11-06T18:54Z (gb10-1's second survey; updated upstream 2026-11-06T16:16:53Z, no
+  comment since)
 - **Concerns:** gb10-1 and framework: set A's agent section's prompt cache, and the split-KV Gemma
   sections' default cache; the register's prompt-cache entry.
 - **Tier:** primary (the issue); its commenters (authorAssociation NONE) leads.
@@ -84,8 +84,12 @@ and the last reports of both hosts.
   content from an unrelated conversation into a fresh slot under concurrent load. elchic00
   (2026-08-22): with `kv_unified = true` either flag fixes it; with `kv_unified = false` "closing it
   needs `--no-cache-idle-slots` on top of `--cache-ram 0`". darrellberry (2026-10-10): a
-  reproduction on Metal, "(every report so far has been AMD iGPU)". cashcropper4life (2026-11-06):
-  a reproduction at the default flags under Ollama. huornlmj (2026-11-06T16:16Z): "Has this not
+  reproduction on Metal, "(every report so far has been AMD iGPU)". cashcropper4life
+  (2026-11-06T03:21Z), llama-server under Ollama 0.32.14 with a Qwen MoE at the default
+  `--cache-ram` and `--cache-idle-slots`: in "2 of 60" control pairs a response carried the other
+  request's canary; with `LLAMA_ARG_CACHE_RAM=0`, "0/100 controls and 0/300 tests", and a one-week
+  soak "468 requests, 0 leaks"; "We did not separately disable `--cache-idle-slots`." No MEMBER,
+  OWNER or COLLABORATOR comment. huornlmj (2026-11-06T16:16Z): "Has this not
   been logged as a CVE?". Its fix #27624 open (updated 2026-10-10).
 
 ### #24265, a Gemma SWA server hangs near its memory limit
@@ -119,8 +123,10 @@ and the last reports of both hosts.
 - **URL:** <https://raw.githubusercontent.com/ggml-org/llama.cpp/b12098/common/common.h>,
   <https://raw.githubusercontent.com/ggml-org/llama.cpp/b12098/tools/server/server.cpp>,
   <https://raw.githubusercontent.com/ggml-org/llama.cpp/b12098/tools/server/README.md>
-- **Read:** 2026-11-06 (gb10-1 survey)
-- **Concerns:** gb10-1, which runs b12098: every section's unset keys.
+- **Read:** 2026-11-06 (gb10-1 survey); the README re-read 2026-11-06T18:50Z (gb10-1's second
+  survey) for the router's autoload
+- **Concerns:** gb10-1, which runs b12098: every section's unset keys, and whether an unloaded
+  section serves.
 - **Tier:** primary (the build's own argument defaults).
 - **Said:** `n_batch = 2048`, `n_ubatch = 512`, flash attention `AUTO`, `cache_type_k`/`_v` F16,
   `kv_unified = false`, `n_parallel` -1 (auto), `cache_ram_mib = 8192`, `cache_idle_slots = true`,
@@ -128,7 +134,62 @@ and the last reports of both hosts.
   `load_mode` auto. `server_prepare_params()`: with `n_parallel` auto the server uses 4 slots and
   `kv_unified = true` (not for the router role), so a section that sets `parallel` runs split KV
   unless it sets `kv-unified`. README: `-kvu` "(default: enabled if number of slots is auto)",
-  `--cache-idle-slots` "(default: enabled, requires cache-ram)".
+  `--cache-idle-slots` "(default: enabled, requires cache-ram)". README: `--models-autoload,
+  --no-models-autoload` "for router server, whether to automatically load models (default:
+  enabled)"; `--models-max` "(default: 4, 0 = unlimited)"; `--models-memory-margin` unloads "LRU
+  models until a new one fits".
+
+### `docs/docker.md` at b12098, the container's run flags
+
+- **URL:** <https://raw.githubusercontent.com/ggml-org/llama.cpp/b12098/docs/docker.md>
+- **Read:** 2026-11-06T18:54Z (gb10-1's second survey)
+- **Concerns:** gb10-1: the `llama` container's run flags.
+- **Tier:** primary.
+- **Said:** the CUDA example: "docker run --gpus all -v /path/to/models:/models
+  local/llama.cpp:server-cuda -m /models/7B/ggml-model-q4_0.gguf --port 8080 --host 0.0.0.0 -n 512
+  --n-gpu-layers 1"; "`ghcr.io/ggml-org/llama.cpp:server-cuda13`: Same as `server` but compiled
+  with CUDA 13 support." No `--ipc`, `--shm-size`, ulimit or library-path guidance.
+
+### llama.cpp b12098 to b12169, the cuda13 images, #31788 and #31806
+
+- **URL:** <https://api.github.com/repos/ggml-org/llama.cpp/compare/b12098...b12169>,
+  <https://api.github.com/repos/ggml-org/llama.cpp/compare/b12167...b12169>,
+  <https://github.com/ggml-org/llama.cpp/pull/31788>, <https://github.com/ggml-org/llama.cpp/pull/31806>,
+  <https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp/versions?filters%5Bversion_type%5D=tagged>
+- **Read:** 2026-11-06T18:52Z to 18:54Z (gb10-1's second survey)
+- **Concerns:** gb10-1: what a move past b12098 brings on CUDA, and the image's CUDA.
+- **Tier:** primary.
+- **Said:** b12098…b12169, 71 commits. CUDA: #31296 (NVFP4 MMQ fusion), #31047 "CUDA: linearize
+  MoE data layout for MMQ/MMF" (2026-11-05T10:33Z), #31679 "CUDA: use highest compiled arch in
+  get_mmvq_mmid_max_batch", #31005 "ggml-cuda: sanitize post-bias NaNs in MoE selection", #31787
+  "CUDA: fix Maxwell build", #30541. Server: #30137, #31632, #31714. `-hf`: #31620, #31639, #31730
+  "common : restrict HF token to huggingface.co hosts". Gemma 4: #31635. No gpt-oss commit. b12169
+  is two commits past b12167: #31757 (BoringSSL) and "ci : bump CUDA 13 release builds to 13.5
+  (#31788)" (merged 2026-11-06T08:52:48Z), which moves the cuda13 Docker build's `"cuda_version"`
+  from "13.4.1" to "13.5.0" (amd64 and arm64): "13.5 rows drop GGML_CUDA_CCCL_VERSION, because CUDA
+  13.5 ships CCCL 3.5.0". #31806 "docker: add explicit /usr/local/nvidia search path" (merged
+  2026-11-06T17:53:05Z, after b12177): the image "only sets /usr/local/cuda/lib64 causing `no
+  usable GPU found` on HF inference endpoint". (Which build or image is newest is not cached.)
+
+### llama.cpp tracker since b12098: `-hf` tags, GB10 regressions, open CUDA and server work
+
+- **URL:** `gh search issues` / `gh search prs --repo ggml-org/llama.cpp` ("qat", "q4_0-it", "tag
+  matching", "hf tag", "quant name", "GB10", "SM121", "DGX Spark", "cuda13", "CUDA 13.5");
+  <https://github.com/ggml-org/llama.cpp/pull/31533>, `/pull/31802`, `/pull/30970`, `/pull/30683`,
+  `/issues/31077`
+- **Read:** 2026-11-06T18:52Z to 18:53Z (gb10-1's second survey)
+- **Concerns:** gb10-1: the register's QAT entry; regressions a move past b12098 would cross;
+  concurrent-session throughput.
+- **Tier:** primary for the absence and the states; authors' claims leads (CONTRIBUTOR).
+- **Said:** no issue or pull request after #31639 restores `_` before an `-hf` tag or reports
+  Google's QAT names failing. No GB10 or SM121 regression reported against b12099 or later.
+  #31533 (open) "CUDA: few-row MMQ for BS 2-24", "Supported: Q8_0, Q3_K, Q4_K, Q5_K, Q6_K, IQ3_S,
+  IQ4_NL and IQ4_XS on NVIDIA GPUs from Ampere up to DGX Spark"; ORippler (COLLABORATOR,
+  2026-11-06T10:50Z) mentions a separate "cutlass-based, version for NVFP4/FP8". #31802 (open)
+  fused q8_0/q4_0 KV dequant in the MMA flash-attention kernels. #30970 (open, 2026-11-06T16:11Z)
+  "server : share prompt prefix cells between slots (--slot-attach)". #30683 (open,
+  2026-11-06T17:11Z) "Avoids extra copying of existing checkpoints". #31077 (open) Gemma 4 31B with
+  draft-mtp: CUDA illegal memory access, none with MTP off.
 
 ### ggml-org's DGX Spark benches
 
@@ -441,15 +502,25 @@ and the last reports of both hosts.
   <https://github.com/vllm-project/vllm/issues/50925>,
   <https://github.com/vllm-project/vllm/issues/60847>,
   <https://github.com/vllm-project/vllm/pull/60942>
-- **Read:** 2026-11-06 (gb10-1 survey)
+- **Read:** 2026-11-06T18:53Z (gb10-1's second survey: #58624 and #58989 updated upstream
+  2026-11-06T14:24Z and 14:31Z, after the first read); also
+  <https://github.com/vllm-project/vllm/pull/58989> and
+  <https://api.github.com/repos/vllm-project/vllm/compare/v0.33.0rc3...fe77d0906be0c38c5e2c575cd61b545a2fa687e4>
 - **Concerns:** gb10-1: the engine choice; the vLLM NVFP4 and EmbeddingGemma watch items.
-- **Tier:** primary; #58624's GB10 table attributed (another model, FP8); #50925 a lead.
+- **Tier:** primary; #58624's and #58989's GB10 tables attributed on another model (FP8); #50925
+  a lead.
 - **Said:** v0.33.0rc3 (2026-11-02, not marked prerelease): "release wheels and images are CUDA
   13.0 only (#62575)". v0.32.0: "OAI Triton MXFP4 MoE on SM12x (#58877)". #58624 (open): MoE decode
   ~15% slower on SM12x since #56876; GB10, Qwen3.6-35B-A3B-FP8, decode step 56.6 → 50.2 ms with a
   patch. #50925 (lead): published builds route NVFP4 MoE to Marlin on sm_121. #60847 closed
   2026-10-27 by #60942 (EmbeddingGemma's Triton prefill OutOfResources), validated on an RTX 5090,
-  not in v0.33.0rc3.
+  not in v0.33.0rc3: #60942 merged 2026-10-27T02:00:15Z (fe77d09), and the compare
+  v0.33.0rc3…fe77d09 reads "diverged", ahead by 33, behind by 12, merge base 4135590. #58989
+  "[Perf][MoE] Prefer Triton for block FP8 MoE on SM120" (open): hclsys on GB10, nightly
+  `0.32.1rc1.dev485+gceb01b6dd`, Qwen3-30B-A3B-Instruct-2507-FP8, TP1, 1024 in / 128 out, DeepGEMM
+  against Triton: bs1 "2.80 s | 2.41 s | -14%", bs32 "26.70 s | 19.79 s | -26%", throughput "3680
+  tok/s | 4040 tok/s | +10%"; "`is_device_capability(120)` only matches 12.0, so GB10 would stay on
+  DeepGEMM with this PR."
 
 ### vLLM recipes, GPT-OSS
 
@@ -485,6 +556,19 @@ and the last reports of both hosts.
   "23.45 tok/s". 365138: Nemotron 3 Nano Q4_K_XL tg 14.7 at ~8K (build 8399). 383406: DGPP, a GB10
   C++/CUDA engine built from source.
 
+### DGPP's repository and releases
+
+- **URL:** <https://github.com/HawkBearPig/dgpp>, its releases
+- **Read:** 2026-11-06T18:53Z (gb10-1's second survey)
+- **Concerns:** gb10-1: the seed list's DGPP.
+- **Tier:** a lead (no measurement against another engine; the repository is primary only for
+  what DGPP ships).
+- **Said:** latest release "DGPP 0.1.0" (v0.1.0, 2026-10-28T21:21:19Z); last pushed
+  2026-11-06T18:16:28Z. Installed from source (`./scripts/setup.sh`, CUDA 13) or a release
+  `dgpp-*.tar.zst`; Docker only for an x86 cross-build; no container image. Its model list: GLM,
+  Qwen3.x, DeepSeek-V4.x, MiniMax, MiMo, Flint and Dory (NVFP4, FP8, MXFP4); no gpt-oss, GGUF or
+  embedding model.
+
 ### Gemma 4 vision speed on a DGX Spark
 
 - **URL:** <https://github.com/nabe2030/dense-27b-31b-dgx-spark>,
@@ -499,10 +583,14 @@ and the last reports of both hosts.
 ### The Gemma 4 tokenizer fixes and ggml-org's reconversions
 
 - **URL:** <https://huggingface.co/api/models/google/gemma-4-E4B-it/commits/main>, <https://huggingface.co/api/models/ggml-org/gemma-4-E4B-it-GGUF>, <https://huggingface.co/api/models/ggml-org/gemma-4-E2B-it-GGUF>, plus the entry's `.src_sha` URLs (not re-read)
-- **Read:** 2026-11-06T18:21Z (`.src_sha` reads stay at the gb10-1 survey's, 2026-11-06)
+- **Read:** 2026-11-06T18:53Z (gb10-1's second survey re-read the E4B GGUF record, its `.src_sha`
+  at <https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/raw/main/.src_sha>, its discussions, and
+  google's E4B commits; the other reads stay at 18:21Z)
 - **Concerns:** gb10-1 and framework: the audio incumbent's file; E2B and 12B candidates.
 - **Tier:** primary.
-- **Said:** google/gemma-4-E4B-it newest 4ecc2ba6… 2026-11-03T16:13:15Z "Remediate 219 glitch tokens", "No model weights are modified"; ggml-org E4B GGUF sha a69f018d…, lastModified 2026-10-19T10:58:26Z, `.src_sha` `PRIMARY=ee0ef602…` (July); ggml-org E2B GGUF sha 6938c58e…, lastModified 2026-10-19T10:58:13Z; google E2B-it/E2B/E4B fixed 2026-11-03, 12B 2026-10-30; ggml-org 12B `.src_sha` equals Google's current sha (BF16, Q8_0 reconverted 2026-11-01).
+- **Said:** google/gemma-4-E4B-it newest 4ecc2ba6… 2026-11-03T16:13:15Z "Remediate 219 glitch tokens", "No model weights are modified"; ggml-org E4B GGUF sha a69f018d…, lastModified 2026-10-19T10:58:26Z, `.src_sha` `PRIMARY=ee0ef6023621cff504d758262d4e04895a5af4a2` (2026-07-20, the commit before the fix),
+  `ASSISTANT=8d0031ea…`, `QAT_Q4_0=27f8d204…`, no discussions and no llama.cpp issue on the fix; google
+  `gemma-4-E4B-it-qat-q4_0-gguf` newest commit still 4b4a2c1d… (2026-07-17T21:23:49Z); ggml-org E2B GGUF sha 6938c58e…, lastModified 2026-10-19T10:58:13Z; google E2B-it/E2B/E4B fixed 2026-11-03, 12B 2026-10-30; ggml-org 12B `.src_sha` equals Google's current sha (BF16, Q8_0 reconverted 2026-11-01).
 
 ### Model cards, records and files for gb10-1's candidates
 
@@ -765,6 +853,16 @@ Written by framework's survey of 2026-11-06 ([report](reports/framework/2026-11-
   KV 360,448 B/token. Not settled; fails fit.
 - **nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-BF16** (created 2026-06-24). NVIDIA; derived from
   Nemotron-3-Super-120B-A12B. Pass by policy; no publisher or ggml-org GGUF.
+- **LiquidAI/LFM2.5-24B-A2B-GGUF** (2026-11-06T03:22:24Z, commit 7be3a8c7… "Add
+  LFM2.5-24B-A2B-Q4_0.gguf"; read 2026-11-06T18:53Z, gb10-1's second survey). Liquid AI. Base
+  card `LiquidAI/LFM2.5-24B-A2B` unchanged (3dc4cd09…, 2026-11-03T18:09:25Z). Teachers: "teacher
+  specialization, two multi-domain on-policy distillation stages", none named ([gb10-1 rpt]). The
+  new Q4_0 is a post-training 4-bit file, path 3. Origin unclear.
+
+gb10-1's second survey (2026-11-06T18:53Z) re-read the records of the incumbents and the top
+candidates (gpt-oss-120b and -20b GGUFs, Lightning GGUF and NVIDIA's BF16, Trinity Mini, Google's
+26B-A4B, 31B and E4B QAT, ggml-org's E4B, LFM3-Omni-2B, Granite Speech 5.0, granite r2,
+EmbeddingGemma 2): every `lastModified` equals the one its entry reads, so no chain was rebuilt.
 Form: repository · lastModified (as read) · publisher · base chain · teachers (role) · gate reads · origin inputs → result.
 
 - **google/gemma-4-26B-A4B-it-qat-q4_0-gguf** · 2026-07-17 · Google · QAT release of gemma-4-26B-A4B-it · Gemma 3 "large IT teacher" (policy 2026-11-04, own pipeline) · QAT path 1; mmproj 16-bit (est.); MMMU Pro 73.8% · Gemma 4 ruling; Google screened, no match (18:27Z) → pass.
@@ -798,11 +896,23 @@ Form: repository · lastModified (as read) · publisher · base chain · teacher
 ### DGX Spark release notes
 
 - **URL:** <https://docs.nvidia.com/dgx/dgx-spark/release-notes.html>
-- **Read:** 2026-11-06 (gb10-1 survey)
-- **Concerns:** gb10-1: the OS image, kernel, driver.
+- **Read:** 2026-11-06T18:51Z (gb10-1's second survey)
+- **Concerns:** gb10-1: the OS image, kernel, driver; the display-memory watch item.
 - **Tier:** primary.
-- **Said:** newest section "October 2026" ("Linux 7.0 (previously 6.17)"); current versions
-  (Founders Edition only): DGX OS 7.6.0, kernel 7.0.0-1019, driver 580.178.04, CUDA 13.0.3.
+- **Said:** newest section "October 2026 Release": "This update supports the Linux 7.0 kernel
+  (previously 6.17)"; current versions (Founders Edition only): DGX OS 7.6.0, kernel 7.0.0-1019,
+  driver 580.178.04, CUDA 13.0.3. Names "Dynamic Display Reserved Memory" (October) and "Adjustable
+  Display Reserved Memory" (July). No 7.0.0-1025, no OTA past 7.6.0, nothing on initcall.
+
+### DGX OS 7 release notes
+
+- **URL:** <https://docs.nvidia.com/dgx/dgx-os-7-user-guide/release_notes.html>
+- **Read:** 2026-11-06T18:51Z (gb10-1's second survey)
+- **Concerns:** gb10-1: the OS image.
+- **Tier:** primary.
+- **Said:** newest section "DGX OS 7.6.0", "Release Date: September 14, 2026"; DGX Spark kernel
+  "7.0.0-1018-nvidia", driver "580.173.02". Nothing past 7.6.0; DGX OS 8 named only as "the latest
+  DGX OS 8 release".
 
 ### Launchpad: linux-nvidia-7.0, linux, sqlite3, the 580 driver, linux-firmware; USNs
 
@@ -812,37 +922,72 @@ Form: repository · lastModified (as read) · publisher · base chain · teacher
   <https://launchpad.net/ubuntu/+source/sqlite3/3.45.1-1ubuntu2.9>,
   <https://launchpad.net/ubuntu/+source/nvidia-graphics-drivers-580/+publishinghistory>,
   <https://launchpad.net/ubuntu/+source/linux-firmware/+publishinghistory>,
-  <https://ubuntu.com/security/notices/USN-9003-1>, <https://ubuntu.com/security/notices/USN-9001-1>
-- **Read:** 2026-11-06 (gb10-1 survey)
-- **Concerns:** gb10-1: the pending updates, the kernel, the driver.
+  <https://ubuntu.com/security/notices/USN-9003-1>, <https://ubuntu.com/security/notices/USN-9001-1>, and
+  <https://launchpad.net/ubuntu/+source/ca-certificates/+publishinghistory>,
+  <https://launchpad.net/ubuntu/+source/ca-certificates-java/+publishinghistory>,
+  <https://launchpad.net/ubuntu/+source/sqlite3/+publishinghistory>,
+  <https://launchpad.net/ubuntu/+source/linux/+publishinghistory>
+- **Read:** 2026-11-06T18:52Z (gb10-1's second survey; the version pages and USN-9003-1 at the
+  first survey's read)
+- **Concerns:** gb10-1: the packages upgraded today, the kernel, the driver, linux-firmware.
 - **Tier:** primary.
-- **Said:** linux-nvidia 7.0.0-1025.26~24.04.1 in noble-updates 2026-11-06, one change ("ipv4: free
+- **Said:** linux-nvidia-7.0's newest noble version "7.0.0-1025.26~24.04.1": proposed 2026-11-05
+  20:20:29, updates 2026-11-06 01:14:45, no security entry; 1024.25 in security since 2026-11-02;
+  nothing newer in any pocket. nvidia-graphics-drivers-580's newest "580.178.04-0ubuntu0.24.04.1"
+  (updates 2026-09-15, security 2026-10-08), nothing newer, proposed included. linux-firmware's
+  newest "20240318.git3b128b60.0ubuntu3.1" (updates 2026-09-03). ca-certificates
+  "20260816ubuntu0.24.04.2" and ca-certificates-java "20240118ubuntu0.24.04.1" in security and
+  updates (2026-11-05); sqlite3 "3.45.1-1ubuntu2.9" updates only (2026-11-04); linux
+  "6.8.0-149.149" updates and proposed only. USN-9001-1 (5 November 2026) fixes the two
+  ca-certificates packages on noble, no CVE: "CA certificates removed from the system bundle not
+  being removed from the JKS keystore". From the first read: 1025's one change ("ipv4: free
   inet_opt and ireq_opt after an RCU grace period", LP #2172774); USN-9003-1 lists 1024.25 for
   24.04. linux 6.8.0-149.149 updates only. sqlite3 2.9: a segfault fix (LP #2087772), no CVE.
   USN-9001-1: ca-certificates and -java, JKS keystore, no CVE. Driver 580.178.04 the newest for
   noble. linux-firmware 20240318.git3b128b60.0ubuntu3.1 the newest.
 
-### NVIDIA forum 387397, reboots on 7.0.0-1024-nvidia
+### NVIDIA forum 387397, reboots on 7.0.0-1024-nvidia, and the 1025 reports
 
 - **URL:** <https://forums.developer.nvidia.com/t/dgx-spark-repeatedly-rebooting-after-most-recent-update/387397>
-- **Read:** 2026-11-06 (gb10-1 survey; posts 21-33 unread)
-- **Concerns:** gb10-1: the reboot watch item.
+  (read as `/t/387397.json`, `/27.json`, `/53.json`), <https://forums.developer.nvidia.com/t/388215.json>,
+  <https://forums.developer.nvidia.com/t/388090.json>, <https://forums.developer.nvidia.com/t/386495.json>,
+  <https://forums.developer.nvidia.com/search.json?q=1025%20after%3A2026-11-04>
+- **Read:** 2026-11-06T18:52Z (gb10-1's second survey: the host now runs 1025, which the first
+  read didn't cover)
+- **Concerns:** gb10-1: the reboot watch item, on 7.0.0-1025-nvidia.
 - **Tier:** staff posts primary; users leads.
-- **Said:** reboot loops on 1024 with 580.178.04, mostly with HDMI; one on a Dell FCM1253. Staff,
-  2026-11-03: "A fix for the reboot loop on kernel 7.0.0-1024-nvidia is now available",
-  `nvidia-spark-initcall-bl` 1.0-2 (`initcall_blacklist=power_wrap_init`), for all users; thermal
-  reports remain open. 1025 not named.
+- **Said:** 387397: reboot loops on 1024 with 580.178.04, mostly with HDMI; one on a Dell FCM1253.
+  Staff (zneill): post 40, "nvidia-spark-initcall-bl version 1.0-2 … (initcall_blacklist=power_wrap_init)";
+  post 52 (2026-11-04T17:20Z), "the fix for this issue is available as an update for all users";
+  post 53, "This particular fix was for the very specific reboot issue experienced after recent
+  upgrade." Post 35 (user158576, a lead): "tegra234_cbb_init should be already there. Just need to
+  add power_wrap_init". Posts 23, 24, 29-31 (leads): "Booting 1019 resolves the issue". Highest
+  post 53 (2026-11-04T23:16Z); no post names 1025. 388215 (alex.zare99, 2026-11-06T17:53Z, one
+  post, no reply): "DGX Spark: kernel 7.0.0-1025-nvidia memory corruption and system freezes",
+  seven Oopses, eight linked-list corruptions, fourteen soft-lockups, driver 580.178.04,
+  `nvidia-spark-initcall-bl` "1.0-1" with power_wrap_init not blacklisted, rolled back to 1019, the
+  cause "unproven"; it gives the OS as "Ubuntu 26.04.1 LTS". 388090 (hoesing, accepted): "1025
+  seems to just have one change: ipv4: free inet_opt and ireq_opt after an RCU grace period (LP:
+  #2172774)"; jv14 ties it to a CVE through a third-party site. 386495 post 13
+  (2026-11-06T08:23Z): "things came back without the HDMI connected … maybe it's fixed?", no
+  kernel named. A web search for "7.0.0-1025-nvidia" found nothing more.
 
 ### Dell KB 000379162; the NVIDIA Container Toolkit; LP #1991502
 
 - **URL:** <https://www.dell.com/support/kbdoc/en-us/000379162/how-to-upgrade-the-bios-and-the-firmware-on-a-dell-pro-max-with-the-grace-blackwell-system>,
   <https://api.github.com/repos/NVIDIA/nvidia-container-toolkit/releases>,
   <https://bugs.launchpad.net/ubuntu/+source/update-notifier/+bug/1991502>
-- **Read:** 2026-11-06 (gb10-1 survey)
+  <https://www.dell.com/support/home/en-us/product-support/product/dell-pro-max-fcm1253-micro/drivers>,
+  <https://fwupd.org/lvfs/search?value=GB10>
+- **Read:** 2026-11-06 (gb10-1 survey); the toolkit's releases, Dell's drivers page and LVFS
+  2026-11-06T18:51Z to 18:53Z (gb10-1's second survey)
 - **Concerns:** gb10-1: BIOS channel, container runtime, the failed user unit.
 - **Tier:** primary (LP's report itself a user's).
 - **Said:** Dell: updates through the DGX Dashboard or apt plus `fwupdmgr`, no version named.
-  Toolkit v1.20.1 (2026-09-19) the newest stable. LP #1991502: `update-notifier-crash` calls
+  Toolkit v1.20.1 (2026-09-19T00:01:48Z) the newest release, stable or not (v1.20.0 2026-08-13;
+  newest prerelease v1.20.0-rc.1). Dell's drivers page needs a sign-in ("Get full access"); LVFS's
+  search answered HTTP 403; one web search found no Dell BIOS note past 5.36 and no source on the
+  Dell UEFI's display reservation. LP #1991502: `update-notifier-crash` calls
   apport-gtk and exits 127 where it is missing, leaving the user manager degraded.
 
 ### omarchy-pkgs commits, linux-omarchy
