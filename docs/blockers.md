@@ -51,7 +51,9 @@ open, last checked on the date of the record it came from.
 - **Reopens it:** a later build that narrows tag matching again, or a new Google QAT file that
   puts `_` before its tag.
 - **State:** open.
-- **Last checked:** 2026-11-06 (`gh pr view`, both merged as above).
+- **Last checked:** 2026-11-06, survey (`gh pr view 31620`, `31639`: both merged as above; no change
+  that restores `_` found). Every newer gb10 image (b12124, and b12169 on the package page) is past
+  b12100.
 
 ## Gemma 4 26B-A4B aborts on Vulkan with several slots
 
@@ -73,7 +75,8 @@ open, last checked on the date of the record it came from.
   gpt-oss-120b serves agent.
 - **Reopens it:** the abort recurring on a later build at several slots.
 - **State:** open.
-- **Last checked:** 2026-11-06 (`gh issue view 29221`, `gh pr view 25584`: both open).
+- **Last checked:** 2026-11-06, survey (`gh issue view 29221`: open, updated 2026-10-28;
+  `gh pr view 25584`: open, updated 2026-10-31).
 
 ## Vulkan's batched tensor copy API
 
@@ -89,7 +92,7 @@ open, last checked on the date of the record it came from.
 - **Workaround:** none needed for set A; the re-screen waits.
 - **Reopens it:** the records state none.
 - **State:** open.
-- **Last checked:** 2026-11-06 (`gh pr view 31418`: open).
+- **Last checked:** 2026-11-06, survey (`gh pr view 31418`: open, updated 2026-10-30).
 
 ## The prompt cache with a unified KV cache
 
@@ -105,14 +108,17 @@ open, last checked on the date of the record it came from.
   cache from fresh loads and it did as well or better
   ([gb10-1 screen, 2026-11-05](screens/gb10-1/2026-11-05.md), "Cells"); framework's check of the
   same keys is owed (the skill-revision task's measure).
-- **Upstream:** #30961 open, with no fix named in the records; #27148 open, its fix
-  [#27624](https://github.com/ggml-org/llama.cpp/pull/27624) open.
+- **Upstream:** #30961 open (updated 2026-11-03), with no fix named in the records; #27148 open
+  (updated 2026-11-06: a new reproduction, and a reply, a lead, that a split-KV section needs
+  `--no-cache-idle-slots` on top of `--cache-ram 0`), its fix
+  [#27624](https://github.com/ggml-org/llama.cpp/pull/27624) open (updated 2026-10-10).
 - **Clears when:** a fix for each merges and an image for the host's class carries it.
 - **Workaround:** `cache-ram = 0` and `cache-idle-slots = false` on set A's section, in the shared
   preset (spike-model-engines `host/llama-preset/models.ini` at 933ec0f).
 - **Reopens it:** turning the prompt cache back on for a unified-KV section.
 - **State:** open.
-- **Last checked:** 2026-11-06 (`gh issue view 30961`, `27148`, `gh pr view 27624`: all open).
+- **Last checked:** 2026-11-06, survey (`gh issue view 30961`, `27148`, `gh pr view 27624`: all
+  open).
 
 ## Context checkpoints unbounded with no prompt cache
 
@@ -128,9 +134,12 @@ open, last checked on the date of the record it came from.
   "Findings" and "Cells", "The configuration on b12098").
 - **Upstream:** [#30137](https://github.com/ggml-org/llama.cpp/pull/30137), "Use reference-counted
   checkpoints instead of deep-copies", merged 2026-11-05T10:02:36Z (e152332), after b12098, so
-  b12098 deep-copies each checkpoint. `fix-in-image.sh` on 2026-11-06: the newest gb10 image,
-  `server-cuda13-b12124`, is behind the merge (ahead by 0, behind by 17), so no imaged build
-  carries it.
+  b12098 deep-copies each checkpoint. `fix-in-image.sh` on 2026-11-06 (twice): the newest gb10
+  image it finds, `server-cuda13-b12124`, is behind the merge (ahead by 0, behind by 17), so no
+  imaged build carries it. GitHub's package page lists a newer `server-cuda13-b12169`, with no
+  GitHub release (the script walks releases, so it can't see it), and the compare puts b12169
+  ahead of the merge by 28, behind by 0: a conflict that would move this entry to "fix in an
+  image build", left open for the architect (gb10-1 report, 2026-11-06, "Pauses", 2).
 - **Clears when:** an image for the class carries #30137, the host can move to it (on gb10-1,
   once the QAT entry above clears), and a measure shows the section's memory bounded at the
   default `ctx-checkpoints`. Whether #30137 bounds the memory, rather than only the copies, is
@@ -138,7 +147,8 @@ open, last checked on the date of the record it came from.
 - **Workaround:** `ctx-checkpoints = 2` on a no-cache section with large checkpoints.
 - **Reopens it:** a no-cache section losing its checkpoint cap on a build without the fix.
 - **State:** fix merged.
-- **Last checked:** 2026-11-06 (`gh pr view 30137`; `fix-in-image.sh` for gb10).
+- **Last checked:** 2026-11-06, survey (`gh pr view 30137`: merged; `fix-in-image.sh` for gb10;
+  the compare against b12169).
 
 ## Gemma 4's multi-turn gap on llama.cpp
 
@@ -158,4 +168,32 @@ open, last checked on the date of the record it came from.
 - **Workaround:** gpt-oss-120b stays the agent model; Gemma serves vision.
 - **Reopens it:** the records state none.
 - **State:** open.
-- **Last checked:** 2026-11-05 (the screen's record; nothing upstream to check).
+- **Last checked:** 2026-11-06, survey (nothing upstream to check).
+
+## Idle-slot saves stall decode on CUDA
+
+- **Hosts:** gb10-1 (measured). Its vision and audio sections run the prompt cache at the defaults
+  (`cache-ram` 8192, idle-slot saves on; `common.h` at b12098), so they are exposed, unmeasured
+  ([gb10-1 report, 2026-11-06](reports/gb10-1/2026-11-06.md), "Configuration review", rows 1-2).
+- **Blocks:** llama.cpp's host-side prompt cache with idle-slot saves (`cache-ram`,
+  `cache-idle-slots`) on a multi-slot section on CUDA.
+  [#30252](https://github.com/ggml-org/llama.cpp/issues/30252): saving idle slots to the prompt
+  cache stalls all requests for seconds with interleaved KV cells.
+- **Measured cost:** on gb10-1 at b12098, Gemma 4 26B-A4B QAT's 16-slot agent section with the
+  default cache made 3,271 idle-slot saves in a 45-minute BFCL multi-turn run, and its long replies
+  decoded at 8-9 tok/s; with `cache-ram 0`, `cache-idle-slots false` and `ctx-checkpoints 2`, no
+  saves and 21.3 tok/s ([gb10-1 screen, 2026-11-05](screens/gb10-1/2026-11-05.md), "Cells", "The
+  configuration on b12098").
+- **Upstream:** #30252 closed 2026-11-04T02:18:07Z; its CUDA fix
+  [#31391](https://github.com/ggml-org/llama.cpp/pull/31391) merged 2026-11-03T10:01:50Z, in b12080
+  and later, which b12098 carries: the stall was measured on a build with the fix, so no fix that
+  clears it on this host is named.
+- **Clears when:** a fix that removes the stall under multi-slot load reaches an image for the
+  class the host can run, and a measure shows a multi-slot section's decode with the cache on at
+  the rate it holds without it.
+- **Workaround:** `cache-ram = 0`, `cache-idle-slots = false`, with `ctx-checkpoints = 2` where the
+  checkpoints are large (the entry above), as set A's agent section and Gemma's final agent section
+  took them.
+- **Reopens it:** turning the prompt cache back on for a multi-slot section on CUDA.
+- **State:** open.
+- **Last checked:** 2026-11-06, survey (`gh issue view 30252`: closed; `gh pr view 31391`: merged).
