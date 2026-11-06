@@ -75,15 +75,18 @@ and the last reports of both hosts.
 
 - **URL:** <https://github.com/ggml-org/llama.cpp/issues/27148>; its fix
   <https://github.com/ggml-org/llama.cpp/pull/27624>
-- **Read:** 2026-11-06 (gb10-1 survey; updated upstream 2026-11-06)
+- **Read:** 2026-11-06T18:21Z (framework survey; updated upstream 2026-11-06T16:16:53Z, after the
+  gb10-1 survey's read)
 - **Concerns:** gb10-1 and framework: set A's agent section's prompt cache, and the split-KV Gemma
   sections' default cache; the register's prompt-cache entry.
 - **Tier:** primary (the issue); its commenters (authorAssociation NONE) leads.
 - **Said:** open; the RAM-backed prompt cache (`--cache-ram`, `--cache-idle-slots`) restores
   content from an unrelated conversation into a fresh slot under concurrent load. elchic00
   (2026-08-22): with `kv_unified = true` either flag fixes it; with `kv_unified = false` "closing it
-  needs `--no-cache-idle-slots` on top of `--cache-ram 0`". A new reproduction 2026-11-06 at the
-  default flags. Its fix #27624 open (updated 2026-10-10).
+  needs `--no-cache-idle-slots` on top of `--cache-ram 0`". darrellberry (2026-10-10): a
+  reproduction on Metal, "(every report so far has been AMD iGPU)". cashcropper4life (2026-11-06):
+  a reproduction at the default flags under Ollama. huornlmj (2026-11-06T16:16Z): "Has this not
+  been logged as a CVE?". Its fix #27624 open (updated 2026-10-10).
 
 ### #24265, a Gemma SWA server hangs near its memory limit
 
@@ -100,13 +103,16 @@ and the last reports of both hosts.
 ### #30137, reference-counted context checkpoints
 
 - **URL:** <https://github.com/ggml-org/llama.cpp/pull/30137>
-- **Read:** 2026-11-05 ([gb10-1 screen](screens/gb10-1/2026-11-05.md), "Research read
-  2026-11-05")
-- **Concerns:** gb10-1 (and framework's no-cache section): `ctx-checkpoints` on a section with no
-  prompt cache; the register's unbounded-checkpoints entry.
+- **Read:** 2026-11-06T18:21Z (framework survey; the pull request was updated 2026-11-05T10:02Z,
+  after the 2026-11-05 read)
+- **Concerns:** gb10-1 and framework: `ctx-checkpoints` on a section with no prompt cache; the
+  register's unbounded-checkpoints entry.
 - **Tier:** primary.
-- **Said:** "Use reference-counted checkpoints instead of deep-copies", merged 2026-11-05, after
-  b12098, so b12098 deep-copies each checkpoint.
+- **Said:** "llama-server: Use reference-counted checkpoints instead of deep-copies", merged
+  2026-11-05T10:02:36Z (e152332), after b12098: `std::shared_ptr` checkpoints "allowing cheap
+  (ref-counted) copies", zero-initialization skipped, broken requests rejected before the prompt
+  cache; "This applies mainly to the host-side copies. The effects become larger as context
+  grows." It names no bound on the checkpoints' count or memory.
 
 ### `common.h`, `server.cpp` and the server README at b12098, the defaults
 
@@ -158,13 +164,27 @@ and the last reports of both hosts.
 
 - **URL:** <https://github.com/ggml-org/llama.cpp/issues/29221>,
   <https://github.com/ggml-org/llama.cpp/pull/25584>
-- **Read:** #29221 2026-11-04 ([framework screen](screens/framework/2026-11-04.md), "Cells");
-  #25584 2026-11-05 ([gb10-1 screen](screens/gb10-1/2026-11-05.md), "Sources")
-- **Concerns:** framework: Gemma 4 26B-A4B on Vulkan with several slots; the register's entry.
+- **Read:** 2026-11-06T18:26Z (framework survey: the title's slot count was not in the earlier
+  entry)
+- **Concerns:** framework: Gemma 4 26B-A4B on Vulkan with several slots, its vision section among
+  them; the register's entry.
 - **Tier:** primary.
-- **Said:** #29221 open: Gemma 4 26B-A4B crashes the server on the second request with several
-  slots on Vulkan (`GGML_ASSERT "tensor not allocated"`). #25584, "ggml : fix view init skipped
-  after buft max_size split", its fix, open and unmerged.
+- **Said:** #29221 open (updated 2026-10-28): Gemma 4 26B-A4B "crashes the server on the 2nd
+  request with -np 4 on Vulkan", "-np 3 is fine", in prompt_save (`GGML_ASSERT "tensor not
+  allocated"`). #25584, "ggml : fix view init skipped after buft max_size split", its fix, open and
+  unmerged (updated 2026-10-31).
+
+### #31000, #29655, #29248
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/issues/31000>,
+  <https://github.com/ggml-org/llama.cpp/issues/29655>,
+  <https://github.com/ggml-org/llama.cpp/issues/29248>
+- **Read:** 2026-11-06T18:26Z (framework survey)
+- **Concerns:** framework and gb10-1: agent candidates' tool calls (Flint, Gemma 4, Ministral).
+- **Tier:** primary.
+- **Said:** #31000 open (2026-10-24): Flint NVFP4's tool-call XML remains in its reasoning, on CUDA.
+  #29655 open (2026-11-03): Gemma 4's unstable tool calling. #29248 open (2026-11-03): the
+  Reasoning Ministral's parser. #30105 closed 2026-10-22.
 
 ### #31418, Vulkan's batched tensor copy API
 
@@ -250,6 +270,122 @@ and the last reports of both hosts.
   Transcribe in mtmd (`nemotron-transcribe.cpp` at b12098; llama-server needs `--reasoning off`).
   #31257 merged 2026-10-27: LFM3-Audio-2B and LFM3-Omni-2B. #30894 closed 2026-10-22, its fix #30960
   ("use Tekken pre-tokenizer for pixtral") merged 2026-10-22, for Nemotron 3/3.5 GGUFs.
+
+### `common.h`, `arg.cpp`, `server.cpp` and the server README at b11960, the defaults
+
+- **URL:** <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/common/common.h>,
+  <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/common/arg.cpp>,
+  <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/tools/server/server.cpp>,
+  <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/tools/server/README.md>
+- **Read:** 2026-11-06T18:22Z
+- **Concerns:** framework, which runs and is held at b11960: every section's unset keys.
+- **Tier:** primary (the build's own defaults).
+- **Said:** `n_batch = 2048`, `n_ubatch = 512`, `flash_attn_type` AUTO, `cache_type_k`/`_v` F16, `kv_unified = false`, the server's `n_parallel = -1; // auto by default` (common.h 1), `cache_ram_mib = 8192`, `cache_idle_slots = true`, `n_ctx_checkpoints = 32`, `checkpoint_min_step = 8192`, `swa_full = false`, `models_max = 4`, `load_mode` AUTO ("auto: mmap, unless a device does not support it"; modes none, mmap, mlock, mmap+mlock, dio), `lazy_mode` auto (on for tensors over 4 GiB), `cont_batching = true`, `n_cache_reuse = 0`. `server_prepare_params()`: outside the router role, `n_parallel < 0` gives 4 slots and `kv_unified = true`; an embedding server lowers `n_batch` to `n_ubatch`. README `-kvu` "(default: enabled if number of slots is auto)".
+
+### llama.cpp releases and images, b11960 to b12177
+
+- **URL:** <https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/b11960>, `.../tags/b12098`,
+  `.../tags/b12124`, `.../tags/b12169`;
+  <https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp/versions?filters%5Bversion_type%5D=tagged>
+  (pages 1 to 3)
+- **Read:** 2026-11-06T18:25Z
+- **Concerns:** framework: the engine build and its Vulkan images.
+- **Tier:** primary.
+- **Said:** b11960 published 2026-10-28T12:45:39Z (8642541b2); b12098 2026-11-04T03:49:39Z (149f5641b); b12124 2026-11-05T07:08:03Z (8bed7cfb9); `releases/tags/b12169` 404. Vulkan images published: `server-vulkan-b12063`, `-b12098` (3 days before the read), `-b12110`, `-b12124`, and `-b12169`, which carries `server-vulkan`. b11960…b12098: 138 commits; b12098…b12169: 71 commits. (Which is newest is not cached.)
+
+### #31266 and #31163, the Vulkan MoE PP fix and regression
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/pull/31266>, <https://github.com/ggml-org/llama.cpp/issues/31163>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: a watch item; the gpt-oss and Gemma MoE sections' prefill on Vulkan.
+- **Tier:** primary; #31266's author table a lead (ruled 2026-10-30); #31163's RX 7800 XT tables attributed on another class.
+- **Said:** #31266 merged 2026-11-02T11:53:28Z (cb02250b5), after approvals by 0cc4m (marked CONTRIBUTOR) on 10-29 and 10-30. #31163 closed 2026-11-02T11:53:29Z. compare cb02250…b12098 is "ahead" by 49, so it is in b12098, not in b11960. No figure on RDNA 3.5 or Strix Halo in either thread.
+
+### #30146 and #30280, RDNA split-K
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/pull/30146>, <https://github.com/ggml-org/llama.cpp/pull/30280>
+- **Read:** 2026-11-06T18:28Z
+- **Concerns:** framework: Vulkan matmul on gfx1151.
+- **Tier:** primary; #30280's tables attributed on another class (RX 9070 XT, RX 7900 XTX).
+- **Said:** #30146 merged 2026-11-02T11:54:10Z (07ec7c8af), in b12098 (ahead 48). "`MUL_MAT_ID` is unaffected. RDNA4 and RDNA3 APUs pass the device gate but remain unmeasured." #30280 "RDNA3/4 Vulkan Large-Tile Split-K Optimization" merged 2026-11-05T12:11:08Z (da3416d80), in b12169 (ahead 21), not in b12098. 9070 XT Gemma 4 E4B Q4_K_M pp512 5621 → 6023 (+7.2%, `llama-bench -p 512 -n 0 -fa 1 -ngl 99`). No APU row.
+
+### #29510's Vulkan side
+
+- **URL:** <https://api.github.com/repos/ggml-org/llama.cpp/commits/1b6935b22>; <https://github.com/ggml-org/llama.cpp/pull/29510>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: set A's unified-KV section on Vulkan; the #28495 watch item.
+- **Tier:** primary; am17an's comment a lead.
+- **Said:** The 4-line change to `ggml-vulkan.cpp` is in `ggml_backend_vk_device_supports_op`, under `GGML_OP_FLASH_ATTN_EXT`: it returns false when `op->src[5]` (kv_rows) is set, so Vulkan declines `flash_attn_ext_rows`. Kernels exist for CUDA and Metal only. The body: used "when supported by a backend". am17an (2026-10-02): "For vulkan I can see a benefit in decode even if it has a better mask algorithm." No Vulkan port found by search.
+
+### #28495, unified-KV PP drop with several slots
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/issues/28495>
+- **Read:** 2026-11-06T18:27Z
+- **Concerns:** framework: set A's `kv-unified` (a watch item).
+- **Tier:** primary (issue); every comment is NONE, so a lead, except where it names hardware, build and command (DanoPTT, R9700 HIP b10825, attributed on another class).
+- **Said:** OPEN, label `stale`, updated 2026-10-27T01:14:42Z. alankila (Strix Halo, no build or method): "disabling KVU gets rid of the problem". DanoPTT: "-kvu" S_PP 885.55 / 792.90 / 644.39 at 1 / 2 / 4 sequences, against "-no-kvu" 857.79 / 847.80 / 833.20. superslor (V100): the mask-skip is never computed with `--kv-unified` in the CUDA FA gate.
+
+### #31356, Gemma 4 graph optimizations
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/pull/31356>
+- **Read:** 2026-11-06T18:28Z
+- **Concerns:** framework: the audio (E4B) and vision (26B-A4B) sections.
+- **Tier:** primary; figures attributed on other classes (M4 Pro Metal and CPU, Snapdragon).
+- **Said:** Merged 2026-11-03T18:30:38Z, in b12098 (6cb3e672e…b12098 is ahead by 3). "The layer trimming is support only for the unified-KV"; "none for 26B". M4 Pro Metal, Google QAT E4B Q4_0, pp512 805.91 → 1318.62; tg128 63.39 → 63.62.
+
+### llama.cpp Vulkan, server and model commits since b11960
+
+- **URL:** <https://api.github.com/repos/ggml-org/llama.cpp/commits?path=ggml/src/ggml-vulkan&since=2026-10-27T00:00:00Z>,
+  `...?path=tools/server&since=2026-10-28T12:45:00Z`, `...?path=src/llama-kv-cache.cpp&...`, `...?path=src/models&...`
+- **Read:** 2026-11-06T18:27Z
+- **Concerns:** framework: what a move past b11960 brings on Vulkan.
+- **Tier:** primary.
+- **Said:** Vulkan in b12098: #31266, #30146, #25051, #31079, #31114, plus #30881 (the batched copy API). Vulkan in b12169 only: #30280, #30487, #31587 (AMD proprietary driver), #29772, #30769. Not in b12169: #31658 (ReBAR). Server: #31350, #30710, #30137 (b12169). KV: #31073, #31570, #31683. Gemma: #31356 (b12098).
+
+### llama.cpp Vulkan issues since b11960
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/issues/31557>, `/31739`, `/31402`, `/24066`, `/25664`, `/20515`
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: regressions past b11960 on Vulkan; prompt-cache and flag practice.
+- **Tier:** primary (issues); every comment cited is NONE or CONTRIBUTOR, so a lead.
+- **Said:** #31557: Intel B60 Vulkan regression (pp512 1117 → 821), Intel only. #31739: "Fused top-k mask: Not supported on Vulkan (Radeon 8060S)", b12154. #31402: 780M DeviceLost since b10369. #24066: RX 6600, `RADV_PERFTEST=nogttspill` mitigates, "still present in b12020". #25664 (Strix Halo, closed stale 2026-11-05): `amdgpu.lockup_timeout` workaround; no reproduction on kernel 7.2.0 and Mesa 26.2.1. #20515 (8060S, closed): Vulkan aborts in `prompt_save` → `ggml_backend_vk_buffer_get_tensor` with ring timeouts, b11370.
+
+### llama.cpp maintainers on Strix Halo flags (a search)
+
+- **URL:** `gh search issues --repo ggml-org/llama.cpp` "Strix Halo", "gfx1151", "8060S" (57 issues), comments filtered by authorAssociation
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: the configuration review.
+- **Tier:** primary for the absence.
+- **Said:** no MEMBER, OWNER or COLLABORATOR comment states practice for ubatch, flash attention, mmap, the KV type, the prompt cache or parallel on Strix Halo. 0cc4m's Vulkan comments are marked CONTRIBUTOR.
+
+### #28211, ROCm wrong logits on gfx1151
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/issues/28211>
+- **Read:** 2026-11-06T18:28Z
+- **Concerns:** framework: the ROCm image.
+- **Tier:** primary.
+- **Said:** OPEN, updated 2026-10-26T01:15:23Z: "HIP/ROCm on gfx1151, wrong logits (not a crash), triggered by prompts longer than n_ubatch". Last comment tczank, 2026-09-25: reproduces on gfx1036.
+
+### ggml docker docs at b11960
+
+- **URL:** <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/docs/docker.md>
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: the container's run flags.
+- **Tier:** primary.
+- **Said:** no run example for the Vulkan or ROCm images, and no device, group, ipc or shm flags.
+
+### `llama-arch.cpp` at b11960
+
+- **URL:** ARCH. **Read:** 2026-11-06T18:21Z. **Concerns:** framework: the engine gate. **Tier:** primary.
+- **Said:** the names listed under "Common reads"; no olmo3, apriel, raon. (New; b12098's entry stays.)
+
+### llama.cpp: LFM3, Nemotron Transcribe, Granite speech support against b11960
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/pull/31252>, `/31257`, `/31386`, `/31471`, `/30628`; `https://api.github.com/repos/ggml-org/llama.cpp/compare/<merge sha>...b11960`; <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/src/llama-arch.cpp>; <https://api.github.com/repos/ggml-org/llama.cpp/contents/tools/mtmd/models?ref=b11960>; issues #29780, #24138, #29446
+- **Read:** 2026-11-06T18:24-18:36Z
+- **Concerns:** framework (b11960): the engine gate for vision and audio candidates.
+- **Tier:** primary.
+- **Said:** #31252 (19cce69) ahead 22 and #31257 (19ff817) ahead 19: in b11960. #31386 (889f2ec, merged 2026-10-30) behind 53 and #31471 (28b812d, merged 2026-11-03) behind 127: not in b11960. #30628 (e287bd8) ahead 287: in. llama-arch at b11960 has lfm3, gemma4, gemma-embedding2, modern-bert, nomic-bert(-moe), granite, muse-glimmer, mistral3, llama4; no nemotron transcribe. tools/mtmd/models at b11960 has lfm3a, lfm3a-gen, lfm3vl, gemma4a/ua/uv/v, granite-speech, granite4-vision, muse-glimmer, nemotron-omni, pixtral, parakeet, voxtral-rt, whisper-enc; no nemotron-transcribe. #29780 OPEN (updated 2026-11-01); #24138 CLOSED (2026-07-24); #29446 OPEN (2026-10-16).
 
 ## Engine choice and models
 
@@ -362,17 +498,11 @@ and the last reports of both hosts.
 
 ### The Gemma 4 tokenizer fixes and ggml-org's reconversions
 
-- **URL:** <https://huggingface.co/google/gemma-4-E4B-it/discussions/50>,
-  <https://huggingface.co/api/models/google/gemma-4-E4B-it/commits/main>,
-  <https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/raw/main/.src_sha>,
-  <https://huggingface.co/ggml-org/gemma-4-12B-it-GGUF/raw/main/.src_sha>
-- **Read:** 2026-11-06 (gb10-1 survey)
-- **Concerns:** gb10-1: the audio incumbent's file and the 12B candidates.
+- **URL:** <https://huggingface.co/api/models/google/gemma-4-E4B-it/commits/main>, <https://huggingface.co/api/models/ggml-org/gemma-4-E4B-it-GGUF>, <https://huggingface.co/api/models/ggml-org/gemma-4-E2B-it-GGUF>, plus the entry's `.src_sha` URLs (not re-read)
+- **Read:** 2026-11-06T18:21Z (`.src_sha` reads stay at the gb10-1 survey's, 2026-11-06)
+- **Concerns:** gb10-1 and framework: the audio incumbent's file; E2B and 12B candidates.
 - **Tier:** primary.
-- **Said:** google/gemma-4-E4B-it, 2026-11-03: "Remediate 219 glitch tokens in tokenizer.json",
-  "No model weights are modified"; ggml-org's E4B GGUF still pins `PRIMARY=ee0ef602…` (July).
-  google/gemma-4-12B-it fixed 210 on 2026-10-30; ggml-org's 12B `.src_sha` `PRIMARY=43c9d014…`
-  equals Google's current sha (BF16 and Q8_0 reconverted 2026-11-01; Q4_0 not).
+- **Said:** google/gemma-4-E4B-it newest 4ecc2ba6… 2026-11-03T16:13:15Z "Remediate 219 glitch tokens", "No model weights are modified"; ggml-org E4B GGUF sha a69f018d…, lastModified 2026-10-19T10:58:26Z, `.src_sha` `PRIMARY=ee0ef602…` (July); ggml-org E2B GGUF sha 6938c58e…, lastModified 2026-10-19T10:58:13Z; google E2B-it/E2B/E4B fixed 2026-11-03, 12B 2026-10-30; ggml-org 12B `.src_sha` equals Google's current sha (BF16, Q8_0 reconverted 2026-11-01).
 
 ### Model cards, records and files for gb10-1's candidates
 
@@ -411,12 +541,257 @@ and the last reports of both hosts.
 - **Said:** BFCL v4 multi-turn 62.13%, for BF16 and its NVFP4 quantization alike, on vLLM with
   thinking on. Neither its harness nor its sample list is the screen's.
 
+### vLLM v0.33.0rc3: ROCm doc, Dockerfile, images, gfx1151 PRs, #21182
+
+- **URL:** <https://api.github.com/repos/vllm-project/vllm/releases>,
+  <https://raw.githubusercontent.com/vllm-project/vllm/v0.33.0rc3/docs/getting_started/installation/gpu.rocm.inc.md>,
+  <https://raw.githubusercontent.com/vllm-project/vllm/v0.33.0rc3/docker/Dockerfile.rocm_base>,
+  <https://hub.docker.com/v2/repositories/vllm/vllm-openai-rocm/tags>, <https://github.com/vllm-project/vllm/issues/21182>
+- **Read:** 2026-11-06T18:29Z
+- **Concerns:** framework: the seed list and the vLLM watch item.
+- **Tier:** primary.
+- **Said:** v0.33.0rc3 published 2026-11-02T10:10:05Z, not prerelease; ROCm 10.0 is the default image, with `-rocm72`. No gfx1151 line in its notes. The doc lists "Ryzen AI MAX / AI 300 Series (gfx1151/1150)", "requires ROCm 7.0.2 or above". `PYTORCH_ROCM_ARCH` includes gfx1150 and gfx1151. Images `v0.33.0`, `-rocm100`, `-rocm72` (2026-11-02). #60413 and #60644 are in v0.33.0rc3; #63735 isn't; #65322 (11-03) is in nightlies only. #21182 OPEN, updated 2026-09-27.
+- Replaces the 2026-10-30 report's vLLM ROCm reads for framework. It doesn't replace the entry
+  "vLLM releases and its GB10 tracker items", which concerns gb10-1; add framework's reads beside it.
+
+### SGLang v0.5.23 and rocm/sgl-dev gfx1151
+
+- **URL:** <https://api.github.com/repos/sgl-project/sglang/releases>, <https://hub.docker.com/v2/repositories/rocm/sgl-dev/tags?name=gfx1151>
+- **Read:** 2026-11-06T18:29Z
+- **Concerns:** framework: the seed list.
+- **Tier:** primary.
+- **Said:** v0.5.23 (2026-11-02T22:14:10Z), images for MI35x and MI30x only; daily `v0.5.23-rocm724-gfx1151-<date>`, newest 20261106; 55 gfx1151 tags.
+- Extends "SGLang and TensorRT-LLM releases" (gb10-1) with the gfx1151 images.
+
+### ggml-hrx builds and images
+
+- **URL:** <https://api.github.com/repos/ROCm/ggml-staging-automation/releases>,
+  <https://github.com/orgs/ROCm/packages?q=hrx>, <https://hub.docker.com/v2/search/repositories/?query=hrx>,
+  <https://github.com/ggml-org/llama.cpp/pull/27218>, <https://github.com/ggml-org/llama.cpp/discussions/27219>
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: the ggml-hrx watch item.
+- **Tier:** primary; discussion replies leads.
+- **Said:** hrx-b131 (2026-10-31), a manylinux tarball, "passed on Radeon 8050S (`gfx1151`)", "not a stable distribution channel". No ROCm package and no Docker Hub image. #27218 an OPEN draft, updated 2026-10-08. #27219 since 10-29: no HRX-against-Vulkan figure on gfx1151.
+
+### Lemonade and Ollama pins
+
+- **URL:** <https://raw.githubusercontent.com/lemonade-sdk/lemonade/v2026.45.3/src/cpp/resources/backend_versions.json>,
+  the same at `candidate-v2026.46.1`, <https://api.github.com/repos/lemonade-sdk/lemonade/releases/tags/candidate-v2026.46.1>,
+  <https://raw.githubusercontent.com/ollama/ollama/v0.40.15/LLAMA_CPP_VERSION>
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: packagers; the scan.
+- **Tier:** primary.
+- **Said:** Lemonade v2026.45.3: vulkan b11846, rocm-stable b11836, rocm-nightly b1353, hrx-b99. The candidate adds container backends for gfx1151: `llamacpp.nathanw` "vulkan-radv-performance@sha256:41018261…", `llamacpp.halobox` "rocm-10.0-strix-llama@…", `rocmfpx`, `halogen` "0.18.22@…", `gufo`, `ds4`. Ollama v0.40.15 pins "b12111".
+
+### kyuz0 toolboxes (llama.cpp and vLLM)
+
+- **URL:** <https://github.com/kyuz0/amd-strix-halo-toolboxes>, <https://github.com/kyuz0/amd-strix-halo-vllm-toolboxes>
+- **Read:** 2026-11-06T18:30Z
+- **Concerns:** framework: the configuration review.
+- **Tier:** lead (advice and unnamed builds).
+- **Said:** "Always use flash attention (`-fa 1`) and resident loading (`--load-mode none`) on Strix Halo". Vulkan: `--device /dev/dri --group-add video --security-opt seccomp=unconfined`. ROCm adds `/dev/kfd` and `render`. Results "legacy and are no longer updated". vLLM image `kyuz0/vllm-therock-gfx1151` on ROCm 10.0: "Performance benchmarks have not yet been run for this Ubuntu image."
+
+### Strix Halo leads: Talus, visorcraft, hipEngine
+
+- **URL:** <https://forum.level1techs.com/t/strix-halo-tuned-rust-engine/259719>,
+  <https://github.com/visorcraft/strix-halo-llm-perf>,
+  <https://community.frame.work/t/hipengine-fast-native-qwen-3-6-inference-for-rdna3-including-strix-halo/82803>
+- **Read:** 2026-11-06T18:31Z
+- **Concerns:** framework: the scan; configuration practice.
+- **Tier:** lead (none names its build, driver and command together).
+- **Said:** Talus (2026-10-28): a HIP Rust fork of Strata. visorcraft: "unified KV flags, no-mmap, and batch-size tuning produced negligible gains", no figures. hipEngine (2026-05-29): HIP only.
+
+### Strix Halo community benches (discovery)
+
+- **URL:** <https://forum.level1techs.com/t/strix-halo-llm-inference-notes/249466>, <https://forum.level1techs.com/t/strix-halo-ryzen-ai-max-395-llm-benchmark-results/233796>, <https://community.frame.work/t/ryzen-ai-max-not-so-much/77999>, <https://github.com/visorcraft/strix-halo-llm-perf>, <https://slb350.github.io/strix-benchmarks/>, <https://raw.githubusercontent.com/kyuz0/amd-strix-halo-toolboxes/main/README.md>
+- **Read:** 2026-11-06T18:23Z-18:35Z
+- **Concerns:** framework: agent discovery and speed leads.
+- **Tier:** lead each (SLB a tier question, default lead; Djip's FW-77999 ROCm post attributed on ROCm).
+- **Said:** gpt-oss-120b Vulkan tg128 36.46 (apkallu), 54.84 (vdtdg); ROCm tg16 51.81 (Djip, b7123,
+  ROCm 6.4.4); gpt-oss-20b Vulkan tg128 50.86 / 77.31; Scout tg128 19.88 / 19.3; Hermes 4 70B 5.26;
+  Nemotron 3 Nano MXFP4 server tg 61.5 (VISOR); SLB: Nano Omni tg128 61.1, Mistral Small 4
+  UD-Q4_K_XL 40.3 (b9518), Mistral Medium 3.5 2.90, Muse Glimmer Q8_K_XL 7.25 (13.53 DFlash),
+  Granite 4.1 30B/8B/3B 11.8/38.6/88.7, Puzzle 75B ROCm 22.66 / RADV 2.69 (port build 10023); SLB
+  names Mesa RADV 25.2.3, kernel 6.17.0-29. KYUZ0's README: "legacy and are no longer updated".
+
+### Hermes 4 Technical Report (arXiv 2508.18255v2)
+
+- **Read:** 2026-11-06T18:32Z. **Tier:** primary. **URL:** <https://arxiv.org/pdf/2508.18255v2>. **Concerns:** framework: Hermes 4 (discovery). **Said:** "We can then synthesize a reasoning trace and answer from Deepseek-R1 [15] or Deepseek-R10528 [1]"; on the overlong data, "This answer is generated from the SFT stage-1 model rather than a teacher model"; "For the 14B model, we began with the Qwen3 14B checkpoint". The 70B's base is `meta-llama/Meta-Llama-3.1-70B`.
+
+### allenai/dolci-thinking-sft dataset card
+
+- **URL:** https://huggingface.co/datasets/allenai/dolci-thinking-sft/raw/main/README.md
+- **Read:** 2026-11-06T18:41Z. **Tier:** primary. **Said:** "new traces generated by a mix of DeepSeek R1
+  and DeepSeek R1 0528" for WildChat 83,054, Aya 98,597 and others; generators of OpenThoughts 3,
+  SYNTHETIC-2, the Nemotron code split and new Dolci Think data not named; no QwQ-32B mention.
+
+### Cards, records and trees for framework's agent candidates
+
+- **URL:** each as cited inline in framework's report of 2026-11-06, "Models", "Agent" (Flint, Trinity Nano, Nano Omni, Mistral Small 4 config and siblings,
+  granite-switch 8B/30B, granite-4.1-30b tree, Muse Glimmer GGUF, LFM3-1.7B, Mistral Medium 3.5,
+  Laguna S 2.1, Puzzle 75B, Ornith, Agents-A1, gpt-oss-safeguard), 2026-11-06T18:26Z-18:40Z, primary.
+
+### `google/gemma-4-E4B-it-qat-q4_0-gguf` commits and record
+
+- **URL:** <https://huggingface.co/api/models/google/gemma-4-E4B-it-qat-q4_0-gguf/commits/main>, <https://huggingface.co/api/models/google/gemma-4-E4B-it-qat-q4_0-gguf>
+- **Read:** 2026-11-06T18:20Z
+- **Concerns:** framework: the E4B QAT watch item.
+- **Tier:** primary.
+- **Said:** newest commit 4b4a2c1d… 2026-07-17T21:23:49Z "Upload validated QAT GGUF checkpoint (280 sequence length, corrected vocabulary)"; sha 4b4a2c1d…, lastModified 2026-07-17T21:23:49Z.
+
+### Google's Gemma 4 QAT GGUF records
+
+- **URL:** <https://huggingface.co/api/models/google/gemma-4-26B-A4B-it-qat-q4_0-gguf>, `…/gemma-4-31B-it-qat-q4_0-gguf`, `…/gemma-4-12B-it-qat-q4_0-gguf`, <https://huggingface.co/api/models/google/gemma-4-E2B-it-qat-q4_0-gguf/tree/main?expand=true>
+- **Read:** 2026-11-06T18:34Z
+- **Concerns:** framework: vision incumbent's revision; 31B, 12B, E2B QAT candidates.
+- **Tier:** primary.
+- **Said:** 26B d1c082be… 2026-07-17T21:25:44Z; 31B 59dde245… 21:26:48Z; 12B 29d09777… 21:24:41Z. E2B QAT: `gemma-4-E2B_q4_0-it.gguf` 3,349,516,256 B "Safe GGUF model" + PAIT-GGUF-100; `gemma-4-E2B-it-mmproj.gguf` 986,833,664 B "Safe GGUF model"; both 2026-07-17 "Upload validated QAT GGUF checkpoint (280 sequence length, corrected vocabulary)".
+
+### LiquidAI LFM3 cards, GGUF trees, and config
+
+- **URL:** <https://huggingface.co/LiquidAI/LFM3-Audio-2B/raw/main/README.md>, <https://huggingface.co/LiquidAI/LFM3-VL-2B/raw/main/README.md>, their API records, the trees of `LiquidAI/LFM3-Audio-2B-GGUF`, `LFM3-Omni-2B-GGUF`, `LFM3-VL-2B-GGUF` (`?expand=true`), <https://huggingface.co/LiquidAI/LFM3-Omni-2B/raw/main/config.json>
+- **Read:** 2026-11-06T18:27-18:32Z
+- **Concerns:** framework: vision and audio candidates.
+- **Tier:** primary (the VL card's Strix Halo chart is a lead: image only, no build).
+- **Said:** Audio record 2026-11-03T07:40:58Z, no base_model; "in-house audio encoder and LiquidCodec audio tokenizer"; English ASR WER 6.23 (E4B 7.82), multilingual 6.03 (6.54), MMAR 50.60 (49.10), tool calling 58.50 (72.40). VL record 2026-11-03T21:29:55Z, base LFM3-1.7B-Base, "in-house vision encoder"; MOPD distils "the vision RL model and the Mixed RL model from LFM3-1.7B"; recommends b11960+; MMMU-Pro 45.7, OCRBench v1 86.3, ChartQA 92.7, DocVQA 96.7; Strix Halo prefill/decode in a chart, Q4_0 + F16 mmproj, 512x512 image, 1,024 in, 256 out. Trees: every GGUF "Safe GGUF model", weights PAIT-GGUF-100; F16 mmprojs of 2026-10-27 (Audio 570,846,400 B, Omni 949,841,248 B, VL 378,996,032 B); Audio/Omni BF16/Q8_0/Q4 mmprojs re-made 2026-10-29 "Quantize the codec decoder"; VL adds an NVFP4 GGUF 2026-11-03 (card: b12088). Omni config: 24 layers (13 conv, 6 full attention, 5 sliding at 256), 4 KV heads, head dim 128.
+
+### LiquidAI d1-2B and d1-Omni-2B
+
+- **URL:** <https://huggingface.co/LiquidAI/d1-2B/raw/main/README.md>, <https://huggingface.co/LiquidAI/d1-Omni-2B/raw/main/README.md>, <https://huggingface.co/LiquidAI/d1-2B-GGUF/raw/main/README.md>
+- **Read:** 2026-11-06T18:31-18:38Z
+- **Concerns:** framework and gb10-1: vision and audio discovery.
+- **Tier:** primary.
+- **Said:** "a decision model … returns calibrated answers in one forward pass, without generating tokens"; built on LFM3-VL-2B / LFM3-Omni-2B; lfm1.0; no teacher or generator named; llama.cpp from b11960 on `/v1/systemone`, `-b 8192 -ub 8192`, Q8_0.
+
+### IBM Granite Speech 5.0 2B card, GGUF tree and config; 4.1 2B plus GGUF tree
+
+- **URL:** <https://huggingface.co/ibm-granite/granite-speech-5.0-2b/raw/main/README.md>, its `config.json`, <https://huggingface.co/ibm-granite/granite-speech-5.0-2b-GGUF/raw/main/README.md>, the trees of `granite-speech-5.0-2b-GGUF` and `granite-speech-4.1-2b-plus-GGUF`
+- **Read:** 2026-11-06T18:31-18:39Z
+- **Concerns:** framework and gb10-1: audio candidates.
+- **Tier:** primary.
+- **Said:** base an intermediate granite-4.0-1b-base; CTC conformer encoder; translations "with Granite-3 and Phi-4", "Phi-4 and MADLAD"; Kokoro-82M TTS; WER only in charts; recommends Q8_0; ignores unfamiliar prompts. Config: granite, 40 layers, 4 KV heads, hidden 2048 / 16 heads, 16,384 positions. GGUF card: build b9768. 5.0 Q8_0 1,956,155,104 B (2026-10-15T20:04Z), mmproj F16 1,159,354,752 B (2026-10-15T19:18Z), "Safe GGUF model". 4.1 plus Q8_0 1,737,793,312 B and mmproj F16 1,167,743,488 B re-uploaded 2026-11-03 with `.sig` files, "Safe GGUF model".
+
+### Model records: Muse-Glimmer-30B, Granite Vision 4.1, mrutkows granite r2 GGUF
+
+- **URL:** <https://huggingface.co/api/models/meta-models/Muse-Glimmer-30B>, <https://huggingface.co/api/models/ibm-granite/granite-vision-4.1-4b>, `…/granite-vision-4.1-4b-GGUF`, <https://huggingface.co/api/models/mrutkows/granite-embedding-english-r2-GGUF>
+- **Read:** 2026-11-06T18:33-18:35Z
+- **Concerns:** framework: whether cited chains' subjects moved.
+- **Tier:** primary.
+- **Said:** Muse-Glimmer lastModified 2026-10-22T02:06:52Z, apache-2.0; Granite Vision 2026-07-13 (GGUF 2026-06-24); mrutkows sha f9cb7cf5…, 2026-04-08T20:42:12Z, files bf16 and Q8_0.
+
+### Nemotron 3.5 Transcribe repositories on the Hub
+
+- **URL:** <https://huggingface.co/api/models?search=Nemotron-3.5-Transcribe&limit=40>
+- **Read:** 2026-11-06T18:31Z
+- **Concerns:** framework and gb10-1: the Transcribe candidate's files.
+- **Tier:** primary (a listing).
+- **Said:** 34 repositories; NVIDIA's BF16, FP8, NVFP4, DFlash2; GGUFs only from third parties (AtomicChat, maternion IQ, Jmica, prithivMLmods, sakasegawa, AMAImedia BF16).
+
+### Strix Halo discovery for vision, ASR and embedding
+
+- **URL:** <https://local-llm-benchmarks.dev/>, <https://local-llm-benchmarks.dev/data/results.json> (first 100,000 of 7,953,781 characters), <https://github.com/visorcraft/strix-halo-llm-perf>, <https://whylucian.github.io/softab/docker/whisper-cpp/BENCHMARKS.html>
+- **Read:** 2026-11-06T18:38-18:40Z
+- **Concerns:** framework: discovery (step 8).
+- **Tier:** local-llm-benchmarks.dev attributed per run (no vision/ASR/embedding run found; vision suite "Upcoming"); visorcraft text-only; whylucian a lead (whisper base.en, one 11 s clip, no whisper.cpp version or Mesa, updated 2026-02-02).
+- **Said:** whisper.cpp base.en on gfx1151: Vulkan RADV 547 ms (20.1x), ROCm 7.2 447 ms (24.6x).
+
 ## Model cards and origin chains
 
 One entry per model a survey judged: its repository, the card's `lastModified`, the publisher, the
 base chain, the teachers and their roles, the card's reads the gates take, and the origin chain's
 verdict inputs ([survey.md](../.claude/skills/hosting-upgrades/survey.md), "Research cache",
-"Model entries"). None yet; the next survey writes them.
+"Model entries").
+
+Written by framework's survey of 2026-11-06 ([report](reports/framework/2026-11-06.md), "Models"). "(c)" and a bracketed record mark an input cited from an earlier record rather than re-read: [gb10-1 rpt] is `reports/gb10-1/2026-11-06.md`, [screen 11-04] `screens/framework/2026-11-04.md`, [fw 10-30] `reports/framework/2026-10-30-2.md`, [vf] `findings/verify-framework.md`. Each read time is the report's, 2026-11-06T18:20Z to 18:41Z, unless an entry gives its own.
+
+- **ggml-org/gpt-oss-120b-GGUF** (openai/gpt-oss-120b, 2025-08-26). OpenAI (verified). Base: none.
+  Teachers: none named. Gates: native MXFP4; no BFCL; 131,072. Inputs: `.src_sha` = openai sha (c);
+  eagle3 level 5 (c); CSL no match. Pass.
+- **ggml-org/gpt-oss-20b-GGUF** (openai/gpt-oss-20b, 2025-08-26). OpenAI. Base none; no teacher.
+  Native MXFP4, 11.28 GiB, no BFCL. `.src_sha` = openai (c). Pass.
+- **ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF** (NVIDIA BF16 record ≤2026-10-29). NVIDIA.
+  Base: NVIDIA's own. Teachers/generators: GLM-5, MiniMax-M2, DeepSeek-V3/V3.2, Kimi-K2, Qwen3
+  (covered by the NVIDIA ruling) (c). Q8_0 path 3; NVFP4 outside 1%; no BFCL. `.src_sha` = NVIDIA (c).
+  Pass by policy, 2026-11-06.
+- **ggml-org/Flint-GGUF** (RecursiveSI/flint, 2026-10-21T14:24Z). Recursive Superintelligence, Inc.,
+  Delaware (c). Base: none ("trained from scratch"). Teachers: none named; SFT generators unstated.
+  MoE 39.8B / ~2.5B active, 262,144; Q8_0 path 3; no BFCL; TB 2.1 54.9, SWE-V 74.2. Inputs:
+  `.src_sha` = publisher (c); level 6 GLM-style tags (c); CSL no match. Pass.
+- **arcee-ai/Trinity-Mini-GGUF** (2026-05-28). Arcee AI, Delaware (c). Base Arcee's own; no teacher.
+  Q8_0 path 3; no BFCL in text. Pass.
+- **arcee-ai/Trinity-Nano-Preview-GGUF** (2026-05-28). Arcee AI. Base `arcee-ai/Trinity-Nano-Base`
+  (record not read); no teacher; data with Datology. 6B-A1B afmoe, 128k; no BFCL. Inputs: CSL no
+  match (Arcee, Datology). Reaches the bar on the card's word; base record unread.
+- **ggml-org/NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF**. NVIDIA. "Improved using Qwen." (covered) (c). Q8_0;
+  "BFCL v4 53.8" uncategorized. Pass by policy.
+- **ggml-org/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-GGUF** (NVIDIA BF16 2026-08-24). NVIDIA. Base
+  Nemotron 3 Nano 30B-A3B. Teachers: none read (covered by the ruling). Q8_0 31.28 GiB; no BFCL;
+  OSWorld 47.4. `.src_sha` `e5e99324…` = NVIDIA sha. Pass by policy.
+- **bartowski/mistralai_Mistral-Small-4-119B-2603-GGUF** (mistralai record 2026-07-15). Mistral AI.
+  Base Mistral's own. No teacher named (c). Q5_K_M 79.2 GiB, 3 shards magic GGUF; MLA KV 23,040
+  B/token; no BFCL. Inputs: `gguf.total` = unsloth's GGUF Mistral links (c); bartowski CSL no
+  match. Pass after research.
+- **ibm-granite/granite-switch-4.1-8b-GGUF** (GGUF 2026-11-04; model 2026-10-28). IBM. Base
+  granite-4.1-8b (+aLoRAs, TurboCTC encoder). Teachers: none named. Dense 8B, 131,072; no BFCL.
+  Inputs: level 4 via TurboCTC/Granary (c, from the 30B); 4.1-8b disclosure unread. Pass on the
+  family's reads; 8B disclosure would complete it.
+- **ibm-granite/granite-switch-4.1-30b-GGUF** (2026-11-04, revision 4.1.1). IBM. Base granite-4.1-30b.
+  Dense 30B; no BFCL. Level 4 recorded (c). Pass.
+- **ibm-granite/granite-4.1-30b-GGUF**. IBM. "trained from scratch" (c). Q5_K_M magic GGUF; "BFCL v3"
+  73.68 uncategorized (c). Pass.
+- **ibm-granite/granite-4.2-{3b,8b,30b}-GGUF** (2026-10-20). IBM. No teacher; dataset sources
+  recorded (c). "BFCL (v4)" uncategorized. Pass.
+- **ggml-org/Muse-Glimmer-30B-GGUF; meta-models/Muse-Glimmer-30B-GGUF** (model 2026-10-22, GGUF
+  2026-10-20). Meta ("Meta Superintelligence Lab"; org "Meta Inc." verified, c). Teacher Muse
+  Spark, Meta's own ("distilled from Muse Spark"). Dense ~29.6B, 131,072; no BFCL; publisher Q4_K_XL
+  "0.2%" average over 15 unnamed benchmarks. DFlash drafter level 5. Pass.
+- **mistralai/Ministral-3-{3B,8B,14B}-Instruct-2512-GGUF; Magistral-Small-2509-GGUF**. Mistral.
+  Teachers Mistral's own (c). Pass. **unsloth/Phi-4-mini-instruct-GGUF**: Microsoft; pass after
+  research (c). **bartowski Apriel 1.6 15B**: ServiceNow, Delaware; R1-Distill-SFT prompts a
+  dataset source (c). Pass. **unsloth Llama-4-Scout Q5_K_M**: Meta; pass after research (c).
+  **ggml-org Nemotron-3.5-Bolt-E4B**: NVIDIA on Gemma-4-E4B-it (Google chain passes) (c). Pass.
+- **NousResearch/Hermes-4-70B**. Nous Research. Base Meta-Llama-3.1-70B. Generator DeepSeek-R1 /
+  R1-0528 ("synthesize a reasoning trace and answer"); the report calls its answer source "a
+  teacher model". Excluded, level 2 (subject to the survey's reading of role).
+- **ornith-ai/Ornith-1.5-35B-A3B**. Ornith Team. "on top of Qwen3.5 and Gemma4". Excluded, level 1.
+- **LiquidAI/LFM3-1.7B(-GGUF)** (2026-11-05). Liquid AI, Delaware (c). Base LFM3-1.7B-Base. Six
+  unnamed "specialist RL teachers". Q8_0; "BFCL V4 71.39" uncategorized. Origin unclear.
+- **InternScience/Agents-A1**. InternScience (domicile unread). Config Qwen3.5 MoE; base unnamed.
+  Origin unclear.
+- **poolside/Laguna-S-2.1(-GGUF)** (model created 2026-07-13). Poolside (verified; entity and
+  domicile not read). Base/teachers unstated. Q8_0 119.9 GiB; Q4_K_M; 118B-A8B; no BFCL. Not
+  settled; fails fit/floor.
+- **mistralai/Mistral-Medium-3.5-128B** (2026-07-15). Mistral AI. Base/teachers unstated. Dense 128B;
+  KV 360,448 B/token. Not settled; fails fit.
+- **nvidia/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-BF16** (created 2026-06-24). NVIDIA; derived from
+  Nemotron-3-Super-120B-A12B. Pass by policy; no publisher or ggml-org GGUF.
+Form: repository · lastModified (as read) · publisher · base chain · teachers (role) · gate reads · origin inputs → result.
+
+- **google/gemma-4-26B-A4B-it-qat-q4_0-gguf** · 2026-07-17 · Google · QAT release of gemma-4-26B-A4B-it · Gemma 3 "large IT teacher" (policy 2026-11-04, own pipeline) · QAT path 1; mmproj 16-bit (est.); MMMU Pro 73.8% · Gemma 4 ruling; Google screened, no match (18:27Z) → pass.
+- **google/gemma-4-31B-it-qat-q4_0-gguf** · 2026-07-17 · Google · as above · as above · QAT; MMMU Pro 76.9%, OmniDocBench 0.131 · → pass.
+- **google/gemma-4-12B-it-qat-q4_0-gguf** · 2026-07-17 · Google · as above · QAT; MMMU Pro 69.1% · → pass.
+- **google/gemma-4-E4B-it-qat-q4_0-gguf** · 2026-07-17 · Google · QAT · as above · QAT; reasoning fault [vf] · → pass (closed by the architect).
+- **google/gemma-4-E2B-it-qat-q4_0-gguf** · 2026-07-17 · Google · QAT · as above · QAT; MMMU Pro 44.2%, CoVoST 33.47 · → pass.
+- **ggml-org/gemma-4-E4B-it-GGUF** · 2026-10-19 · Google (ggml-org converter) · `.src_sha` ee0ef602… on google/gemma-4-E4B-it · as Gemma 4 · Q8_0 path 3; CoVoST 35.54; USM-based audio encoder · → pass (item 4).
+- **ggml-org/gemma-4-E2B-it-GGUF** · 2026-10-19 · Google (ggml-org) · `.src_sha` on google/gemma-4-E2B-it [screen 11-04] · → pass.
+- **LiquidAI/LFM3-VL-2B(-GGUF)** · 2026-11-03 · Liquid AI, Inc. · LFM3-1.7B-Base · MOPD from Liquid's vision RL model and LFM3-1.7B Mixed RL (own pipeline) · Q8_0 path 3; in-house encoder; MMMU-Pro 45.7, OCRBench 86.3 · converter is publisher; screened no match → pass.
+- **LiquidAI/LFM3-Audio-2B(-GGUF)** · 2026-11-03 · Liquid AI · LFM3 backbone, no base_model · none named · in-house encoder, LiquidCodec; WER 6.23 · → pass.
+- **LiquidAI/LFM3-Omni-2B(-GGUF)** and **ggml-org/LFM3-Omni-2B-GGUF** · 2026-11-03 / 2026-11-01 · Liquid AI · LFM3; `.src_sha` `5797d07c…` (gb10-1) · none named · WER 6.36, OCRBench 806 · → pass (cited, [gb10-1 rpt]).
+- **LiquidAI/d1-2B(-GGUF)**, **LiquidAI/d1-Omni-2B(-GGUF)** · 2026-11-04 / 2026-11-03 (GGUF) · Liquid AI · LFM3-VL-2B / LFM3-Omni-2B · none named · decision models, `/v1/systemone` · → pass; purpose mismatch.
+- **meta-models/Muse-Glimmer-30B** via **ggml-org/Muse-Glimmer-30B-GGUF** · 2026-10-22 / 2026-10-25 · Meta · — · Muse Spark (Meta's own teacher); DFlash drafter level 5 · Q8_0 + BF16 mmproj; MMMU Pro 74 · Meta Platforms screened no match → pass ([screen 11-04]).
+- **ibm-granite/granite-vision-4.1-4b(-GGUF)** · 2026-07-13 / 2026-06-24 · IBM · Granite · dataset source SYNTHETIC-1 (one of 100+) · Q8_0 + F16 mmproj · → pass ([screen 11-04]).
+- **ibm-granite/granite-speech-5.0-2b(-GGUF)** · 2026-11-03 / 2026-10-26 · IBM · granite-4.0-1b-base (intermediate) · none; level 4: Phi-4, MADLAD, Granite-3 translations, Kokoro-82M TTS, Granary · Q8_0 + F16 mmproj; WER in charts · → pass.
+- **ibm-granite/granite-speech-4.1-2b(-plus)(-GGUF)** · 2026-10-26 / 2026-11-04 · IBM · granite-4.0-1b · level 4 Granary Qwen labeler · Q8_0 + F16 mmproj · → pass ([screen 11-04]; plus [gb10-1 rpt]).
+- **mrutkows/granite-embedding-english-r2-GGUF** (BF16; Q8_0) · 2026-04-08 · IBM (uploader Matt Rutkowski, IBM) · ibm-granite/granite-embedding-english-r2 (total 149,014,272 equal) · Mistral teachers/generators (arXiv 2508.21085) · MTEB-v2 (41) 62.8 · → pass after research (policy example).
+- **mrutkows/granite-embedding-small-english-r2-GGUF** · — · IBM · small-r2 · as r2 · BF16 · → pass ([screen 11-04]).
+- **ggml-org/embeddinggemma-2-GGUF** · 2026-11-01 · Google · `.src_sha` f9972ac2… = Google's · teacher Gemini Embedding 2 (Google) · MTEB (eng, v2) 68.46 · → pass.
+- **ggml-org/embeddinggemma-300M-GGUF** · — · Google · → pass after research ([screen 11-04]).
+- **nomic-ai/nomic-embed-text-v1.5-GGUF**, **ggml-org/Nomic-Embed-Text-V2-GGUF** · nomic 2026-04-07 · Nomic AI · — · level 4: gte-base / BGE M3 hard-negative mining · → pass ([screen 11-04]).
+- **mistralai/Ministral-3-*-Instruct-2512-GGUF** · — · Mistral AI · teacher Mistral Small 3.1 (own) · → pass ([screen 11-04]).
+- **unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF** · — · Meta (unsloth converter) · → pass after research ([screen 11-04]).
+- **Nemotron 3.5 Transcribe community GGUFs** · — · NVIDIA weights unconfirmed · → not settled, failing engine at b11960.
+- **Nemotron 3.5 Embed 1B/8B, mradermacher GGUFs** · — · → origin unclear (conversion) ([gb10-1 rpt]).
+- **ggml-org/Voxtral-Mini-4B-Realtime-2602-GGUF** · — · Mistral · Ministral-3-3B base · → pass ([screen 11-04]); Arabic variant's community GGUF not settled.
 
 ## The host stack
 
@@ -469,3 +844,205 @@ verdict inputs ([survey.md](../.claude/skills/hosting-upgrades/survey.md), "Rese
 - **Said:** Dell: updates through the DGX Dashboard or apt plus `fwupdmgr`, no version named.
   Toolkit v1.20.1 (2026-09-19) the newest stable. LP #1991502: `update-notifier-crash` calls
   apport-gtk and exits 127 where it is missing, leaving the user manager degraded.
+
+### omarchy-pkgs commits, linux-omarchy
+
+- **URL:** <https://api.github.com/repos/omacom-io/omarchy-pkgs/commits?path=pkgbuilds/linux-omarchy>; <https://api.github.com/repos/omacom-io/omarchy-pkgs/commits/bffb8bf>
+- **Read:** 2026-11-06T18:22Z
+- **Concerns:** framework: kernel.
+- **Tier:** primary.
+- **Said:**
+  - 5973b1f (2026-11-01) "Update Linux kernel release to v7.2.15-1 ..."
+  - 326470e (2026-11-02) "restore pkgbase=linux-omarchy"
+  - bffb8bf (2026-11-03) "Ship NVIDIA's open modules prebuilt with linux-omarchy (#2056)",
+    pkgrel 1→2, an NVIDIA-only change
+  - `pkgs.omarchy.org/stable/x86_64/` answers 404
+
+### Omarchy releases
+
+- **URL:** <https://api.github.com/repos/basecamp/omarchy/releases>
+- **Read:** 2026-11-06T18:22Z
+- **Concerns:** framework: OS image.
+- **Tier:** primary.
+- **Said:**
+  - v4.5.0 stable 2026-11-05: an introduction only.
+  - v4.5.0-rc3 2026-11-02: a kernel switch menu (#15966), kernel-migration and root= fixes, a 32-bit
+    Vulkan driver fix for Lutris/Battle.net (#16046).
+  - No GPU-compute items.
+
+### Omarchy pacman templates at v4.5.0 and v4.0.6
+
+- **URL:** <https://raw.githubusercontent.com/omacom/omarchy/v4.5.0/default/pacman/pacman-stable.conf>, `.../mirrorlist-stable`, <https://raw.githubusercontent.com/basecamp/omarchy/v4.0.6/default/pacman/pacman-stable.conf>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: the channel and its template.
+- **Tier:** primary.
+- **Said:** `[options]` Color, ILoveCandy, VerbosePkgLists, `HoldPkg = pacman glibc`, `Architecture = auto`, CheckSpace, `ParallelDownloads = 5`, `DownloadUser = alpm`, `SigLevel = Required DatabaseOptional`, `LocalFileSigLevel = Optional`; `[omarchy]` `Server = https://pkgs.omarchy.org/stable/$arch`; `[core]`, `[extra]`, `[multilib]` each `Include = /etc/pacman.d/mirrorlist`; `mirrorlist-stable` `Server = https://stable-mirror.omarchy.org/$repo/os/$arch`. The same at v4.0.6 and v4.5.0. The repository
+  is now served from `omacom/omarchy`.
+
+### gregkh/linux amd commits at v7.2.15 and v7.3.1
+
+- **URL:** <https://api.github.com/repos/gregkh/linux/commits?sha=v7.2.15&path=drivers/gpu/drm/amd&per_page=40>; same with `sha=v7.3.1`
+- **Read:** 2026-11-06T18:25Z
+- **Concerns:** framework: kernel.
+- **Tier:** primary (the architect's ruling).
+- **Said:**
+  - At v7.2.15 the newest amd commit is committed 2026-10-26: "drm/amdgpu: free the userptr ranges
+    when a CS fails after parser_bos". There is none after 10-29.
+  - None names gfx11/GC 11.5/gfx1151/MES/PSP 14.0.1/DCN 3.5/VCN 4.0.6.
+  - v7.3.1 carries the same backports (to 10-15).
+  - `sha=v7.3.2` returned `[]`, not readable yet.
+
+### linux-firmware tags and commits since 20260916; diffs 7a4a30b0, f61bad71
+
+- **URL:** <https://gitlab.com/api/v4/projects/kernel-firmware%2Flinux-firmware/repository/tags>; `.../repository/commits?since=...`; `.../commits/<sha>/diff`
+- **Read:** 2026-11-06T18:23Z–18:24Z
+- **Concerns:** framework: GPU firmware.
+- **Tier:** primary.
+- **Said:**
+  - The newest tag is 20261019 (10-17).
+  - Inside it: GC 11.5.1 (7a4a30b0, `gc_11_5_1_mes_2.bin` only, no version), PSP 14.0.1
+    (2012998a), VCN 4.0.6 (347dcaed).
+  - The only revert is GC 11.0.0's.
+  - After the tag: f61bad71 (10-30) DMCUB for `dcn_3_5_1`/`dcn_3_5`/`dcn_3_6`, and 9ca5128f
+    (DCN42).
+  - No GC 11.5.1/PSP 14.0.1/MES change after the tag.
+
+### Mesa release notes, 26.2.6, and the index
+
+- **URL:** <https://docs.mesa3d.org/relnotes/26.2.6.html>; <https://docs.mesa3d.org/relnotes.html>
+- **Read:** 2026-11-06T18:22Z
+- **Concerns:** framework: host Mesa.
+- **Tier:** primary.
+- **Said:**
+  - 26.2.6 was released 2026-10-28 and is the newest on the index.
+  - It fixes the ACO s_bitset0/VCC 26.2 regression (RADV, RDNA2–RDNA4), plus the RADV VMA heap,
+    BO-list leak and rt stack-size fixes.
+  - The only regression listed is Intel Meteor Lake.
+
+### Framework Desktop BIOS downloads and BIOS announcements
+
+- **URL:** <https://resources.frame.work/downloads/desktop/amd-ryzen-ai-max-300>; <https://community.frame.work/tag/bios-announcement.json>
+- **Read:** 2026-11-06T18:24Z
+- **Concerns:** framework: BIOS.
+- **Tier:** primary.
+- **Said:**
+  - 3.06 (2026-08-03, "Stable, Latest"), with no Beta.
+  - The only Desktop topic is "BIOS 3.06 Release STABLE", last post 2026-09-30.
+
+### TheRock releases
+
+- **URL:** <https://api.github.com/repos/ROCm/TheRock/releases>
+- **Read:** 2026-11-06T18:24Z
+- **Concerns:** framework: host ROCm.
+- **Tier:** primary.
+- **Said:** therock-10.1 (2026-10-05) is the newest; then 7.14.1 (08-31) and 10.0 (08-26). No body
+  mentions gfx1151.
+
+### ROCm RDNA3.5 system optimization
+
+- **URL:** <https://rocm.docs.amd.com/en/latest/reference/system-optimization/rdna3-5.html>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: the TTM/GTT ceiling, minimum kernel.
+- **Tier:** primary.
+- **Said:**
+  - The banner reads "AMD ROCm 10.1.0".
+  - GTT defaults to "approximately 50 percent of total system RAM".
+  - It recommends a small BIOS VRAM reservation "(for example, 0.5 GB)" and raising TTM/GTT.
+  - `pages_limit` is in pages, with no maximum stated.
+  - The minimum kernel is 6.18.4 (other distributions).
+  - It doesn't mention lockup_timeout.
+
+### ROCm/TheRock #9271 (MES fault, gfx1151)
+
+- **URL:** <https://github.com/ROCm/TheRock/issues/9271>
+- **Read:** 2026-11-06T18:24Z (updatedAt 2026-10-27T19:55Z)
+- **Concerns:** framework: firmware (MES), kernel.
+- **Tier:** primary tracker. The replies are leads: the last is an AMD-named CONTRIBUTOR (lead by
+  ruling).
+- **Said:**
+  - OPEN, with 3 comments.
+  - Reports on ROCm 7.1.1/7.2.1, HIP, MES 0x80. The `amd_iommu=off` workaround is mentioned.
+  - The 2026-10-27 reply asks for a retest on the latest gfx1151 nightly with the MES version.
+  - No fixed version is named.
+
+### ROCm/TheRock #9247 (mmap > 64 GB on gfx1151) and #2151
+
+- **URL:** <https://github.com/ROCm/TheRock/issues/9247>; <https://github.com/ROCm/TheRock/issues/2151>
+- **Read:** 2026-11-06T18:24Z
+- **Concerns:** framework: host ROCm (not the Vulkan router).
+- **Tier:** primary tracker, with leads (users).
+- **Said:**
+  - #9247: OPEN, HIP only ("Vulkan/RADV works fine"). A user says ROCm/rocm-systems#10962 fixes it
+    and that the fix is not in 10.1.0; another report came 11-05 on bundled ROCm 7.2.4.
+  - #2151: closed stale 2026-11-06 by a MEMBER.
+
+### llama.cpp #25664, Vulkan device loss on Linux 7.x (RADV_STRIXHALO)
+
+- **URL:** <https://github.com/ggml-org/llama.cpp/issues/25664>
+- **Read:** 2026-11-06T18:25Z (updatedAt 2026-11-05T12:42Z)
+- **Concerns:** framework: kernel (amdgpu lockup_timeout), Vulkan serving.
+- **Tier:** primary tracker. All replies are leads (CONTRIBUTOR/NONE).
+- **Said:**
+  - The reporter, on a Framework Desktop, attributes vk::DeviceLostError to the compute
+    `lockup_timeout` default changing "from 60s to 2s" on 7.x. The workaround is
+    `amdgpu.lockup_timeout=10000,60000,10000,10000`.
+  - One user says the workaround didn't help (7.1.8, Mesa 26.1.7).
+  - One user has no reproduction on 7.2.0 with Mesa 26.2.1 at 113k context.
+  - Closed NOT_PLANNED by the stale bot on 2026-11-05.
+
+### Framework SoftwareFirmwareIssueTracker #209 and #237
+
+- **URL:** <https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/209>; <https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/237>
+- **Read:** 2026-11-06T18:24Z
+- **Concerns:** framework: firmware updates via fwupd.
+- **Tier:** lead (users).
+- **Said:**
+  - #209 is OPEN, "Desktop update via fwupdmgr - not possible", updated 2026-07-28.
+  - #237 is OPEN, "efivars out of space - framework desktop". A user on BIOS 03.06 gives a
+    workaround (2026-11-04).
+
+### llama.cpp vulkan.Dockerfile at b11960 and b12169, and its history
+
+- **URL:** <https://raw.githubusercontent.com/ggml-org/llama.cpp/b11960/.devops/vulkan.Dockerfile>; `.../b12169/...`; <https://api.github.com/repos/ggml-org/llama.cpp/commits?path=.devops/vulkan.Dockerfile>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: the router's Mesa.
+- **Tier:** primary.
+- **Said:**
+  - Both use `UBUNTU_VERSION=26.04`, the base `docker.io/ubuntu`, and `apt-get install ...
+    libvulkan1 mesa-vulkan-drivers` with no PPA.
+  - The last change to the file is 23deec0 (2026-10-14).
+
+### Ubuntu mesa-vulkan-drivers (packages.ubuntu.com) and Launchpad mesa publishing history
+
+- **URL:** <https://packages.ubuntu.com/search?keywords=mesa-vulkan-drivers&searchon=names&exact=1&suite=all&section=all>; <https://launchpad.net/ubuntu/+source/mesa/+publishinghistory>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: the router's Mesa.
+- **Tier:** primary.
+- **Said:**
+  - resolute release 26.0.3-1ubuntu1.
+  - resolute-updates 26.0.8-1ubuntu0.3, published 2026-08-19.
+  - Nothing newer in resolute-proposed.
+  - stonking (26.10) 26.2.4-1ubuntu1.
+
+### moby releases
+
+- **URL:** <https://api.github.com/repos/moby/moby/releases>
+- **Read:** 2026-11-06T18:26Z
+- **Concerns:** framework: docker.
+- **Tier:** primary.
+- **Said:**
+  - docker-v29.9.3 (2026-11-03): fixes the daemon hanging under API load, and the Swarm overlay
+    protections after a firewalld flush.
+  - docker-v29.10.0-rc.1 (2026-11-06, prerelease): "Fix a container starting with no networking
+    after an earlier start failed with a network error".
+
+### Arch news feed
+
+- **URL:** <https://archlinux.org/feeds/news/>
+- **Read:** 2026-11-06T18:23Z
+- **Concerns:** framework: manual interventions.
+- **Tier:** primary.
+- **Said:**
+  - There is no item after 2026-10-21.
+  - On 2026-10-21: php ≥ 8.5.12 (RCE); "Update to ca-certificates-mozilla ≥ 3.131.1-1 to prevent
+    man-in-the-middle attacks".
