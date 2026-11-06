@@ -134,21 +134,19 @@ open, last checked on the date of the record it came from.
   "Findings" and "Cells", "The configuration on b12098").
 - **Upstream:** [#30137](https://github.com/ggml-org/llama.cpp/pull/30137), "Use reference-counted
   checkpoints instead of deep-copies", merged 2026-11-05T10:02:36Z (e152332), after b12098, so
-  b12098 deep-copies each checkpoint. `fix-in-image.sh` on 2026-11-06 (twice): the newest gb10
-  image it finds, `server-cuda13-b12124`, is behind the merge (ahead by 0, behind by 17), so no
-  imaged build carries it. GitHub's package page lists a newer `server-cuda13-b12169`, with no
-  GitHub release (the script walks releases, so it can't see it), and the compare puts b12169
-  ahead of the merge by 28, behind by 0: a conflict that would move this entry to "fix in an
-  image build", left open for the architect (gb10-1 report, 2026-11-06, "Pauses", 2).
+  b12098 deep-copies each checkpoint. `fix-in-image.sh`, reading ghcr's tags since c463da3, on
+  2026-11-06T16:22Z: the newest gb10 image is `server-cuda13-b12169`, ahead of the merge by 28,
+  behind by 0, so the fix is in an image build. (Its earlier reads walked GitHub releases and
+  found b12124, behind by 17; b12169 has an image but no release.)
 - **Clears when:** an image for the class carries #30137, the host can move to it (on gb10-1,
   once the QAT entry above clears), and a measure shows the section's memory bounded at the
   default `ctx-checkpoints`. Whether #30137 bounds the memory, rather than only the copies, is
   unmeasured.
 - **Workaround:** `ctx-checkpoints = 2` on a no-cache section with large checkpoints.
 - **Reopens it:** a no-cache section losing its checkpoint cap on a build without the fix.
-- **State:** fix merged.
-- **Last checked:** 2026-11-06, survey (`gh pr view 30137`: merged; `fix-in-image.sh` for gb10;
-  the compare against b12169).
+- **State:** fix in an image build (b12169, gb10).
+- **Last checked:** 2026-11-06T16:22Z (`gh pr view 30137`: merged; `fix-in-image.sh` for gb10:
+  b12169, in image: yes).
 
 ## Gemma 4's multi-turn gap on llama.cpp
 
