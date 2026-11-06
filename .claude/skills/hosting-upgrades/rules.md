@@ -24,8 +24,8 @@ clone of it with the version as its argument.
 
 ## Default rules
 
-Three rules settle what the screen task escalated (the architect's decisions, 2026-11-06). A run
-applies them without asking, and its record names each time one applied:
+Three rules settle choices that would otherwise be escalations. A run applies them without
+asking, and its record names each time one applied:
 
 1. **The engine build.** An engine move takes the newest build with an image for the host's class
    (the image series the host's engine runs, such as `server-cuda13-<build>` or

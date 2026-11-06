@@ -11,15 +11,14 @@ models) comes from the probe a run takes.
 
 ## Purposes
 
-The purposes the host serves today, each with its load target: the concurrent sessions or
-requests it is sized for, and the context each reaches. Today the host serves model set A, as its
-screen record's end state reads it back (`docs/screens/framework/2026-11-04.md`, "End state"),
-reloaded when its clone returned to main at dfc1d3d (`docs/screens/gb10-1/2026-11-05.md`, "End
-state"), from the shared preset, spike-model-engines `host/llama-preset/models.ini`, whose
-sections give each target. The figures below are main's at 933ec0f (read 2026-11-06), whose
-sections differ from dfc1d3d's only by set A's cache keys, not by slots or context. Which purposes
-this host serves, and at what load, is spike-model-layout's to decide; a change there changes this
-list.
+The purposes the host serves, each with its load target: the concurrent sessions or requests it
+is sized for, and the context each reaches. Which purposes this host serves, and at what load, is
+spike-model-layout's to decide; a change there changes this list. The host serves model set A from
+the shared preset, spike-model-engines `host/llama-preset/models.ini`, as its screen record's end
+state reads it back (`docs/screens/framework/2026-11-04.md`, "End state"), reloaded when its clone
+returned to main at dfc1d3d (`docs/screens/gb10-1/2026-11-05.md`, "End state"). Each target below
+comes from the preset's sections on main at 933ec0f (read 2026-11-06), which differ from
+dfc1d3d's only by set A's cache keys, not by slots or context.
 
 - **agent**: the main chat and tool-calling model the consumers' agent sessions run on. Load
   target: 4 concurrent sessions sharing one 131,072-token context pool (a unified KV cache), so
@@ -58,13 +57,13 @@ later same-build spread exceeds it and never narrows by one quiet run.
 
 ## Watch items
 
-Named things every run checks, beside its own scan. What blocks this host from an upgrade is in
-the blocker register, [blockers.md](../blockers.md), which every survey checks upstream: Gemma 4
-26B-A4B's Vulkan abort with several slots (#29221, its fix #25584), Vulkan's batched tensor copy
-(#31418), both of which re-open Gemma's screen here when they reach a `server-vulkan` image, the
-prompt-cache bugs with a unified KV cache (#30961, #27148), and Google's QAT GGUFs on b12100 and
-later (#31620, #31639), which this host meets when its build passes b12100. Those were watch items here until
-2026-11-06.
+Every run checks these by name, beside its own scan. What blocks this host from an upgrade is in
+the blocker register, [blockers.md](../blockers.md), which every survey checks upstream. The
+register's entries for this host are Gemma 4 26B-A4B's Vulkan abort with several slots (#29221,
+its fix #25584) and Vulkan's batched tensor copy (#31418), which reopen Gemma's screen here when
+they reach a `server-vulkan` image; the prompt-cache bugs with a unified KV cache (#30961,
+#27148); and Google's QAT GGUFs on b12100 and later (#31620, #31639), which this host meets when
+its build passes b12100.
 
 - vLLM support for Vulkan or ROCm on Strix Halo (gfx1151)
 - llama.cpp concurrent-session (parallel slots, continuous batching) throughput

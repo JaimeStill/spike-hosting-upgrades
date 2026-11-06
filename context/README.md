@@ -69,25 +69,37 @@ The experiment's rules, in `ai-hosting.md`, govern every session. In short:
 ## Capabilities
 
 - **The skill:** `.claude/skills/hosting-upgrades/`, the project-local Claude Code skill. Its entry
-  file, `SKILL.md`, names three modes and loads one reference file per mode: `setup.md` (the
-  inputs, the readiness check, and the read-only probe, `scripts/probe.sh`), `survey.md`, and
-  `measure.md`, beside `rules.md`, the shared rules each mode cites (default rules, load targets,
-  cells, fresh loads, caps, figures, routing, pause, root). `/hosting-upgrades setup` runs the
-  readiness check alone, printing the permission rules the workspace needs; it never writes
-  settings.
-- **The host descriptors and policy:** `docs/hosts/<host>.md`, each purpose the host serves with its
-  load target, and `docs/policy.md`, the skill's inputs.
-- **The survey mode:** `/hosting-upgrades survey <host>`, which probes the host, gathers, cites,
-  and ranks what others publish (the pool a descriptor names among its candidates), judges it
-  against the host's load targets, and writes the dated report; it applies nothing.
+  file, `SKILL.md`, names three modes (`setup`, `survey <host>`, `measure <host>`) and loads one
+  reference file per mode, `setup.md`, `survey.md` or `measure.md`, beside `rules.md`, the shared
+  rules each mode cites. `/hosting-upgrades setup` runs the readiness check alone, printing the
+  permission rules the workspace needs; it never writes settings.
+- **The host descriptors and policy:** `docs/hosts/<host>.md` and `docs/policy.md`, the skill's
+  inputs. Each descriptor lists the purposes its host serves, each with its load target, and its
+  run noise, a within-session and an across-days spread.
+- **The survey mode:** `/hosting-upgrades survey <host>` probes the host read-only and without
+  root (`scripts/probe.sh`), reviews its configuration flag by flag against published practice,
+  gathers, cites, and ranks what others publish (models others run on the class, and the pool a
+  descriptor names), judges each item against the host's load targets, and writes the dated
+  report; it applies nothing.
 - **The dated reports:** ranked upgrades per host, `docs/reports/<host>/<YYYY-MM-DD>.md`, or
   `<YYYY-MM-DD>-N.md` for a later run the same day.
-- **The anchor scenarios:** anchors A and B, for the incumbent and for a candidate.
-- **The measure mode:** `/hosting-upgrades measure <host>`, which takes the last survey's host
-  items to a decision, moves the engine under the engine rule, and screens one candidate beside the
-  host's set under the keep rule, and writes the dated measure record,
-  `docs/measures/<host>/<YYYY-MM-DD>.md`. Its instruments are the conform profiles,
-  `bench/conform/`, and the vision, sweep, and long-prompt scenarios in `bench/`.
+- **The research cache:** `docs/research.md`, one entry per source with what it said and when it
+  was read, updated in place; a survey re-reads a source only after 14 days or when its subject
+  changes.
+- **The blocker register:** `docs/blockers.md`, one entry per blocker naming the hosts it affects,
+  its measured cost, its upstream issue or pull request, and its state. Every survey checks each
+  entry upstream with `gh`, and `scripts/fix-in-image.sh` reads whether a merged fix is in the
+  newest build with an image for the host class.
+- **The measure mode:** `/hosting-upgrades measure <host>` settles the last survey's items on the
+  host with local cells: an engine move under the engine rule, behind a build gate; a candidate
+  model beside the host's set under the keep rule; and a settings check. It writes the dated
+  measure record, `docs/measures/<host>/<YYYY-MM-DD>.md`.
+- **The step helpers:** `scripts/measure-lib.sh`, sourced and called one step at a time. They log
+  every command and what each helper prints to `.state/measure/<host>/<YYYY-MM-DD>.log`, which
+  the measure record quotes for its commands as run.
+- **The anchor scenarios and instruments:** anchors A and B, for the incumbent and for a
+  candidate; the conform profiles, `bench/conform/`; and the vision, sweep, and long-prompt
+  scenarios in `bench/`.
 - **The verification findings and screen records**, history from the verify and screen modes that
   measure replaced: `docs/findings/verify-<host>.md` (framework's
   `docs/findings/verify-framework.md`, gb10-1's `docs/findings/verify-gb10-1.md`) and

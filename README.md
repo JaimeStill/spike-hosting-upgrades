@@ -19,8 +19,8 @@ the top upgrades on our hosts with anchor cells A and B. Its answer is evidence 
 - The measure mode: `/hosting-upgrades measure <host>` settles the last survey's items on the host
   with local cells (an engine move under the engine rule, a candidate model under the keep rule)
   and writes a dated record, `docs/measures/<host>/<YYYY-MM-DD>.md`.
-- The verify and screen modes measure replaced left their records as history: the verification
-  findings, `docs/findings/verify-<host>.md`, such as
+- The verify and screen modes, which the measure mode replaced, left their records as history: the
+  verification findings, `docs/findings/verify-<host>.md`, such as
   [framework's](docs/findings/verify-framework.md), and the screen records,
   `docs/screens/<host>/<YYYY-MM-DD>.md`, such as [framework's](docs/screens/framework/2026-11-04.md)
   and [gb10-1's](docs/screens/gb10-1/2026-11-05.md).

@@ -41,7 +41,9 @@
      (a kernel's known faults on this system, a firmware or BIOS setting), system (the package
      channel's snapshot, a unit), or engine (an engine feature, a backend's support for this
      hardware, a known regression). A survey answers each by name in the report section of
-     its kind. Delete the section if there are none. -->
+     its kind. A watch item is a possible upgrade; what blocks the host goes in the project's
+     blocker register (docs/blockers.md), and this section points to it. Delete the section if
+     there are none. -->
 
 - <engine> support for <backend> on <hardware>
 - <a known fault> on <hardware> with the running <component>
