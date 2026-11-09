@@ -909,9 +909,9 @@ Release: none.
     spike-model-engines' `host/` and spike-model-hosting (the workstations' conventions and
     script suite), so the host descriptors, the policy, the reports, the measure records, the
     blocker register and the research cache live beside the scripts and presets an adoption
-    changes. Today the skill resolves every input and output against the project it runs in, and
-    SKILL.md names this spike's root by its absolute path, which the plugin must replace (the
-    architect, at the session brief, 2026-11-09).
+    changes. Today the skill resolves every input and output against the project it runs in
+    (`${CLAUDE_PROJECT_DIR}`), so the plugin must say which repository that is and how its
+    `docs/` is initialized there (the architect, at the session brief, 2026-11-09).
   - spike-model-layout: the descriptors' purposes and load targets follow its layout, and a change
     there changes them. It also weighs hosting the agent model alone on vLLM for concurrent
     sessions, this goal's other pending edit.
