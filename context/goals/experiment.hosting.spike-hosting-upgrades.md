@@ -1,6 +1,6 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** building
+- **State:** brief ready
 - **Task:** answer
 - **Branch:** answer
 
@@ -173,6 +173,7 @@ Release: none.
   a due date) and in the edit pass after it (the second surveys' open proposals listed item by
   item; citations for "one measure a session" and the workloads only we can measure).
 - Next: slice 4, the architect's walkthrough.
+- Slice 4, the architect's walkthrough, done (2026-11-09). Session brief written; State brief ready.
 
 ## Decisions
 
