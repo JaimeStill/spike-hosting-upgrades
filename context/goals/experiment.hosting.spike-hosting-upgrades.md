@@ -1,8 +1,8 @@
 # goal · experiment.hosting.spike-hosting-upgrades
 
-- **State:** brief ready
-- **Task:** answer
-- **Branch:** answer
+- **State:** idle
+- **Task:** none
+- **Branch:** none
 
 ## Tasks
 
@@ -11,7 +11,7 @@
 3. [x] verify-gb10
 4. [x] screen
 5. [x] skill-revision
-6. [ ] answer
+6. [x] answer
 
 ## Task brief · answer
 
@@ -143,37 +143,6 @@ Door          two-way: the reports, convention, README, register, cache
 Release: none.
 
 ## Progress
-
-- Slice 1, host updates (architect, root, 2026-11-06), read back by the probe (`.state/answer/probe-<host>.txt`):
-  - framework: `sudo fwupdmgr refresh --force`; `fwupdmgr get-updates` listed no update, and its
-    "System Firmware 0.0.3.5 -> 0.0.3.6 updated successfully" is history (BIOS 03.06 dated
-    07/13/2026 already running, booted 2026-11-02). `omarchy update`: mise-bin 2026.11.1-1 ->
-    2026.11.2-1, pnpm 12.16.1 -> 12.18.0 (mise), 3 cached packages pruned, a snapper snapshot
-    taken. No reboot (kernel 7.2.15-1-omarchy and firmware unchanged). Rollback: the snapshot from
-    Limine, or `pacman -U` mise-bin 2026.11.1-1. Probe: 0 pending, no failed units, router on
-    b11960 with set A's no-cache keys.
-  - gb10-1: `sudo apt update && sudo apt upgrade`: 12 upgraded, 8 new; kernel 7.0.0-1024 ->
-    7.0.0-1025-nvidia (image, modules, nvidia-580-open, nvidia-fs, headers, tools), ca-certificates
-    20260816ubuntu0.24.04.2, ca-certificates-java 20240118ubuntu0.24.04.1, sqlite3/libsqlite3-0
-    3.45.1-1ubuntu2.9, linux-crashdump/libc-dev/tools-common 6.8.0-149 (2 LTS security updates).
-    `sudo apt autoremove`: kernel 7.0.0-1019 removed. `fwupdmgr get-updates`: none. No driver or
-    container-toolkit change, so no CDI regenerate. `sudo reboot`. Rollback: boot 7.0.0-1024 from
-    GRUB's Advanced options (still installed), packages by `apt install <pkg>=<version>`. Probe:
-    running 7.0.0-1025-nvidia, booted 13:13:14, driver 580.178.04, `initcall_blacklist` on the
-    command line, 0 pending, no failed units, router healthy on b12098 with its set listed.
-- Slice 1 done: the host updates above (`e52aee9`), and gb10-1's ten 2026-11-06 proposals
-  accepted and applied (`2c507cc`).
-- Slice 2 done: framework's second survey, 2026-11-06 (`d5d9825`), with its four pauses settled
-  (`1fc8aee`); gb10-1's, 2026-11-06-2 (`6859a30`), with its one pause settled (`acfb0b8`,
-  `2746fec`).
-- Slice 3 done: `docs/convention.md`, README "The answer", the answer section in Pending edits,
-  and the 0cc4m, slb350 and Liquid tier rulings in sources.md (`b977791`).
-- Standards review fixed in `0e8d7ed`: the one-line answer, citations that hold, and prose form.
-  Spec review fixed in `b24dc85` (hclsys's tier ruling in sources.md; the cadence stated without
-  a due date) and in the edit pass after it (the second surveys' open proposals listed item by
-  item; citations for "one measure a session" and the workloads only we can measure).
-- Next: slice 4, the architect's walkthrough.
-- Slice 4, the architect's walkthrough, done (2026-11-09). Session brief written; State brief ready.
 
 ## Decisions
 
