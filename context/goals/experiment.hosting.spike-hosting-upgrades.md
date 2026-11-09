@@ -792,6 +792,7 @@ Release: none.
 - answer: 0cc4m's statements are primary for Vulkan practice although the tracker marks him CONTRIBUTOR; slb350's Strix Halo benchmarks and Liquid's LFM3-VL Strix Halo chart stay leads (architect, 2026-11-06).
 - answer: a publisher's GGUF whose card gives only an averaged loss across its evals fails the floor's path 2, which asks each eval within the margin: Meta's own Muse Glimmer GGUFs fail, and ggml-org's Q8_0 stays the host file; rejected accepting an average within the margin (architect, 2026-11-06).
 - answer: a CONTRIBUTOR's measurement in a tracker comment that names hardware, version and method is an attributed benchmark (hclsys's GB10 FP8 table, vLLM #58989); rejected ruling it a lead (architect, 2026-11-06).
+- answer: the skill's plugin form needs a convention for where its docs/ initializes: it targets the model-hosting repository that succeeds personal-agents, spike-model-engines and spike-model-hosting; added to the answer section's requirements for the intake, not built in the spike (architect, 2026-11-09).
 
 ## Pending edits
 
@@ -903,8 +904,14 @@ Release: none.
     list, as this spike's `fix-in-image.sh` does. Walking GitHub's releases list, it names b12124
     and can't see b12169, an image built with no release (framework's report of 2026-11-06,
     "Blockers").
-  - The skill's plugin form, routed to claude-plugins. The spike kept it project-local and left
-    the plugin to the intake.
+  - The skill's plugin form, routed to claude-plugins, with the convention for where its `docs/`
+    initializes. The plugin targets the model-hosting repository that succeeds personal-agents,
+    spike-model-engines' `host/` and spike-model-hosting (the workstations' conventions and
+    script suite), so the host descriptors, the policy, the reports, the measure records, the
+    blocker register and the research cache live beside the scripts and presets an adoption
+    changes. Today the skill resolves every input and output against the project it runs in, and
+    SKILL.md names this spike's root by its absolute path, which the plugin must replace (the
+    architect, at the session brief, 2026-11-09).
   - spike-model-layout: the descriptors' purposes and load targets follow its layout, and a change
     there changes them. It also weighs hosting the agent model alone on vLLM for concurrent
     sessions, this goal's other pending edit.
