@@ -158,7 +158,7 @@ candidate screen runs from spike-model-hosting's clone with -profile naming the 
 its models, which it checks the router has loaded, and its roles, the model each of the consumers'
 requests goes to. So each model's id is its section's name in the router's preset,
 `spike-model-engines/host/llama-preset/models.ini`, as spike-model-engines' screen commit (4d5e114)
-has it; main has since dropped the Gemma agent section, so conform on this profile needs that
+has it; its commit 861d50e dropped the Gemma agent section, so conform on this profile needs that
 section restored. The set is the Gemma set: 26B-A4B QAT's agent section for chat and vision, E4B
 Q8_0 for audio, and granite BF16 for embeddings.
 

@@ -5,8 +5,8 @@ The judgement calls the check can't enforce, one line each, for the standards-re
 
 The architecture pages that apply, in the architecture repository:
 
-- `principles/comments.md`: the reasoning behind a header lives in `docs/` or the skill's
-  `scripts.md`.
+- `principles/comments.md`: the reasoning a comment points to lives in `docs/` or the skill's
+  own pages.
 - `principles/minimal-footprint.md`
 - `principles/rolling-currency.md`
 - `principles/validation-first.md`
