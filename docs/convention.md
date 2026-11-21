@@ -8,7 +8,7 @@ Each statement cites the record that shows it. Where the record doesn't show a s
 statement says so, and "What the record doesn't show yet" collects those gaps.
 
 The decisions cited as "Decisions" are in the goal record,
-[`context/goals/experiment.hosting.spike-hosting-upgrades.md`](../context/goals/experiment.hosting.spike-hosting-upgrades.md),
+[`context/goals/experiment.hosting.spike-hosting-upgrades.md`](https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md),
 "Decisions", by their task prefix. The two second surveys, both of 2026-11-06, are framework's
 [2026-11-06](reports/framework/2026-11-06.md) and gb10-1's
 [2026-11-06-2](reports/gb10-1/2026-11-06-2.md).

@@ -47,6 +47,8 @@ The architecture pages that apply, in the architecture repository:
   log.
 - The screen records the retired screen mode wrote, `docs/screens/<host>/<YYYY-MM-DD>.md`, are
   history: never edited, and read as the host's earlier readings.
+- The one edit a report, measure record, or screen record takes is a dead link repointed to the
+  same file at a fixed commit.
 - A finding, under `docs/findings/<task>.md` (or the retired verify mode's `verify-<host>.md`, now
   history), says what was measured, when, on which engine version, host stack, and network path,
   and stays dated.
