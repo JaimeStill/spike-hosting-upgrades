@@ -89,7 +89,7 @@ pending updates to 0) ([framework](reports/framework/2026-11-06.md), "What moved
   ([measure](measures/framework/2026-11-06.md)).
 - **Its cells agreed in that task's plan round.** Every benchmark is agreed with the architect in
   the task's plan round, and BUILD runs none the brief doesn't name (the experiment's rules,
-  `standards-lab/context/ai-hosting.md`, "Experiment: experiment.hosting"). framework's measure
+  `standards-lab/docs/ai-hosting.md#experiment-rules`). framework's measure
   ran "from the commands the skill-revision brief agreed"
   ([measure](measures/framework/2026-11-06.md), its opening), with each arm capped at 10 minutes
   (Decisions, "skill-revision: verified by a paper survey of gb10-1 … and a measure on
@@ -261,8 +261,8 @@ purpose listed without a target is a pause (rules.md, "Load targets").
 
 ## What stays with model-evaluation
 
-The backlog goal `model-evaluation` (`standards-lab/context/roadmap.toml`, `[goals.model-evaluation]`)
-builds on this convention. It keeps:
+The backlog goal `model-evaluation` (`standards-lab/roadmap/model-evaluation.toml`) builds on this
+convention. It keeps:
 
 - **Workloads only we can measure: our agents, and our role sets under our own sessions.** No
   publisher can measure these, so no survey can read them, and the goal's roadmap summary names
@@ -274,7 +274,7 @@ builds on this convention. It keeps:
   candidates ([framework](reports/framework/2026-11-06.md), "Needs measurement").
 - **Tuning at scale.** Slots and context tuned per model, workload, and host is
   model-evaluation's and spike-model-layout's, as spike-model-engines' answer routes it
-  (`standards-lab/context/ai-hosting.md`, "Answer · experiment.hosting.spike-model-engines").
+  (`standards-lab/docs/ai-hosting.md`, "Inputs for later goals").
 
 ## What the record doesn't show yet
 
