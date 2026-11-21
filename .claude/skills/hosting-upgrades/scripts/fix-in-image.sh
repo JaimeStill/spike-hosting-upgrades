@@ -33,6 +33,7 @@ refuse() {
 }
 
 merge_commit_of_fix() {
+  local pr state merged
   if [[ $fix =~ ^[0-9]{1,7}$ ]]; then
     pr=$(gh pr view "$fix" --repo "$repo" --json state,mergedAt,mergeCommit \
       --jq '[.state, (.mergedAt // "-"), (.mergeCommit.oid // "-")] | @tsv') ||
@@ -53,6 +54,7 @@ merge_commit_of_fix() {
 }
 
 newest_imaged_build() {
+  local token page pages newest body n
   token=$(curl -q -fsS --max-time 30 --proto =https \
     "https://ghcr.io/token?scope=repository:$registry:pull" |
     sed -n 's/.*"token":"\([^"]*\)".*/\1/p') && [[ -n $token ]] ||
@@ -78,6 +80,7 @@ newest_imaged_build() {
 }
 
 answer_whether_build_carries_fix() {
+  local cmp status ahead behind answer
   cmp=$(gh api --method GET "repos/$repo/compare/$sha...$build" \
     --jq '[.status, .ahead_by, .behind_by] | @tsv') || fail "the compare $sha...$build can't be read"
   IFS=$'\t' read -r status ahead behind <<<"$cmp"
