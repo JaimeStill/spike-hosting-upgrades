@@ -1,4 +1,5 @@
-# Tasks never install a missing tool; `mise install` is the one step that reads the network.
+# The spike's tools and the tasks that check and report currency.
+# See docs/tools.md#the-main-environment
 [settings]
 task.run_auto_install = false
 

@@ -1,12 +1,6 @@
-# Long-prompt cell B: one agent model, 4 streams sending 16 requests in all, 4 each back to back,
-# each 8,192 synthetic prompt tokens and exactly 512 output tokens: the agent floors' agentic
-# streams (spike-model-hosting, evaluation/floors.toml, "[agent]", stream_decode_tok_s), each
-# judged by its own decode, never their sum. Engine-neutral, like shape-b.yaml: the model, its
-# tokenizer, and the JSON's path are given on the command line, and the target in
-# GUIDELLM__SPEC__BACKEND__TARGET. A section must give each of 4 slots more than 8,704 tokens and
-# the model's chat template. No request asks for reasoning: the template's default stands, and
-# every request generates its full 512 either way. GuideLLM sends max_completion_tokens with
-# ignore_eos whenever output_tokens is set. Run from the repository root.
+# Long-prompt cell B: one agent model, 4 streams × 16 requests of 8,192 tokens in.
+# See docs/bench.md#long-b
+# See spike-model-hosting/evaluation/floors.toml
 spec:
   backend:
     kind: openai_http
