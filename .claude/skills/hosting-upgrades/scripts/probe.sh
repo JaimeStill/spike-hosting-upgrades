@@ -4,121 +4,78 @@
 #
 #   ssh <host> bash -s < probe.sh
 #
-# It prints plain labeled sections (== name ==): the OS, the kernel, firmware and BIOS, the GPU
-# and its driver or Mesa stack, memory and the GPU-reachable ceiling, the container runtime, the
-# engine containers (with their presets' serving keys, the drafters each section loads, and the
-# run flags and engine environment docker run gave them, and the commit of the clone each preset
-# is mounted from) and
-# systemd units, each running engine's build and served models, the models in the host's local
-# stores (with each GGUF file's first 4 bytes), and what the host has fallen behind on: the
-# package channel and mirror, pending package and firmware updates, failed units, and docker's
-# disk. A probe whose command is absent prints "skipped:" and the run goes on; the last section
-# lists every skip.
+# It prints plain labeled sections (== name ==): the OS, the kernel, firmware, the GPU, memory,
+# the container runtime, the engine containers and units, each serving engine's build and models,
+# the models in the host's local stores, and what the host has fallen behind on (package sources,
+# pending package and firmware updates, failed units, docker's disk). A probe whose command is
+# absent prints "skipped:" and the run goes on; the last section lists every skip. It never calls
+# sudo and prints no network address, so its output can be committed as is.
 #
-# It never calls sudo and prints no network address. It runs no ip, tailscale, or hostname -I;
-# it reads listening ports from ss -Hltn and docker port and drops the address from each, and
-# reports a container's published and configured ports by bind class (tailnet4, tailnet6, all,
-# loopback, other), never by address. Engine endpoints are reached on 127.0.0.1 only, from the
-# host or from inside the engine's container. A final guard redacts any IPv4 address, tailnet
-# IPv6 address, or MagicDNS name that slips through, and prints the remote user's home directory
-# as ~, so the output can be committed as is.
-#
-# The whole script is one function, called on its last line with stdin from /dev/null: bash reads
-# the script from stdin, so a command that reads stdin (docker exec) would otherwise eat the rest.
+# See .claude/skills/hosting-upgrades/setup.md#3-probe
+# See .claude/skills/hosting-upgrades/scripts.md#probesh
 set -u
 
-probe() {
-  local skipped=()
+section() { printf '\n== %s ==\n' "$1"; }
+have() { command -v "$1" >/dev/null 2>&1; }
+skip() {
+  printf 'skipped: %s\n' "$1"
+  skipped+=("$1")
+}
+show_file() {
+  if [[ -r $1 ]]; then
+    printf '%s: %s\n' "$1" "$(tr -d '\n' <"$1")"
+  else
+    printf '%s: absent\n' "$1"
+  fi
+}
+gib() { awk -v b="$1" 'BEGIN { printf "%.1f GiB", b / 1073741824 }'; }
 
-  section() { printf '\n== %s ==\n' "$1"; }
-  have() { command -v "$1" >/dev/null 2>&1; }
-  skip() {
-    printf 'skipped: %s\n' "$1"
-    skipped+=("$1")
-  }
-  # Prints a file's contents under its path, or says it is absent.
-  show_file() {
-    if [[ -r $1 ]]; then
-      printf '%s: %s\n' "$1" "$(tr -d '\n' <"$1")"
-    else
-      printf '%s: absent\n' "$1"
-    fi
-  }
-  gib() { awk -v b="$1" 'BEGIN { printf "%.1f GiB", b / 1073741824 }'; }
-
-  # Reads an engine's launch arguments, one per line, and prints on one line only the flags that
-  # shape serving (context, parallel slots, batching, offload, attention, KV cache and its
-  # checkpoints, memory, sampling), each with its value. Only these flags print, so no model path,
-  # address, alias, or key on the command line reaches the output. Both --flag value and
-  # --flag=value forms are read. A shell-form command line (sh -c "llama-server ...") arrives as
-  # one argument, and is read word by word, as drafters reads it.
-  serving_flags() {
-    awk '
-      BEGIN {
-        n = split("--ctx-size -c --parallel -np --cont-batching -cb --no-cont-batching -nocb " \
-          "--batch-size -b --ubatch-size -ub --n-gpu-layers --gpu-layers -ngl --flash-attn -fa " \
-          "--cache-type-k -ctk --cache-type-v -ctv --kv-unified -kvu --no-kv-unified " \
-          "--kv-unified-per-slot --load-mode -lm --cache-reuse --swa-full --n-cpu-moe -ncmoe " \
-          "--cpu-moe --no-mmap --mlock --threads -t " \
-          "--max-num-seqs --max-model-len --gpu-memory-utilization --max-num-batched-tokens " \
-          "--enable-chunked-prefill --no-enable-chunked-prefill --enable-prefix-caching " \
-          "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
-          "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
-          "--attention-backend --enforce-eager " \
-          "--cache-ram -cram --cache-idle-slots --no-cache-idle-slots --ctx-checkpoints " \
-          "--swa-checkpoints --checkpoint-min-step " \
-          "--cache-prompt --no-cache-prompt --context-shift --no-context-shift --keep " \
-          "--models-max --sleep-idle-seconds --mmproj-offload --no-mmproj-offload " \
-          "--draft-max --draft-min --draft-p-min --n-predict -n --jinja --no-jinja " \
-          "--reasoning-format --reasoning-budget --temp --top-k --top-p --min-p --typical " \
-          "--top-nsigma --repeat-penalty --repeat-last-n --presence-penalty " \
-          "--frequency-penalty --dry-multiplier --xtc-probability --xtc-threshold --seed", w, " ")
-        for (i = 1; i <= n; i++) want[w[i]] = 1
+serving_flags() {
+  awk '
+    BEGIN {
+      n = split("--ctx-size -c --parallel -np --cont-batching -cb --no-cont-batching -nocb " \
+        "--batch-size -b --ubatch-size -ub --n-gpu-layers --gpu-layers -ngl --flash-attn -fa " \
+        "--cache-type-k -ctk --cache-type-v -ctv --kv-unified -kvu --no-kv-unified " \
+        "--kv-unified-per-slot --load-mode -lm --cache-reuse --swa-full --n-cpu-moe -ncmoe " \
+        "--cpu-moe --no-mmap --mlock --threads -t " \
+        "--max-num-seqs --max-model-len --gpu-memory-utilization --max-num-batched-tokens " \
+        "--enable-chunked-prefill --no-enable-chunked-prefill --enable-prefix-caching " \
+        "--no-enable-prefix-caching --kv-cache-dtype --tensor-parallel-size -tp --quantization " \
+        "--dtype --max-running-requests --mem-fraction-static --chunked-prefill-size " \
+        "--attention-backend --enforce-eager " \
+        "--cache-ram -cram --cache-idle-slots --no-cache-idle-slots --ctx-checkpoints " \
+        "--swa-checkpoints --checkpoint-min-step " \
+        "--cache-prompt --no-cache-prompt --context-shift --no-context-shift --keep " \
+        "--models-max --sleep-idle-seconds --mmproj-offload --no-mmproj-offload " \
+        "--draft-max --draft-min --draft-p-min --n-predict -n --jinja --no-jinja " \
+        "--reasoning-format --reasoning-budget --temp --top-k --top-p --min-p --typical " \
+        "--top-nsigma --repeat-penalty --repeat-last-n --presence-penalty " \
+        "--frequency-penalty --dry-multiplier --xtc-probability --xtc-threshold --seed", w, " ")
+      for (i = 1; i <= n; i++) want[w[i]] = 1
+    }
+    {
+      if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/) {
+        if (n_t && t[n_t] == "-c") n_t--
+        n = split($0, w, /[[:space:]]+/)
+        for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
+      } else t[++n_t] = $0
+    }
+    END {
+      out = ""
+      for (i = 1; i <= n_t; i++) {
+        f = t[i]; v = ""
+        if (f ~ /^-[^=]*=/) { v = " " substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1) }
+        else if (i < n_t && t[i + 1] !~ /^-/) v = " " t[i + 1]
+        if (!(f in want) && f ~ /^--/ && substr(f, 2) in want) f = substr(f, 2)
+        if (f in want) out = out " " f v
       }
-      # An argument with spaces that is not a flag or JSON is a shell-form command line: its
-      # words are read as arguments. The -c before it belongs to the shell, not to the context
-      # size (whose value has no spaces), so it is dropped, never read with the first word.
-      {
-        if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/) {
-          if (n_t && t[n_t] == "-c") n_t--
-          n = split($0, w, /[[:space:]]+/)
-          for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
-        } else t[++n_t] = $0
-      }
-      END {
-        out = ""
-        for (i = 1; i <= n_t; i++) {
-          f = t[i]; v = ""
-          if (f ~ /^-[^=]*=/) { v = " " substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1) }
-          else if (i < n_t && t[i + 1] !~ /^-/) v = " " t[i + 1]
-          # A preset key reaches here as --<key>, so a short key (c, np) arrives as --c: read it
-          # as its short flag.
-          if (!(f in want) && f ~ /^--/ && substr(f, 2) in want) f = substr(f, 2)
-          if (f in want) out = out " " f v
-        }
-        print (out == "" ? " none of the serving flags" : out)
-      }'
-  }
+      print (out == "" ? " none of the serving flags" : out)
+    }'
+}
 
-  # Prints a container's run flags, the ones docker run took that shape serving beside the
-  # engine's own arguments, in docker run's terms, on a `run flags` line: GPUs (--gpus), devices
-  # (--device, by the host path), IPC and PID mode, shared memory, ulimits, memory and CPU limits,
-  # the network mode, the runtime, privileged, added capabilities and groups. A value at docker's
-  # default doesn't print, so the line names only what the run set, or "docker's defaults". Then a
-  # `run env` line: each environment variable the run set (in the container's env but not its
-  # image's), for the prefixes that tune an engine or its GPU stack (LLAMA_ARG_, VLLM_, GGML_,
-  # CUDA_, NVIDIA_, HIP_, HSA_, ROCR_, OMP_), as NAME=value only when its name names no secret,
-  # address, model, or path and its value is short and plain; otherwise by name alone, "(value
-  # not shown)". Any other variable the run set prints by name alone. So the review reads an engine
-  # flag set through the environment (LLAMA_ARG_CTX_SIZE) and never a token.
-  #
-  # The template only prints fields and compares none: a docker that decodes inspect's JSON into
-  # untyped values (29.6.2 reads .Count as a json.Number) fails any comparison against a literal,
-  # so awk reads the count (-1 is all). A read that fails still prints both lines, as "not
-  # readable" with docker's first error line, so a missing line never passes for a clean one.
-  run_flags() {
-    local hc err
-    if ! hc=$(docker inspect "$1" --format '{{with .HostConfig}}{{range .DeviceRequests}}gpus {{.Count}}{{range .DeviceIDs}},{{.}}{{end}}
+run_flags() {
+  local hc err
+  if ! hc=$(docker inspect "$1" --format '{{with .HostConfig}}{{range .DeviceRequests}}gpus {{.Count}}{{range .DeviceIDs}},{{.}}{{end}}
 {{end}}{{range .Devices}}device {{.PathOnHost}}
 {{end}}ipc {{.IpcMode}}
 pid {{.PidMode}}
@@ -134,301 +91,379 @@ privileged {{.Privileged}}
 {{range .CapAdd}}cap-add {{.}}
 {{end}}{{range .GroupAdd}}group-add {{.}}
 {{end}}{{end}}' 2>&1); then
-      err=$(grep -m 1 . <<<"$hc")
-      printf '  run flags not readable: %s\n' "${err:-docker inspect failed}"
-      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
-      return
-    fi
-    printf '  run flags%s\n' "$(awk '
-      $1 == "gpus" {
-        sub(/^gpus /, ""); sub(/,/, " device=")
-        if ($0 ~ /^-1( |$)/) sub(/^-1/, "all")
-        out = out " --gpus " $0; next }
-      $1 == "device" { out = out " --device " $2; next }
-      $1 == "ipc" && $2 != "" && $2 != "private" && $2 != "shareable" { out = out " --ipc " $2 }
-      $1 == "pid" && $2 != "" { out = out " --pid " $2 }
-      $1 == "shm-size" && $2 != "" && $2 != 0 && $2 != 67108864 {
-        out = out sprintf(" --shm-size %.0fm", $2 / 1048576) }
-      $1 == "ulimit" { out = out " --ulimit " $2 }
-      $1 == "memory" && $2 != 0 { out = out sprintf(" --memory %.0fm", $2 / 1048576) }
-      $1 == "memory-swap" && $2 != 0 { out = out " --memory-swap " $2 }
-      $1 == "cpus" && $2 != 0 { out = out sprintf(" --cpus %g", $2 / 1e9) }
-      $1 == "cpuset-cpus" && $2 != "" { out = out " --cpuset-cpus " $2 }
-      $1 == "network" && $2 != "" && $2 != "default" && $2 != "bridge" { out = out " --network " $2 }
-      $1 == "runtime" && $2 != "" && $2 != "runc" { out = out " --runtime " $2 }
-      $1 == "privileged" && $2 == "true" { out = out " --privileged" }
-      $1 == "cap-add" { out = out " --cap-add " $2 }
-      $1 == "group-add" { out = out " --group-add " $2 }
-      END { print (out == "" ? " docker'\''s defaults" : out) }' <<<"$hc")"
-    local image_env run_env line name value shown=()
-    image_env=$(docker image inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
-      "$(docker inspect --format '{{.Image}}' "$1")" 2>/dev/null)
-    if ! run_env=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1" 2>&1); then
-      err=$(grep -m 1 . <<<"$run_env")
-      printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
-      return
-    fi
-    while IFS= read -r line; do
-      [[ -n $line ]] || continue
-      grep -qxF -- "$line" <<<"$image_env" && continue
-      name=${line%%=*} value=${line#*=}
-      if [[ $name =~ ^(LLAMA_ARG_|VLLM_|GGML_|CUDA_|NVIDIA_|HIP_|HSA_|ROCR_|OMP_) &&
-        ! $name =~ (KEY|TOKEN|SECRET|PASS|AUTH|CRED|HOST|ADDR|URL|MODEL|REPO|PATH|DIR|FILE|ALIAS|HOME) &&
-        $value =~ ^[A-Za-z0-9._,:=+-]{0,64}$ ]]; then
-        shown+=("$name=$value")
-      else
-        shown+=("$name (value not shown)")
-      fi
-    done <<<"$run_env"
-    if ((${#shown[@]})); then
-      # Joined with "; ", since a value may hold a comma (CUDA_VISIBLE_DEVICES=0,1).
-      local joined
-      printf -v joined '%s; ' "${shown[@]}"
-      printf '  run env %s\n' "${joined%; }"
+    err=$(grep -m 1 . <<<"$hc")
+    printf '  run flags not readable: %s\n' "${err:-docker inspect failed}"
+    printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+    return
+  fi
+  printf '  run flags%s\n' "$(awk '
+    $1 == "gpus" {
+      sub(/^gpus /, ""); sub(/,/, " device=")
+      if ($0 ~ /^-1( |$)/) sub(/^-1/, "all")
+      out = out " --gpus " $0; next }
+    $1 == "device" { out = out " --device " $2; next }
+    $1 == "ipc" && $2 != "" && $2 != "private" && $2 != "shareable" { out = out " --ipc " $2 }
+    $1 == "pid" && $2 != "" { out = out " --pid " $2 }
+    $1 == "shm-size" && $2 != "" && $2 != 0 && $2 != 67108864 {
+      out = out sprintf(" --shm-size %.0fm", $2 / 1048576) }
+    $1 == "ulimit" { out = out " --ulimit " $2 }
+    $1 == "memory" && $2 != 0 { out = out sprintf(" --memory %.0fm", $2 / 1048576) }
+    $1 == "memory-swap" && $2 != 0 { out = out " --memory-swap " $2 }
+    $1 == "cpus" && $2 != 0 { out = out sprintf(" --cpus %g", $2 / 1e9) }
+    $1 == "cpuset-cpus" && $2 != "" { out = out " --cpuset-cpus " $2 }
+    $1 == "network" && $2 != "" && $2 != "default" && $2 != "bridge" { out = out " --network " $2 }
+    $1 == "runtime" && $2 != "" && $2 != "runc" { out = out " --runtime " $2 }
+    $1 == "privileged" && $2 == "true" { out = out " --privileged" }
+    $1 == "cap-add" { out = out " --cap-add " $2 }
+    $1 == "group-add" { out = out " --group-add " $2 }
+    END { print (out == "" ? " docker'\''s defaults" : out) }' <<<"$hc")"
+  local image_env run_env line name value shown=()
+  image_env=$(docker image inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
+    "$(docker inspect --format '{{.Image}}' "$1")" 2>/dev/null)
+  if ! run_env=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1" 2>&1); then
+    err=$(grep -m 1 . <<<"$run_env")
+    printf '  run env not readable: %s\n' "${err:-docker inspect failed}"
+    return
+  fi
+  while IFS= read -r line; do
+    [[ -n $line ]] || continue
+    grep -qxF -- "$line" <<<"$image_env" && continue
+    name=${line%%=*} value=${line#*=}
+    if [[ $name =~ ^(LLAMA_ARG_|VLLM_|GGML_|CUDA_|NVIDIA_|HIP_|HSA_|ROCR_|OMP_) &&
+      ! $name =~ (KEY|TOKEN|SECRET|PASS|AUTH|CRED|HOST|ADDR|URL|MODEL|REPO|PATH|DIR|FILE|ALIAS|HOME) &&
+      $value =~ ^[A-Za-z0-9._,:=+-]{0,64}$ ]]; then
+      shown+=("$name=$value")
     else
-      echo "  run env none beyond the image's"
+      shown+=("$name (value not shown)")
     fi
-  }
+  done <<<"$run_env"
+  if ((${#shown[@]})); then
+    local joined
+    printf -v joined '%s; ' "${shown[@]}"
+    printf '  run env %s\n' "${joined%; }"
+  else
+    echo "  run env none beyond the image's"
+  fi
+}
 
-  # Reads the same launch arguments as serving_flags and prints on one line the drafter models
-  # they load for speculative decoding, or "none", so a run can check that no preset loads an
-  # excluded drafter. A drafter prints by its name only, never by a path: a file key's value
-  # (llama.cpp's --spec-draft-model, -md, --model-draft, as named at b11669) by its file name, a
-  # repository key's value (--spec-draft-hf, -hfd, -hfrd, --hf-repo-draft) as the repository name
-  # it gives, and vLLM's --speculative-model, or the "model" in its --speculative-config JSON, as
-  # either, by its form. Any other speculative key (spec-*, speculative-*, *draft*) prints by its
-  # name alone, since it shapes speculation without naming a model. A drafter key whose value
-  # can't be read prints as "<key> (value unread)", never as "none". A shell-form command line
-  # (sh -c "llama-server ...") arrives as one argument, and is read word by word.
-  drafters() {
-    awk '
-      # A path (absolute, home, relative, or a URL) or a model file prints by its last part only.
-      function name(v, as_file) {
-        gsub(/^[[:space:]"\047]+|[[:space:]"\047]+$/, "", v)
-        if (as_file || v ~ /^[\/~.]/ || v ~ /:\/\// ||
-          v ~ /\.(gguf|safetensors|bin|pt|pth|ckpt)$/) {
-          sub(/\/+$/, "", v); sub(/.*\//, "", v)
-        }
-        return v
+drafters() {
+  awk '
+    function name(v, as_file) {
+      gsub(/^[[:space:]"\047]+|[[:space:]"\047]+$/, "", v)
+      if (as_file || v ~ /^[\/~.]/ || v ~ /:\/\// ||
+        v ~ /\.(gguf|safetensors|bin|pt|pth|ckpt)$/) {
+        sub(/\/+$/, "", v); sub(/.*\//, "", v)
       }
-      # The key a flag names, as file or repo hold it: a preset key arrives as --<key>, so a short
-      # key (md) arrives as --md.
-      function key(f) {
-        s = substr(f, 2)
-        if (f ~ /^--/ && !(f in file) && !(f in repo) && (s in file || s in repo)) return s
-        return f
-      }
-      BEGIN {
-        n = split("--spec-draft-model -md --model-draft", w, " ")
-        for (i = 1; i <= n; i++) file[w[i]] = 1
-        n = split("--spec-draft-hf -hfd -hfrd --hf-repo-draft --speculative-model", w, " ")
-        for (i = 1; i <= n; i++) repo[w[i]] = 1
-      }
-      # An argument with spaces that is not a drafter key value or JSON is a shell-form command
-      # line: its words are read as arguments.
-      {
-        p = (n_t ? key(t[n_t]) : "")
-        if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/ &&
-          !(p in file) && !(p in repo) && p != "--speculative-config") {
-          n = split($0, w, /[[:space:]]+/)
-          for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
-        } else t[++n_t] = $0
-      }
-      END {
-        out = ""; keys = ""
-        for (i = 1; i <= n_t; i++) {
-          f = t[i]; v = ""; has = 0
-          if (f !~ /^-/) continue
-          if (f ~ /^-[^=]*=/) {
-            v = substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1); has = 1
-          } else if (i < n_t && t[i + 1] !~ /^-/) { v = t[i + 1]; has = 1 }
-          f = key(f)
-          if (f in file || f in repo) {
-            d = (has ? name(v, f in file) : "")
-            if (d == "") { d = f; sub(/^-+/, "", d); d = d " (value unread)" }
-            out = out ", " d
-          }
-          else if (f == "--speculative-config") {
-            if (match(v, /"model"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
-              m = substr(v, RSTART, RLENGTH); sub(/^"model"[[:space:]]*:[[:space:]]*"/, "", m)
-              sub(/"$/, "", m); m = name(m, 0)
-              out = out ", " (m == "" ? "speculative-config model (value unread)" : m)
-            } else keys = keys ", speculative-config"
-          }
-          else if (f ~ /^--?(spec-|speculative-)/ || f ~ /draft/) {
-            sub(/^-+/, "", f); if (index(keys ", ", ", " f ", ") == 0) keys = keys ", " f
-          }
-        }
-        line = (out == "" ? "none" : substr(out, 3))
-        if (keys != "") line = line " (speculative keys: " substr(keys, 3) ")"
-        print " " line
-      }'
-  }
-
-  # Reads one preset file (a llama.cpp router's --models-preset INI: [section] headers, each a
-  # model the router lists or [*] for every model, over key = value lines whose keys are the
-  # long flag names without their dashes) and prints its shape, then each section's keys through
-  # serving_flags, so no key outside the filter prints its value. A section prints by its name, the
-  # model the router lists; a name that is a path (/..., ~/..., ./...) prints by its last part only.
-  # A key may also be a flag (--ctx-size) or its environment name (LLAMA_ARG_CTX_SIZE); both are
-  # read as the flag. A line in no form above is counted as unread, never printed.
-  preset_file() {
-    local line section="" args=() parsed
-    flush() {
-      if [[ -n $section ]] || ((${#args[@]})); then
-        printf '      [%s] flags%s\n' "${section:-top level}" \
-          "$(printf '%s\n' "${args[@]}" | serving_flags)"
-        printf '      [%s] drafter%s\n' "${section:-top level}" \
-          "$(printf '%s\n' "${args[@]}" | drafters)"
-      fi
-      args=()
+      return v
     }
-    parsed=$(awk '
-      /^[[:space:]]*([#;]|$)/ { next }
-      /^[[:space:]]*\[.*\][[:space:]]*$/ {
-        s = $0; sub(/^[[:space:]]*\[/, "", s); sub(/\][[:space:]]*$/, "", s)
-        if (s ~ /^[\/~.]/) sub(/.*\//, "", s)
-        print "S " s; sections++; next
+    function key(f) {
+      s = substr(f, 2)
+      if (f ~ /^--/ && !(f in file) && !(f in repo) && (s in file || s in repo)) return s
+      return f
+    }
+    BEGIN {
+      n = split("--spec-draft-model -md --model-draft", w, " ")
+      for (i = 1; i <= n; i++) file[w[i]] = 1
+      n = split("--spec-draft-hf -hfd -hfrd --hf-repo-draft --speculative-model", w, " ")
+      for (i = 1; i <= n; i++) repo[w[i]] = 1
+    }
+    {
+      p = (n_t ? key(t[n_t]) : "")
+      if ($0 !~ /^[-{]/ && $0 ~ /[[:space:]]/ &&
+        !(p in file) && !(p in repo) && p != "--speculative-config") {
+        n = split($0, w, /[[:space:]]+/)
+        for (i = 1; i <= n; i++) if (w[i] != "") t[++n_t] = w[i]
+      } else t[++n_t] = $0
+    }
+    END {
+      out = ""; keys = ""
+      for (i = 1; i <= n_t; i++) {
+        f = t[i]; v = ""; has = 0
+        if (f !~ /^-/) continue
+        if (f ~ /^-[^=]*=/) {
+          v = substr(f, index(f, "=") + 1); f = substr(f, 1, index(f, "=") - 1); has = 1
+        } else if (i < n_t && t[i + 1] !~ /^-/) { v = t[i + 1]; has = 1 }
+        f = key(f)
+        if (f in file || f in repo) {
+          d = (has ? name(v, f in file) : "")
+          if (d == "") { d = f; sub(/^-+/, "", d); d = d " (value unread)" }
+          out = out ", " d
+        }
+        else if (f == "--speculative-config") {
+          if (match(v, /"model"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+            m = substr(v, RSTART, RLENGTH); sub(/^"model"[[:space:]]*:[[:space:]]*"/, "", m)
+            sub(/"$/, "", m); m = name(m, 0)
+            out = out ", " (m == "" ? "speculative-config model (value unread)" : m)
+          } else keys = keys ", speculative-config"
+        }
+        else if (f ~ /^--?(spec-|speculative-)/ || f ~ /draft/) {
+          sub(/^-+/, "", f); if (index(keys ", ", ", " f ", ") == 0) keys = keys ", " f
+        }
       }
-      match($0, /^[[:space:]]*-*[A-Za-z0-9_.-]+[[:space:]]*[=:]/) {
-        k = substr($0, 1, RLENGTH - 1); v = substr($0, RLENGTH + 1)
-        gsub(/^[[:space:]-]+|[[:space:]]+$/, "", k); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
-        gsub(/^["\047]|["\047]$/, "", v)
-        if (k ~ /^LLAMA_ARG_/) { k = tolower(substr(k, 11)); gsub(/_/, "-", k) }
-        print "A --" k "=" v; keys++; next
-      }
-      /^[[:space:]]*-/ {
-        k = $1; v = $0; sub(/^[[:space:]]*[^[:space:]]+[[:space:]]*/, "", v)
-        print "A " k (v == "" ? "" : "=" v); keys++; next
-      }
-      { other++ }
-      END { printf "F %d sections, %d keys, %d lines unread\n", sections, keys, other }
-    ' "$1" 2>/dev/null)
-    printf '    file %s: %s\n' "$2" "$(sed -n 's/^F //p' <<<"$parsed")"
-    while IFS= read -r line; do
-      case $line in
-        'S '*)
-          flush
-          section=${line#S }
-          ;;
-        'A '*) args+=("${line#A }") ;;
-      esac
-    done <<<"$parsed"
-    flush
-  }
+      line = (out == "" ? "none" : substr(out, 3))
+      if (keys != "") line = line " (speculative keys: " substr(keys, 3) ")"
+      print " " line
+    }'
+}
 
-  # Prints each preset an engine container mounts (a mount whose source or destination names a
-  # preset), read from the host-side source without root: a file, or each file in a directory.
-  presets() {
-    local cname=$1 src dest file found=0
-    while IFS=$'\t' read -r src dest; do
-      [[ ${src,,} == *preset* || ${dest,,} == *preset* ]] || continue
-      found=1
-      if [[ -f $src && -r $src ]]; then
-        printf '  preset %s (file):\n' "$dest"
-        # The same bound as a directory's files: a preset is small, and anything larger is not one.
-        if [[ -n $(find -L "$src" -maxdepth 0 -size -1024k 2>/dev/null) ]]; then
-          preset_file "$src" "$(basename "$src")"
+preset_file() {
+  local line section="" args=() parsed
+  flush() {
+    if [[ -n $section ]] || ((${#args[@]})); then
+      printf '      [%s] flags%s\n' "${section:-top level}" \
+        "$(printf '%s\n' "${args[@]}" | serving_flags)"
+      printf '      [%s] drafter%s\n' "${section:-top level}" \
+        "$(printf '%s\n' "${args[@]}" | drafters)"
+    fi
+    args=()
+  }
+  parsed=$(awk '
+    /^[[:space:]]*([#;]|$)/ { next }
+    /^[[:space:]]*\[.*\][[:space:]]*$/ {
+      s = $0; sub(/^[[:space:]]*\[/, "", s); sub(/\][[:space:]]*$/, "", s)
+      if (s ~ /^[\/~.]/) sub(/.*\//, "", s)
+      print "S " s; sections++; next
+    }
+    match($0, /^[[:space:]]*-*[A-Za-z0-9_.-]+[[:space:]]*[=:]/) {
+      k = substr($0, 1, RLENGTH - 1); v = substr($0, RLENGTH + 1)
+      gsub(/^[[:space:]-]+|[[:space:]]+$/, "", k); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      gsub(/^["\047]|["\047]$/, "", v)
+      if (k ~ /^LLAMA_ARG_/) { k = tolower(substr(k, 11)); gsub(/_/, "-", k) }
+      print "A --" k "=" v; keys++; next
+    }
+    /^[[:space:]]*-/ {
+      k = $1; v = $0; sub(/^[[:space:]]*[^[:space:]]+[[:space:]]*/, "", v)
+      print "A " k (v == "" ? "" : "=" v); keys++; next
+    }
+    { other++ }
+    END { printf "F %d sections, %d keys, %d lines unread\n", sections, keys, other }
+  ' "$1" 2>/dev/null)
+  printf '    file %s: %s\n' "$2" "$(sed -n 's/^F //p' <<<"$parsed")"
+  while IFS= read -r line; do
+    case $line in
+      'S '*)
+        flush
+        section=${line#S }
+        ;;
+      'A '*) args+=("${line#A }") ;;
+    esac
+  done <<<"$parsed"
+  flush
+}
+
+print_entries_of_directory_without_small_files() {
+  echo "    no regular file under 1 MiB; entries (name, kind, kind through a link):"
+  find "$1" -mindepth 1 -maxdepth 3 -printf '      %P %y %Y\n' 2>/dev/null
+}
+
+presets() {
+  local cname=$1 src dest file found=0
+  while IFS=$'\t' read -r src dest; do
+    [[ ${src,,} == *preset* || ${dest,,} == *preset* ]] || continue
+    found=1
+    if [[ -f $src && -r $src ]]; then
+      printf '  preset %s (file):\n' "$dest"
+      if [[ -n $(find -L "$src" -maxdepth 0 -size -1024k 2>/dev/null) ]]; then
+        preset_file "$src" "$(basename "$src")"
+      else
+        printf '    file %s: 1 MiB or larger, not read\n' "$(basename "$src")"
+      fi
+    elif [[ -d $src && -r $src && -x $src ]]; then
+      printf '  preset %s (directory):\n' "$dest"
+      local files=()
+      mapfile -t files < <(find -L "$src" -maxdepth 3 -type f -size -1024k -printf '%P\n' \
+        2>/dev/null | sort)
+      if ((${#files[@]} == 0)); then
+        print_entries_of_directory_without_small_files "$src"
+      fi
+      for file in "${files[@]}"; do
+        if [[ -r $src/$file ]]; then
+          preset_file "$src/$file" "$file"
         else
-          printf '    file %s: 1 MiB or larger, not read\n' "$(basename "$src")"
+          printf '    file %s: unreadable without root\n' "$file"
         fi
-      elif [[ -d $src && -r $src && -x $src ]]; then
-        printf '  preset %s (directory):\n' "$dest"
-        # Links are followed: a preset directory may link its files from elsewhere.
-        local files=()
-        mapfile -t files < <(find -L "$src" -maxdepth 3 -type f -size -1024k -printf '%P\n' \
-          2>/dev/null | sort)
-        # With none, each entry's name and kind, by find's letters (f file, d directory, l link,
-        # and through a link N for a missing target): never a link's target, which is a path.
-        if ((${#files[@]} == 0)); then
-          echo "    no regular file under 1 MiB; entries (name, kind, kind through a link):"
-          find "$src" -mindepth 1 -maxdepth 3 -printf '      %P %y %Y\n' 2>/dev/null
-        fi
-        for file in "${files[@]}"; do
-          if [[ -r $src/$file ]]; then
-            preset_file "$src/$file" "$file"
-          else
-            printf '    file %s: unreadable without root\n' "$file"
-          fi
-        done
-      else
-        skip "preset $dest (container $cname): its host-side source is unreadable without root"
-      fi
-      preset_clone "$src"
-    done < <(docker inspect "$cname" \
-      --format '{{range .Mounts}}{{.Source}}{{"\t"}}{{.Destination}}{{"\n"}}{{end}}')
-    ((found)) || echo "  preset none mounted"
-  }
-
-  # Prints the git clone a preset is mounted from (the host's spike-model-engines checkout), once
-  # per clone: its commit, its branch, and how many tracked files differ from that commit. So the
-  # configuration review reads the preset the host serves, at the host's commit, and not the
-  # workstation's checkout. GIT_OPTIONAL_LOCKS=0 keeps git status from refreshing the index, so
-  # the read writes nothing. A preset outside any clone prints "not in a git clone".
-  local seen_clones=" "
-  preset_clone() {
-    local dir=$1 top head branch changed
-    [[ -d $dir ]] || dir=$(dirname "$1")
-    if ! have git; then
-      echo "  preset clone not readable: git absent"
-      return
-    fi
-    if ! top=$(git -C "$dir" rev-parse --show-toplevel 2>&1); then
-      if [[ $top == *"not a git repository"* ]]; then
-        echo "  preset clone none: not in a git clone"
-      else
-        printf '  preset clone not readable: %s\n' "$(head -n 1 <<<"$top")"
-      fi
-      return
-    fi
-    [[ $seen_clones == *" $top "* ]] && return
-    seen_clones+="$top "
-    head=$(git -C "$top" rev-parse --short HEAD 2>/dev/null)
-    branch=$(git -C "$top" symbolic-ref --short -q HEAD 2>/dev/null || echo "detached")
-    changed=$(GIT_OPTIONAL_LOCKS=0 git -C "$top" status --porcelain --untracked-files=no \
-      2>/dev/null | wc -l)
-    printf '  preset clone %s: commit %s, branch %s, %s tracked files changed\n' \
-      "$top" "${head:-unknown}" "$branch" "$changed"
-  }
-
-  # Prints the installed version of each named package (globs allowed), on pacman or dpkg hosts,
-  # as "package: <name> <version>" lines, which the guard reads as versions, not addresses.
-  packages() {
-    if have pacman; then
-      local name
-      for name in "$@"; do
-        pacman -Q 2>/dev/null | awk -v re="^${name//\*/.*}\$" '$1 ~ re { print "package:", $0 }'
       done
-    elif have dpkg-query; then
-      dpkg-query -W -f '${db:Status-Abbrev} ${Package} ${Version}\n' "$@" 2>/dev/null |
-        awk '$1 == "ii" { print "package:", $2, $3 }'
     else
-      skip "packages ($*): no pacman or dpkg-query"
+      skip "preset $dest (container $cname): its host-side source is unreadable without root"
     fi
-  }
+    preset_clone "$src"
+  done < <(docker inspect "$cname" \
+    --format '{{range .Mounts}}{{.Source}}{{"\t"}}{{.Destination}}{{"\n"}}{{end}}')
+  ((found)) || echo "  preset none mounted"
+}
 
+preset_clone() {
+  local dir=$1 top head branch changed
+  [[ -d $dir ]] || dir=$(dirname "$1") || return
+  if ! have git; then
+    echo "  preset clone not readable: git absent"
+    return
+  fi
+  if ! top=$(git -C "$dir" rev-parse --show-toplevel 2>&1); then
+    if [[ $top == *"not a git repository"* ]]; then
+      echo "  preset clone none: not in a git clone"
+    else
+      printf '  preset clone not readable: %s\n' "$(head -n 1 <<<"$top")"
+    fi
+    return
+  fi
+  [[ $seen_clones == *" $top "* ]] && return
+  seen_clones+="$top "
+  head=$(git -C "$top" rev-parse --short HEAD 2>/dev/null)
+  branch=$(git -C "$top" symbolic-ref --short -q HEAD 2>/dev/null || echo "detached") || return
+  changed=$(GIT_OPTIONAL_LOCKS=0 git -C "$top" status --porcelain --untracked-files=no \
+    2>/dev/null | wc -l) || return
+  printf '  preset clone %s: commit %s, branch %s, %s tracked files changed\n' \
+    "$top" "${head:-unknown}" "$branch" "$changed"
+}
+
+packages() {
+  if have pacman; then
+    local name
+    for name in "$@"; do
+      pacman -Q 2>/dev/null | awk -v re="^${name//\*/.*}\$" '$1 ~ re { print "package:", $0 }'
+    done
+  elif have dpkg-query; then
+    dpkg-query -W -f '${db:Status-Abbrev} ${Package} ${Version}\n' "$@" 2>/dev/null |
+      awk '$1 == "ii" { print "package:", $2, $3 }'
+  else
+    skip "packages ($*): no pacman or dpkg-query"
+  fi
+}
+
+bind_class() {
+  local ip=${1#[}
+  ip=${ip%]}
+  ip=${ip,,}
+  ip=${ip#::ffff:}
+  local IFS=.
+  # shellcheck disable=SC2086 # split the dotted quad on the IFS above
+  set -- $ip
+  if [[ -z $ip || $ip == 0.0.0.0 || $ip == :: ]]; then
+    echo all
+  elif [[ $ip == 127.* || $ip == ::1 ]]; then
+    echo loopback
+  elif [[ $ip == fd7a:115c:a1e0:* ]]; then
+    echo tailnet6
+  elif [[ $# -eq 4 && $1 == 100 && $2 =~ ^[0-9]+$ ]] && ((10#$2 >= 64 && 10#$2 <= 127)); then
+    echo tailnet4
+  else
+    echo other
+  fi
+}
+
+fetch() {
+  local where=$1 port=$2 path=$3
+  if [[ $where == host ]]; then
+    curl -s -m 3 "http://127.0.0.1:$port$path" 2>/dev/null
+  else
+    docker exec "$where" curl -s -m 3 "http://127.0.0.1:$port$path" 2>/dev/null
+  fi
+}
+
+print_router_models() {
+  local models=$1
+  if have jq; then
+    local id
+    while read -r id; do
+      jq -r --arg id "$id" \
+        '.data[] | select(.id == $id) | "  model \(.id)  status \(.status.value // "served")"' \
+        <<<"$models"
+      if jq -e --arg id "$id" '.data[] | select(.id == $id) | .status.args | length > 0' \
+        <<<"$models" >/dev/null 2>&1; then
+        local margs
+        margs=$(jq -r --arg id "$id" '.data[] | select(.id == $id) | .status.args[]' <<<"$models") ||
+          return
+        printf '    flags%s\n' "$(serving_flags <<<"$margs")"
+        printf '    drafter%s\n' "$(drafters <<<"$margs")"
+      fi
+    done < <(jq -r '.data[].id' <<<"$models")
+  else
+    grep -o '"id":"[^"]*"' <<<"$models" | cut -d'"' -f4 | sed 's/^/  model /'
+  fi
+}
+
+identify() {
+  local where=$1 port=$2 label=$3 body models
+  models=$(fetch "$where" "$port" /v1/models)
+  [[ $models == *'"data"'* ]] || return 1
+  printf 'endpoint %s, port %s:\n' "$label" "$port"
+  if body=$(fetch "$where" "$port" /props) && [[ $body == *'"build_info"'* ]]; then
+    printf '  engine llama.cpp, build %s\n' \
+      "$(grep -o '"build_info":"[^"]*"' <<<"$body" | cut -d'"' -f4)"
+    grep -o '"role":"[^"]*"' <<<"$body" | cut -d'"' -f4 | sed 's/^/  role /'
+  elif body=$(fetch "$where" "$port" /get_server_info) && [[ $body == *'"version"'* ]]; then
+    printf '  engine SGLang, version %s\n' \
+      "$(grep -o '"version":"[^"]*"' <<<"$body" | head -n 1 | cut -d'"' -f4)"
+  elif body=$(fetch "$where" "$port" /version) && [[ $body == *'"version"'* ]]; then
+    printf '  engine vLLM, version %s\n' \
+      "$(grep -o '"version":"[^"]*"' <<<"$body" | cut -d'"' -f4)"
+  else
+    echo "  engine unidentified (no /props, /get_server_info, or /version)"
+  fi
+  print_router_models "$models"
+}
+
+first_bytes() {
+  local store=$1 rel hex n=0
+  printf 'first 4 bytes of each GGUF in %s (hex, as text, path in the store):\n' "$store"
+  while IFS= read -r rel; do
+    [[ -n $rel ]] || continue
+    n=$((n + 1))
+    if [[ -L $store/$rel && ! -e $store/$rel ]]; then
+      printf '  magic missing (a broken link)  %s\n' "$rel"
+    elif [[ -r $store/$rel ]]; then
+      hex=$(head -c 4 "$store/$rel" | od -An -tx1 -v | tr -s ' \n' ' ') || return
+      hex=${hex# }
+      printf '  magic %s  %s  %s\n' "${hex% }" \
+        "$(head -c 4 "$store/$rel" | LC_ALL=C tr -c '[:print:]' '.')" "$rel"
+    else
+      printf '  magic unreadable without root  %s\n' "$rel"
+    fi
+  done
+  ((n)) || echo "  none"
+}
+
+print_dgx_release_without_serial() {
+  if [[ -r /etc/dgx-release ]]; then
+    grep -v -e '^DGX_SERIAL_NUMBER=' -e '^$' /etc/dgx-release
+  else
+    skip "dgx-release: /etc/dgx-release absent"
+  fi
+}
+
+print_os() {
   section os
   if [[ -r /etc/os-release ]]; then
     grep -E '^(NAME|PRETTY_NAME|ID|VERSION|VERSION_ID|BUILD_ID|IMAGE_VERSION)=' /etc/os-release
   else
     skip "os-release: /etc/os-release absent"
   fi
-  # DGX OS's release file names the software build and OTA version; its serial number stays out.
-  if [[ -r /etc/dgx-release ]]; then
-    grep -v -e '^DGX_SERIAL_NUMBER=' -e '^$' /etc/dgx-release
-  else
-    skip "dgx-release: /etc/dgx-release absent"
-  fi
+  print_dgx_release_without_serial
   if have omarchy-version; then
     printf 'omarchy: %s\n' "$(omarchy-version 2>&1)"
   else
     skip "omarchy: omarchy-version absent"
   fi
   printf 'arch: %s\n' "$(uname -m)"
+}
 
+print_whether_reboot_pending() {
+  local running=$1
+  if [[ -e /var/run/reboot-required ]]; then
+    echo "reboot: pending (/var/run/reboot-required)"
+    [[ -r /var/run/reboot-required.pkgs ]] && sed 's/^/  for: /' /var/run/reboot-required.pkgs
+  elif [[ ! -d /usr/lib/modules/$running ]]; then
+    echo "reboot: pending (the running kernel's module tree is gone)"
+  else
+    echo "reboot: none pending"
+  fi
+}
+
+print_kernel() {
   section kernel
   local running
-  running=$(uname -r)
+  running=$(uname -r) || return
   printf 'running: %s\n' "$running"
   printf 'booted: %s\n' "$(uptime -s 2>/dev/null || echo unknown)"
   echo "installed packages:"
@@ -440,27 +475,25 @@ privileged {{.Privileged}}
   fi
   printf 'module trees: %s\n' \
     "$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tr '\n' ' ')"
-  # Debian and Ubuntu leave a marker; elsewhere an upgraded kernel removes the running one's
-  # module tree, which says a reboot is pending just as well.
-  if [[ -e /var/run/reboot-required ]]; then
-    echo "reboot: pending (/var/run/reboot-required)"
-    [[ -r /var/run/reboot-required.pkgs ]] && sed 's/^/  for: /' /var/run/reboot-required.pkgs
-  elif [[ ! -d /usr/lib/modules/$running ]]; then
-    echo "reboot: pending (the running kernel's module tree is gone)"
-  else
-    echo "reboot: none pending"
-  fi
+  print_whether_reboot_pending "$running"
+}
 
-  section firmware
-  # Only the world-readable DMI fields; the serial-number fields need root and stay out.
+print_world_readable_dmi_fields() {
   local field
   for field in sys_vendor product_name product_version board_name bios_vendor bios_version \
     bios_date; do
     show_file "/sys/class/dmi/id/$field"
   done
+}
+
+print_firmware() {
+  section firmware
+  print_world_readable_dmi_fields
   echo "firmware packages:"
   packages 'linux-firmware*'
+}
 
+print_gpu() {
   section gpu
   if have lspci; then
     lspci -nn | grep -Ei 'vga|3d controller|display controller'
@@ -484,7 +517,17 @@ privileged {{.Privileged}}
   echo "driver and graphics packages:"
   packages mesa 'vulkan-radeon' 'vulkan-icd-loader' 'rocm-core' 'mesa-vulkan-drivers' \
     'nvidia-driver-*' 'libnvidia-compute-*' 'cuda-toolkit-[0-9]*' 'nvidia-utils' 'amdgpu_top'
+}
 
+note_unified_gpu_memory() {
+  if have nvidia-smi && nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null |
+    grep -q 'N/A'; then
+    echo "note: nvidia-smi reports no GPU memory (unified memory); the GPU-reachable memory is"
+    echo "      the system memory above (MemTotal, MemAvailable)"
+  fi
+}
+
+print_memory() {
   section memory
   grep -E '^(MemTotal|MemFree|MemAvailable|Cached|SwapTotal|SwapFree):' /proc/meminfo
   local pages card total
@@ -508,16 +551,24 @@ privileged {{.Privileged}}
     printf '%s: GTT total %s, VRAM total %s\n' "${card%/device}" "$(gib "$total")" \
       "$(gib "$(cat "$card/mem_info_vram_total" 2>/dev/null || echo 0)")"
   done
-  # GB10's GPU shares the system memory and nvidia-smi reports none of it, so its ceiling is
-  # MemTotal and MemAvailable above.
-  if have nvidia-smi && nvidia-smi --query-gpu=memory.total --format=csv,noheader 2>/dev/null |
-    grep -q 'N/A'; then
-    echo "note: nvidia-smi reports no GPU memory (unified memory); the GPU-reachable memory is"
-    echo "      the system memory above (MemTotal, MemAvailable)"
-  fi
+  note_unified_gpu_memory
+}
 
+print_nonlocal_bind() {
+  if [[ -r /proc/sys/net/ipv4/ip_nonlocal_bind ]]; then
+    printf 'net.ipv4.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv4/ip_nonlocal_bind)"
+  else
+    skip "net.ipv4.ip_nonlocal_bind: /proc/sys/net/ipv4/ip_nonlocal_bind unreadable"
+  fi
+  if [[ -r /proc/sys/net/ipv6/ip_nonlocal_bind ]]; then
+    printf 'net.ipv6.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv6/ip_nonlocal_bind)"
+  else
+    echo "net.ipv6.ip_nonlocal_bind: absent"
+  fi
+}
+
+print_container_runtime() {
   section container-runtime
-  local docker_ok=0
   if have docker; then
     if docker version --format 'docker: client {{.Client.Version}}, server {{.Server.Version}}' \
       2>&1; then
@@ -539,212 +590,147 @@ privileged {{.Privileged}}
   else
     skip "nvidia-ctk: absent"
   fi
+  print_nonlocal_bind
+}
 
-  # Whether a process may bind an address the host doesn't hold yet, one key per address family:
-  # 1 lets a container that binds the tailnet address of that family start before Tailscale has
-  # assigned it. The IPv6 key is absent on a kernel without IPv6.
-  if [[ -r /proc/sys/net/ipv4/ip_nonlocal_bind ]]; then
-    printf 'net.ipv4.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv4/ip_nonlocal_bind)"
-  else
-    skip "net.ipv4.ip_nonlocal_bind: /proc/sys/net/ipv4/ip_nonlocal_bind unreadable"
-  fi
-  if [[ -r /proc/sys/net/ipv6/ip_nonlocal_bind ]]; then
-    printf 'net.ipv6.ip_nonlocal_bind: %s\n' "$(cat /proc/sys/net/ipv6/ip_nonlocal_bind)"
-  else
-    echo "net.ipv6.ip_nonlocal_bind: absent"
-  fi
+print_container_flags() {
+  local cmdline
+  cmdline=$(docker inspect "$1" \
+    --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}')
+  printf '  flags%s\n' "$(serving_flags <<<"$cmdline")"
+  printf '  drafter%s\n' "$(drafters <<<"$cmdline")"
+}
 
+print_container_ports() {
+  local name=$1 mapping host_ip published=() networks
+  networks=$(docker inspect --format '{{json .NetworkSettings.Networks}}' "$name")
+  if [[ $networks != '{}' ]]; then
+    while read -r mapping; do
+      [[ -n $mapping ]] || continue
+      host_ip=${mapping#* -> }
+      published+=("${mapping%% *} $(bind_class "${host_ip%:*}")")
+    done < <(docker port "$name" 2>/dev/null)
+  fi
+  if ((${#published[@]})); then
+    printf '  published ports %s\n' "$(printf '%s\n' "${published[@]}" | sort -u | paste -sd, - |
+      sed 's/,/, /g')"
+  elif [[ $networks == '{}' ]]; then
+    echo "  published ports none (no network)"
+  else
+    echo "  published ports none"
+  fi
+  local bindings=()
+  while read -r mapping host_ip; do
+    [[ -n $mapping ]] || continue
+    bindings+=("$mapping $(bind_class "$host_ip")")
+  done < <(docker inspect "$name" --format \
+    '{{range $p, $b := .HostConfig.PortBindings}}{{range $b}}{{$p}} {{.HostIp}}{{"\n"}}{{end}}{{end}}')
+  if ((${#bindings[@]})); then
+    printf '  configured binds %s\n' "$(printf '%s\n' "${bindings[@]}" | sort -u | paste -sd, - |
+      sed 's/,/, /g')"
+  else
+    echo "  configured binds none"
+  fi
+}
+
+print_container() {
+  local name=$1
+  printf 'container %s:\n' "$name"
+  docker inspect --format '  image id {{.Image}}' "$name"
+  docker image inspect --format '  image created {{.Created}}' \
+    "$(docker inspect --format '{{.Config.Image}}' "$name")" 2>/dev/null
+  docker inspect "$name" \
+    --format '{{range .Mounts}}  mount {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' |
+    sed '/^$/d'
+  print_container_flags "$name"
+  presets "$name"
+  docker inspect --format '  restart policy {{.HostConfig.RestartPolicy.Name}}' "$name"
+  run_flags "$name"
+  print_container_ports "$name"
+}
+
+print_engine_units() {
+  local scope unit
+  for scope in system user; do
+    local flag=()
+    [[ $scope == user ]] && flag=(--user)
+    while read -r unit _; do
+      [[ -n $unit ]] || continue
+      printf 'unit (%s) %s: enabled=%s active=%s\n' "$scope" "$unit" \
+        "$(systemctl "${flag[@]}" is-enabled "$unit" 2>/dev/null)" \
+        "$(systemctl "${flag[@]}" is-active "$unit" 2>/dev/null)"
+    done < <(systemctl "${flag[@]}" list-unit-files --no-legend --type=service \
+      '*llama*' '*vllm*' '*sglang*' '*ollama*' '*tensorrt*' '*trtllm*' 2>/dev/null)
+  done
+}
+
+print_engines() {
   section engines
-  local name names=()
-  # The kind of address a published port binds, never the address: tailnet4 (100.64.0.0/10),
-  # tailnet6 (fd7a:115c:a1e0::/48), all (0.0.0.0, ::, or no address given), loopback
-  # (127.0.0.0/8, ::1), or other. The family matters because each has its own ip_nonlocal_bind
-  # key. The address is dropped here, before anything prints; the redact guard is the backstop.
-  bind_class() {
-    local ip=${1#[}
-    ip=${ip%]}
-    ip=${ip,,}
-    ip=${ip#::ffff:} # an IPv4-mapped IPv6 address classes as its IPv4 address
-    local IFS=.
-    # shellcheck disable=SC2086 # split the dotted quad on the IFS above
-    set -- $ip
-    if [[ -z $ip || $ip == 0.0.0.0 || $ip == :: ]]; then
-      echo all
-    elif [[ $ip == 127.* || $ip == ::1 ]]; then
-      echo loopback
-    elif [[ $ip == fd7a:115c:a1e0:* ]]; then
-      echo tailnet6
-    elif [[ $# -eq 4 && $1 == 100 && $2 =~ ^[0-9]+$ ]] && ((10#$2 >= 64 && 10#$2 <= 127)); then
-      echo tailnet4
-    else
-      echo other
-    fi
-  }
+  local name
   if ((docker_ok)); then
     echo "containers (name, image, state, status):"
     docker ps -a --format '  {{.Names}}  {{.Image}}  {{.State}}  {{.Status}}'
     mapfile -t names < <(docker ps -a --format '{{.Names}}')
     for name in "${names[@]}"; do
-      printf 'container %s:\n' "$name"
-      docker inspect --format '  image id {{.Image}}' "$name"
-      docker image inspect --format '  image created {{.Created}}' \
-        "$(docker inspect --format '{{.Config.Image}}' "$name")" 2>/dev/null
-      docker inspect "$name" \
-        --format '{{range .Mounts}}  mount {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' |
-        sed '/^$/d'
-      # The container's command line, filtered to its serving flags (an engine's configuration),
-      # and the drafters it loads.
-      local cmdline
-      cmdline=$(docker inspect "$name" \
-        --format '{{range .Config.Entrypoint}}{{println .}}{{end}}{{range .Config.Cmd}}{{println .}}{{end}}')
-      printf '  flags%s\n' "$(serving_flags <<<"$cmdline")"
-      printf '  drafter%s\n' "$(drafters <<<"$cmdline")"
-      presets "$name"
-      # Its restart policy: a container set to restart (always, unless-stopped) is meant to run.
-      docker inspect --format '  restart policy {{.HostConfig.RestartPolicy.Name}}' "$name"
-      run_flags "$name"
-      # Its ports: what it publishes now (docker port), and the bindings it is configured with
-      # (HostConfig.PortBindings), each by bind class. A running container that publishes nothing,
-      # or has no network at all, is the boot-order failure: healthy, but unreachable.
-      local mapping host_ip published=() networks
-      networks=$(docker inspect --format '{{json .NetworkSettings.Networks}}' "$name")
-      if [[ $networks != '{}' ]]; then
-        while read -r mapping; do
-          [[ -n $mapping ]] || continue
-          host_ip=${mapping#* -> }
-          published+=("${mapping%% *} $(bind_class "${host_ip%:*}")")
-        done < <(docker port "$name" 2>/dev/null)
-      fi
-      if ((${#published[@]})); then
-        printf '  published ports %s\n' "$(printf '%s\n' "${published[@]}" | sort -u | paste -sd, - |
-          sed 's/,/, /g')"
-      elif [[ $networks == '{}' ]]; then
-        echo "  published ports none (no network)"
-      else
-        echo "  published ports none"
-      fi
-      local bindings=()
-      while read -r mapping host_ip; do
-        [[ -n $mapping ]] || continue
-        bindings+=("$mapping $(bind_class "$host_ip")")
-      done < <(docker inspect "$name" --format \
-        '{{range $p, $b := .HostConfig.PortBindings}}{{range $b}}{{$p}} {{.HostIp}}{{"\n"}}{{end}}{{end}}')
-      if ((${#bindings[@]})); then
-        printf '  configured binds %s\n' "$(printf '%s\n' "${bindings[@]}" | sort -u | paste -sd, - |
-          sed 's/,/, /g')"
-      else
-        echo "  configured binds none"
-      fi
+      print_container "$name"
     done
   else
     skip "containers: docker unavailable"
   fi
   if have systemctl; then
-    local scope unit
-    for scope in system user; do
-      local flag=()
-      [[ $scope == user ]] && flag=(--user)
-      while read -r unit _; do
-        [[ -n $unit ]] || continue
-        printf 'unit (%s) %s: enabled=%s active=%s\n' "$scope" "$unit" \
-          "$(systemctl "${flag[@]}" is-enabled "$unit" 2>/dev/null)" \
-          "$(systemctl "${flag[@]}" is-active "$unit" 2>/dev/null)"
-      done < <(systemctl "${flag[@]}" list-unit-files --no-legend --type=service \
-        '*llama*' '*vllm*' '*sglang*' '*ollama*' '*tensorrt*' '*trtllm*' 2>/dev/null)
-    done
+    print_engine_units
   else
     skip "systemd units: systemctl absent"
   fi
+}
 
+identify_container_endpoints() {
+  local name mapping cport hport
+  for name in "${names[@]}"; do
+    [[ $(docker inspect --format '{{.State.Running}}' "$name") == true ]] || continue
+    while read -r mapping; do
+      cport=${mapping%%/*}
+      hport=${mapping##*:}
+      [[ $seen == *" $hport "* ]] && continue
+      seen+="$hport "
+      if identify host "$hport" "container $name (host port)" ||
+        identify "$name" "$cport" "container $name (inside, container port)"; then
+        found=1
+      else
+        printf 'container %s port %s: no OpenAI-compatible endpoint\n' "$name" "$cport"
+      fi
+    done < <(docker port "$name" 2>/dev/null | grep -v '^$')
+  done
+}
+
+identify_host_process_endpoints() {
+  local port
+  if have ss; then
+    while read -r port; do
+      [[ $seen == *" $port "* ]] && continue
+      identify host "$port" "host process" && found=1
+    done < <(ss -Hltn | awk '{ n = split($4, a, ":"); print a[n] }' | sort -un)
+  else
+    skip "listening sockets: ss absent"
+  fi
+}
+
+print_endpoints() {
   section endpoints
-  # Fetches a path from 127.0.0.1:port, on the host or, given a container, inside it.
-  fetch() {
-    local where=$1 port=$2 path=$3
-    if [[ $where == host ]]; then
-      curl -s -m 3 "http://127.0.0.1:$port$path" 2>/dev/null
-    else
-      docker exec "$where" curl -s -m 3 "http://127.0.0.1:$port$path" 2>/dev/null
-    fi
-  }
-  # Prints the engine and build behind a port, and its served models; returns 1 when nothing
-  # OpenAI-compatible answers there.
-  identify() {
-    local where=$1 port=$2 label=$3 body models
-    models=$(fetch "$where" "$port" /v1/models)
-    [[ $models == *'"data"'* ]] || return 1
-    printf 'endpoint %s, port %s:\n' "$label" "$port"
-    if body=$(fetch "$where" "$port" /props) && [[ $body == *'"build_info"'* ]]; then
-      printf '  engine llama.cpp, build %s\n' \
-        "$(grep -o '"build_info":"[^"]*"' <<<"$body" | cut -d'"' -f4)"
-      grep -o '"role":"[^"]*"' <<<"$body" | cut -d'"' -f4 | sed 's/^/  role /'
-    elif body=$(fetch "$where" "$port" /get_server_info) && [[ $body == *'"version"'* ]]; then
-      printf '  engine SGLang, version %s\n' \
-        "$(grep -o '"version":"[^"]*"' <<<"$body" | head -n 1 | cut -d'"' -f4)"
-    elif body=$(fetch "$where" "$port" /version) && [[ $body == *'"version"'* ]]; then
-      printf '  engine vLLM, version %s\n' \
-        "$(grep -o '"version":"[^"]*"' <<<"$body" | cut -d'"' -f4)"
-    else
-      echo "  engine unidentified (no /props, /get_server_info, or /version)"
-    fi
-    # The router's model list carries each model's launch arguments; the id and status print, and
-    # under each, its serving flags only (no path, address, or alias).
-    if have jq; then
-      local id
-      while read -r id; do
-        jq -r --arg id "$id" \
-          '.data[] | select(.id == $id) | "  model \(.id)  status \(.status.value // "served")"' \
-          <<<"$models"
-        if jq -e --arg id "$id" '.data[] | select(.id == $id) | .status.args | length > 0' \
-          <<<"$models" >/dev/null 2>&1; then
-          local margs
-          margs=$(jq -r --arg id "$id" '.data[] | select(.id == $id) | .status.args[]' <<<"$models")
-          printf '    flags%s\n' "$(serving_flags <<<"$margs")"
-          printf '    drafter%s\n' "$(drafters <<<"$margs")"
-        fi
-      done < <(jq -r '.data[].id' <<<"$models")
-    else
-      grep -o '"id":"[^"]*"' <<<"$models" | cut -d'"' -f4 | sed 's/^/  model /'
-    fi
-  }
   if ! have curl; then
     skip "endpoints: curl absent"
   else
-    local found=0 mapping cport hport seen=" "
-    # A running container's published ports: reach the host port on 127.0.0.1, or, when the
-    # binding excludes loopback (a tailnet-only bind), the container port from inside it.
-    for name in "${names[@]}"; do
-      [[ $(docker inspect --format '{{.State.Running}}' "$name") == true ]] || continue
-      while read -r mapping; do
-        cport=${mapping%%/*}
-        hport=${mapping##*:}
-        # docker lists a port once per address family; probe it once.
-        [[ $seen == *" $hport "* ]] && continue
-        seen+="$hport "
-        if identify host "$hport" "container $name (host port)" ||
-          identify "$name" "$cport" "container $name (inside, container port)"; then
-          found=1
-        else
-          printf 'container %s port %s: no OpenAI-compatible endpoint\n' "$name" "$cport"
-        fi
-      done < <(docker port "$name" 2>/dev/null | grep -v '^$')
-    done
-    # Every other listening TCP port, for engines run outside containers. Only the port is read.
-    local port
-    if have ss; then
-      while read -r port; do
-        [[ $seen == *" $port "* ]] && continue
-        identify host "$port" "host process" && found=1
-      done < <(ss -Hltn | awk '{ n = split($4, a, ":"); print a[n] }' | sort -un)
-    else
-      skip "listening sockets: ss absent"
-    fi
+    local found=0 seen=" "
+    identify_container_endpoints
+    identify_host_process_endpoints
     ((found)) || echo "no engine serving: nothing OpenAI-compatible answered on loopback"
   fi
+}
 
-  section models
-  # The common stores, plus every directory an engine container mounts that holds models.
-  local stores=("$HOME/.cache/huggingface/hub" "$HOME/.cache/llama.cpp" "$HOME/models" \
-    /srv/models "$HOME/.ollama/models") store dir src
+collect_model_stores() {
+  local name src
+  stores=("$HOME/.cache/huggingface/hub" "$HOME/.cache/llama.cpp" "$HOME/models" \
+    /srv/models "$HOME/.ollama/models")
   if ((docker_ok)); then
     for name in "${names[@]}"; do
       while read -r src; do
@@ -752,54 +738,42 @@ privileged {{.Privileged}}
       done < <(docker inspect --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' "$name")
     done
   fi
-  # Prints the first 4 bytes of each GGUF file named on stdin (paths under the store, one a line),
-  # as hex and as text with every byte outside printable ASCII shown as ".", so a pickle's 80 02
-  # can't garble the output. The bytes say what a file is, whatever its name claims: GGUF is
-  # 47 47 55 46. The read follows a Hugging Face cache's snapshot links to their blobs.
-  first_bytes() {
-    local store=$1 rel hex n=0
-    printf 'first 4 bytes of each GGUF in %s (hex, as text, path in the store):\n' "$store"
-    while IFS= read -r rel; do
-      [[ -n $rel ]] || continue
-      n=$((n + 1))
-      if [[ -L $store/$rel && ! -e $store/$rel ]]; then
-        printf '  magic missing (a broken link)  %s\n' "$rel"
-      elif [[ -r $store/$rel ]]; then
-        hex=$(head -c 4 "$store/$rel" | od -An -tx1 -v | tr -s ' \n' ' ')
-        hex=${hex# }
-        printf '  magic %s  %s  %s\n' "${hex% }" \
-          "$(head -c 4 "$store/$rel" | LC_ALL=C tr -c '[:print:]' '.')" "$rel"
-      else
-        printf '  magic unreadable without root  %s\n' "$rel"
-      fi
-    done
-    ((n)) || echo "  none"
-  }
+}
+
+print_hf_cache_store() {
+  local store=$1 dir
+  printf 'store %s (Hugging Face cache; snapshot size, links followed, last modified):\n' \
+    "$store"
+  for dir in "$store"/models--*; do
+    printf '  %s  %s  %s\n' "$(du -sLh "$dir/snapshots" 2>/dev/null | cut -f1)" \
+      "$(find "$dir" -printf '%TF\n' 2>/dev/null | sort | tail -n 1)" \
+      "$(basename "$dir" | sed 's/^models--//; s/--/\//')"
+  done
+  find "$store" -mindepth 4 -maxdepth 5 -name '*.gguf' -printf '%P\n' 2>/dev/null |
+    grep '^models--[^/]*/snapshots/' | sort | first_bytes "$store"
+}
+
+print_gguf_store() {
+  local store=$1
+  printf 'store %s (GGUF files; size, last modified):\n' "$store"
+  find "$store" -maxdepth 4 -name '*.gguf' -printf '%s %TF %P\n' 2>/dev/null | sort -k3 |
+    awk '{ printf "  %.1fG  %s  %s\n", $1 / 1073741824, $2, $3 }'
+  find "$store" -maxdepth 4 -name '*.gguf' -printf '%P\n' 2>/dev/null | sort |
+    first_bytes "$store"
+}
+
+print_models() {
+  section models
+  local stores=() store
+  collect_model_stores
   local listed=" "
   for store in "${stores[@]}"; do
     [[ -d $store && $listed != *" $store "* ]] || continue
     listed+="$store "
     if compgen -G "$store/models--*" >/dev/null; then
-      printf 'store %s (Hugging Face cache; snapshot size, links followed, last modified):\n' \
-        "$store"
-      for dir in "$store"/models--*; do
-        printf '  %s  %s  %s\n' "$(du -sLh "$dir/snapshots" 2>/dev/null | cut -f1)" \
-          "$(find "$dir" -printf '%TF\n' 2>/dev/null | sort | tail -n 1)" \
-          "$(basename "$dir" | sed 's/^models--//; s/--/\//')"
-      done
-      # Each snapshot's GGUF files, in its top directory or a quant's subdirectory, by the link's
-      # path (models--<org>--<repo>/snapshots/<revision>/<file>), never the blob's. The path in
-      # the store is matched after find, so a store whose name holds a glob character still
-      # matches.
-      find "$store" -mindepth 4 -maxdepth 5 -name '*.gguf' -printf '%P\n' 2>/dev/null |
-        grep '^models--[^/]*/snapshots/' | sort | first_bytes "$store"
+      print_hf_cache_store "$store"
     elif [[ -n $(find "$store" -maxdepth 4 -name '*.gguf' -print -quit 2>/dev/null) ]]; then
-      # A file's last-modified date is when it was written: a model can sit unused long after it.
-      printf 'store %s (GGUF files; size, last modified):\n' "$store"
-      find "$store" -maxdepth 4 -name '*.gguf' -printf '%s %TF %P\n' 2>/dev/null | sort -k3 |
-        awk '{ printf "  %.1fG  %s  %s\n", $1 / 1073741824, $2, $3 }'
-      find "$store" -maxdepth 4 -name '*.gguf' -printf '%P\n' 2>/dev/null | sort |
-        first_bytes "$store"
+      print_gguf_store "$store"
     fi
   done
   [[ $listed == " " ]] && echo "no model store found"
@@ -808,150 +782,173 @@ privileged {{.Privileged}}
   else
     skip "ollama list: ollama absent"
   fi
+}
 
-  section updates
-  # Where the host's packages come from, so pending updates are read against the channel and
-  # mirror that offer them. On Arch: the mirrorlist's servers, and each repository pacman.conf
-  # names with its own servers or included lists. Omarchy records no channel: omarchy-channel-set
-  # (basecamp/omarchy v4.0.6) runs omarchy-refresh-pacman, which copies the channel's templates
-  # (default/pacman/mirrorlist-<channel> and pacman-<channel>.conf) over /etc/pacman.d/mirrorlist
-  # and /etc/pacman.conf, and installs omarchy for stable and rc, omarchy-dev for edge and dev. So
-  # the channel is read from which template each file still matches byte for byte, and from the
-  # package installed. On apt: each source's URIs and suites, from one-line .list files and
-  # deb822 .sources files alike; options in brackets ([signed-by=...]) are dropped. These lines
-  # take the guard as any other: a mirror is a public name, but an address in one is redacted.
-  local lines=() now
-  if have pacman; then
-    if [[ -r /etc/pacman.d/mirrorlist ]]; then
-      mapfile -t lines < <(grep -E '^[[:space:]]*Server[[:space:]]*=' /etc/pacman.d/mirrorlist |
-        sed -E 's/^[[:space:]]+//')
-      printf 'mirrorlist: %d servers (/etc/pacman.d/mirrorlist)\n' "${#lines[@]}"
-      ((${#lines[@]})) && printf 'mirror: %s\n' "${lines[@]}"
-    else
-      skip "mirrorlist: /etc/pacman.d/mirrorlist unreadable"
-    fi
-    if [[ -r /etc/pacman.conf ]]; then
-      awk '
-        /^[[:space:]]*\[/ { r = $0; gsub(/[][[:space:]]/, "", r); next }
-        r != "" && r != "options" && /^[[:space:]]*(Server|Include)[[:space:]]*=/ {
-          l = $0; sub(/^[[:space:]]+/, "", l); print "repo " r ": " l
-        }' /etc/pacman.conf
-    else
-      skip "pacman.conf: /etc/pacman.conf unreadable"
-    fi
-    local omarchy_dir="" channel file matched installed
-    for omarchy_dir in "${OMARCHY_PATH:-}" /usr/share/omarchy "$HOME/.local/share/omarchy"; do
-      [[ -n $omarchy_dir && -d $omarchy_dir/default/pacman ]] && break
-      omarchy_dir=""
-    done
-    if [[ -n $omarchy_dir ]]; then
-      for file in /etc/pacman.d/mirrorlist /etc/pacman.conf; do
-        matched=""
-        for channel in stable rc edge; do
-          if [[ $file == */mirrorlist ]]; then
-            cmp -s "$file" "$omarchy_dir/default/pacman/mirrorlist-$channel" && matched+=" $channel"
-          else
-            cmp -s "$file" "$omarchy_dir/default/pacman/pacman-$channel.conf" && matched+=" $channel"
-          fi
-        done
-        if [[ -n $matched ]]; then
-          printf 'omarchy channel: %s matches the template of%s\n' "$file" "$matched"
+print_omarchy_channel() {
+  local omarchy_dir="" channel file matched installed
+  for omarchy_dir in "${OMARCHY_PATH:-}" /usr/share/omarchy "$HOME/.local/share/omarchy"; do
+    [[ -n $omarchy_dir && -d $omarchy_dir/default/pacman ]] && break
+    omarchy_dir=""
+  done
+  if [[ -n $omarchy_dir ]]; then
+    for file in /etc/pacman.d/mirrorlist /etc/pacman.conf; do
+      matched=""
+      for channel in stable rc edge; do
+        if [[ $file == */mirrorlist ]]; then
+          cmp -s "$file" "$omarchy_dir/default/pacman/mirrorlist-$channel" && matched+=" $channel"
         else
-          printf "omarchy channel: %s matches no channel's template (edited since)\n" "$file"
+          cmp -s "$file" "$omarchy_dir/default/pacman/pacman-$channel.conf" && matched+=" $channel"
         fi
       done
-      installed=$(pacman -Q omarchy omarchy-dev 2>/dev/null | paste -sd, - | sed 's/,/, /g')
-      printf 'omarchy channel: package %s\n' "${installed:-none installed}"
-    else
-      skip "omarchy channel: no Omarchy pacman templates (default/pacman) found"
-    fi
-  elif have apt; then
-    local src
-    for src in /etc/apt/sources.list /etc/apt/sources.list.d/*.list \
-      /etc/apt/sources.list.d/*.sources; do
-      [[ -e $src ]] || continue
-      if [[ ! -r $src ]]; then
-        skip "apt source $src: unreadable"
-        continue
-      fi
-      if [[ $src == *.sources ]]; then
-        # deb822: stanzas split by blank lines; a stanza with Enabled: no is listed as disabled.
-        awk -v f="$src" '
-          function flush() {
-            if (u != "") print "apt source " f ": " (t == "" ? "deb" : t) " " u " suites " s \
-              (c == "" ? "" : " components " c) (e ~ /^[Nn]o$/ ? " (disabled)" : "")
-            t = u = s = c = e = ""
-          }
-          /^[[:space:]]*$/ { flush(); next }
-          /^[[:space:]]*#/ { next }
-          { k = tolower($1); v = $0; sub(/^[^:]*:[[:space:]]*/, "", v) }
-          k == "types:" { t = v } k == "uris:" { u = v } k == "suites:" { s = v }
-          k == "components:" { c = v } k == "enabled:" { e = v }
-          END { flush() }' "$src"
+      if [[ -n $matched ]]; then
+        printf 'omarchy channel: %s matches the template of%s\n' "$file" "$matched"
       else
-        awk -v f="$src" '
-          /^[[:space:]]*deb(-src)?[[:space:]]/ {
-            l = $0; gsub(/\[[^]]*\]/, "", l); sub(/[[:space:]]*#.*$/, "", l)
-            sub(/[[:space:]]+$/, "", l); n = split(l, w, /[[:space:]]+/)
-            i = (w[1] == "" ? 2 : 1)
-            out = "apt source " f ": " w[i] " " w[i + 1] " suites " w[i + 2]
-            if (n >= i + 3) { out = out " components"; for (j = i + 3; j <= n; j++) out = out " " w[j] }
-            print out
-          }' "$src"
+        printf "omarchy channel: %s matches no channel's template (edited since)\n" "$file"
       fi
     done
+    installed=$(pacman -Q omarchy omarchy-dev 2>/dev/null | paste -sd, - | sed 's/,/, /g') ||
+      return
+    printf 'omarchy channel: package %s\n' "${installed:-none installed}"
+  else
+    skip "omarchy channel: no Omarchy pacman templates (default/pacman) found"
+  fi
+}
+
+print_pacman_sources() {
+  local lines=()
+  if [[ -r /etc/pacman.d/mirrorlist ]]; then
+    mapfile -t lines < <(grep -E '^[[:space:]]*Server[[:space:]]*=' /etc/pacman.d/mirrorlist |
+      sed -E 's/^[[:space:]]+//')
+    printf 'mirrorlist: %d servers (/etc/pacman.d/mirrorlist)\n' "${#lines[@]}"
+    ((${#lines[@]})) && printf 'mirror: %s\n' "${lines[@]}"
+  else
+    skip "mirrorlist: /etc/pacman.d/mirrorlist unreadable"
+  fi
+  if [[ -r /etc/pacman.conf ]]; then
+    awk '
+      /^[[:space:]]*\[/ { r = $0; gsub(/[][[:space:]]/, "", r); next }
+      r != "" && r != "options" && /^[[:space:]]*(Server|Include)[[:space:]]*=/ {
+        l = $0; sub(/^[[:space:]]+/, "", l); print "repo " r ": " l
+      }' /etc/pacman.conf
+  else
+    skip "pacman.conf: /etc/pacman.conf unreadable"
+  fi
+  print_omarchy_channel
+}
+
+print_deb822_sources() {
+  awk -v f="$1" '
+    function flush() {
+      if (u != "") print "apt source " f ": " (t == "" ? "deb" : t) " " u " suites " s \
+        (c == "" ? "" : " components " c) (e ~ /^[Nn]o$/ ? " (disabled)" : "")
+      t = u = s = c = e = ""
+    }
+    /^[[:space:]]*$/ { flush(); next }
+    /^[[:space:]]*#/ { next }
+    { k = tolower($1); v = $0; sub(/^[^:]*:[[:space:]]*/, "", v) }
+    k == "types:" { t = v } k == "uris:" { u = v } k == "suites:" { s = v }
+    k == "components:" { c = v } k == "enabled:" { e = v }
+    END { flush() }' "$1"
+}
+
+print_one_line_sources() {
+  awk -v f="$1" '
+    /^[[:space:]]*deb(-src)?[[:space:]]/ {
+      l = $0; gsub(/\[[^]]*\]/, "", l); sub(/[[:space:]]*#.*$/, "", l)
+      sub(/[[:space:]]+$/, "", l); n = split(l, w, /[[:space:]]+/)
+      i = (w[1] == "" ? 2 : 1)
+      out = "apt source " f ": " w[i] " " w[i + 1] " suites " w[i + 2]
+      if (n >= i + 3) { out = out " components"; for (j = i + 3; j <= n; j++) out = out " " w[j] }
+      print out
+    }' "$1"
+}
+
+print_apt_sources() {
+  local src
+  for src in /etc/apt/sources.list /etc/apt/sources.list.d/*.list \
+    /etc/apt/sources.list.d/*.sources; do
+    [[ -e $src ]] || continue
+    if [[ ! -r $src ]]; then
+      skip "apt source $src: unreadable"
+      continue
+    fi
+    if [[ $src == *.sources ]]; then
+      print_deb822_sources "$src"
+    else
+      print_one_line_sources "$src"
+    fi
+  done
+}
+
+print_package_sources() {
+  if have pacman; then
+    print_pacman_sources
+  elif have apt; then
+    print_apt_sources
   else
     skip "package channel: no pacman or apt"
   fi
-  # Pending package updates, read without root and without refreshing anything root keeps: apt's
-  # cached lists (apt-get update is root's, and never run), or Arch's checkupdates, which syncs a
-  # temporary copy of the databases as this user. Each update is an "update:" line, whose versions
-  # the guard keeps, as it keeps a "package:" line's.
-  now=$(date +%s)
+}
+
+print_apt_pending() {
+  local lines=() now
+  now=$(date +%s) || return
+  if [[ -d /var/lib/apt/lists ]]; then
+    printf 'apt lists: last refreshed %s (%d days ago); the run never refreshes them\n' \
+      "$(date -r /var/lib/apt/lists '+%F %T')" \
+      $(((now - $(date -r /var/lib/apt/lists +%s)) / 86400))
+  else
+    echo "apt lists: /var/lib/apt/lists absent"
+  fi
+  mapfile -t lines < <(apt list --upgradable 2>/dev/null | grep '/')
+  printf 'pending: %d packages (apt, from the cached lists)\n' "${#lines[@]}"
+  printf '%s\n' "${lines[@]}" | awk 'NF {
+    split($1, p, "/"); old = $NF; sub(/\]$/, "", old)
+    print "update:", p[1], old, "->", $2, "(" p[2] ")"
+  }'
+}
+
+print_checkupdates_pending() {
+  local lines=() out rc
+  out=$(timeout 90 checkupdates 2>&1)
+  rc=$?
+  case $rc in
+    0)
+      mapfile -t lines < <(grep -E '^[^ ]+ [^ ]+ -> [^ ]+$' <<<"$out")
+      printf 'pending: %d packages (checkupdates, a fresh sync of the databases)\n' \
+        "${#lines[@]}"
+      ((${#lines[@]})) && printf 'update: %s\n' "${lines[@]}"
+      grep -vE '^[^ ]+ [^ ]+ -> [^ ]+$|^$' <<<"$out" | sed 's/^/checkupdates: /'
+      ;;
+    2) echo "pending: 0 packages (checkupdates, a fresh sync of the databases)" ;;
+    *) skip "pending updates: checkupdates failed (exit $rc): $(head -n 1 <<<"$out")" ;;
+  esac
+}
+
+print_pending_updates() {
   if have apt; then
-    if [[ -d /var/lib/apt/lists ]]; then
-      printf 'apt lists: last refreshed %s (%d days ago); the run never refreshes them\n' \
-        "$(date -r /var/lib/apt/lists '+%F %T')" \
-        $(((now - $(date -r /var/lib/apt/lists +%s)) / 86400))
-    else
-      echo "apt lists: /var/lib/apt/lists absent"
-    fi
-    mapfile -t lines < <(apt list --upgradable 2>/dev/null | grep '/')
-    printf 'pending: %d packages (apt, from the cached lists)\n' "${#lines[@]}"
-    # apt's line: name/suite new-version arch [upgradable from: old-version]
-    printf '%s\n' "${lines[@]}" | awk 'NF {
-      split($1, p, "/"); old = $NF; sub(/\]$/, "", old)
-      print "update:", p[1], old, "->", $2, "(" p[2] ")"
-    }'
+    print_apt_pending
   elif have checkupdates; then
-    local out rc
-    out=$(timeout 90 checkupdates 2>&1)
-    rc=$?
-    case $rc in
-      0)
-        # Only a line in checkupdates' own form (name old -> new) is an update, so a warning on
-        # stderr never takes the "update:" prefix and its exemption from the IPv4 guard.
-        mapfile -t lines < <(grep -E '^[^ ]+ [^ ]+ -> [^ ]+$' <<<"$out")
-        printf 'pending: %d packages (checkupdates, a fresh sync of the databases)\n' \
-          "${#lines[@]}"
-        ((${#lines[@]})) && printf 'update: %s\n' "${lines[@]}"
-        grep -vE '^[^ ]+ [^ ]+ -> [^ ]+$|^$' <<<"$out" | sed 's/^/checkupdates: /'
-        ;;
-      2) echo "pending: 0 packages (checkupdates, a fresh sync of the databases)" ;;
-      *) skip "pending updates: checkupdates failed (exit $rc): $(head -n 1 <<<"$out")" ;;
-    esac
+    print_checkupdates_pending
   elif have pacman; then
     skip "pending updates: checkupdates absent (pacman-contrib)"
   else
     skip "pending updates: no apt or checkupdates"
   fi
+}
 
+print_updates() {
+  section updates
+  print_package_sources
+  print_pending_updates
+}
+
+print_firmware_updates() {
   section firmware-updates
-  # fwupd's view of the devices it can update, by name and version only: no serial numbers or
-  # device IDs. "No updates" is an answer, not a skip. The metadata is never refreshed here.
   if have fwupdmgr; then
     local fw meta
-    meta=$(find /var/lib/fwupd/metadata -type f -printf '%TF\n' 2>/dev/null | sort | tail -n 1)
+    meta=$(find /var/lib/fwupd/metadata -type f -printf '%TF\n' 2>/dev/null | sort | tail -n 1) ||
+      return
     printf 'fwupd metadata: last refreshed %s\n' "${meta:-unknown}"
     fw=$(timeout 60 fwupdmgr get-updates --json --no-unreported-check --no-metadata-check \
       2>/dev/null)
@@ -966,11 +963,12 @@ privileged {{.Privileged}}
   else
     skip "firmware updates: fwupdmgr absent"
   fi
+}
 
+print_failed_units() {
   section units
-  # Failed units, system and user. An engine's own units, enabled or not, are under == engines ==.
   if have systemctl; then
-    local scope state
+    local scope state lines=()
     for scope in system user; do
       local flag=()
       [[ $scope == user ]] && flag=(--user)
@@ -994,31 +992,42 @@ privileged {{.Privileged}}
   else
     skip "failed units: systemctl absent"
   fi
+}
 
+print_dangling_images() {
+  local id bytes=0 lines=()
+  mapfile -t lines < <(docker image ls -q --no-trunc -f dangling=true 2>/dev/null | sort -u)
+  for id in "${lines[@]}"; do
+    bytes=$((bytes + $(docker image inspect --format '{{.Size}}' "$id" 2>/dev/null || echo 0)))
+  done
+  printf 'dangling images: %d, %s\n' "${#lines[@]}" "$(gib "$bytes")"
+}
+
+print_images_no_container_uses() {
+  local name id used=" " ref size unused=()
+  for name in "${names[@]}"; do
+    used+="$(docker inspect --format '{{.Image}}' "$name") "
+  done
+  while IFS=$'\t' read -r id ref size; do
+    [[ -n $id && $used != *" $id "* ]] && unused+=("$ref  $size")
+  done < <(docker image ls --no-trunc -f dangling=false \
+    --format '{{.ID}}{{"\t"}}{{.Repository}}:{{.Tag}}{{"\t"}}{{.Size}}' 2>/dev/null)
+  printf 'images no container uses: %d\n' "${#unused[@]}"
+  ((${#unused[@]})) && printf '  %s\n' "${unused[@]}"
+}
+
+print_docker_disk() {
   section docker-disk
-  # What docker holds on disk, and what of it nothing uses: dangling images (untagged layers a
-  # newer pull left behind), and tagged images no container, running or stopped, was made from.
   if ((docker_ok)); then
     docker system df 2>&1
-    local id bytes=0 used=" " ref size unused=()
-    mapfile -t lines < <(docker image ls -q --no-trunc -f dangling=true 2>/dev/null | sort -u)
-    for id in "${lines[@]}"; do
-      bytes=$((bytes + $(docker image inspect --format '{{.Size}}' "$id" 2>/dev/null || echo 0)))
-    done
-    printf 'dangling images: %d, %s\n' "${#lines[@]}" "$(gib "$bytes")"
-    for name in "${names[@]}"; do
-      used+="$(docker inspect --format '{{.Image}}' "$name") "
-    done
-    while IFS=$'\t' read -r id ref size; do
-      [[ -n $id && $used != *" $id "* ]] && unused+=("$ref  $size")
-    done < <(docker image ls --no-trunc -f dangling=false \
-      --format '{{.ID}}{{"\t"}}{{.Repository}}:{{.Tag}}{{"\t"}}{{.Size}}' 2>/dev/null)
-    printf 'images no container uses: %d\n' "${#unused[@]}"
-    ((${#unused[@]})) && printf '  %s\n' "${unused[@]}"
+    print_dangling_images
+    print_images_no_container_uses
   else
     skip "docker disk: docker unavailable"
   fi
+}
 
+print_skipped() {
   section skipped
   if ((${#skipped[@]})); then
     printf '%s\n' "${skipped[@]}"
@@ -1027,12 +1036,24 @@ privileged {{.Privileged}}
   fi
 }
 
-# The guard: redacts every IPv4 address, tailnet IPv6 address (fd7a:115c:a1e0::/48), and
-# MagicDNS name or suffix still in the output. A "package:" or "update:" line comes from the
-# package database and its four-part versions (vulkan-icd-loader 1.4.363.0) read as addresses, so
-# only tailnet addresses are redacted there; every other line loses every IPv4 address, version
-# or not. An address ending a sentence ("10.0.0.1.") is still an address: only a dot followed by a
-# digit makes it part of a longer version. Hex and DNS names are matched in either case.
+probe() {
+  local skipped=() docker_ok=0 names=() seen_clones=" "
+  print_os
+  print_kernel
+  print_firmware
+  print_gpu
+  print_memory
+  print_container_runtime
+  print_engines
+  print_endpoints
+  print_models
+  print_updates
+  print_firmware_updates
+  print_failed_units
+  print_docker_disk
+  print_skipped
+}
+
 redact() {
   sed -E \
     -e 's/(^|[^0-9.])100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])(\.[0-9]{1,3}){2}/\1[tailnet-ipv4]/g' \
@@ -1043,10 +1064,6 @@ redact() {
     -e 's/\.[Tt][Ss]\.[Nn][Ee][Tt]/[magicdns-suffix]/g'
 }
 
-# Prints the remote user's home directory ($HOME on the host) as ~ on every line: mount sources,
-# stores, and any other path. The match is a literal string, never a regex built from $HOME, and
-# only a whole path component counts: /home/jaime matches in /home/jaime/models and on its own,
-# not in /home/jaimex or /data/home/jaime. An empty home, or /, replaces nothing.
 home_to_tilde() {
   local home=${HOME%/}
   if [[ -z $home ]]; then

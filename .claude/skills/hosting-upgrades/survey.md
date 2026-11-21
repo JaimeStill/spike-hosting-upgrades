@@ -19,7 +19,7 @@ that needs root (rules.md, "Root").
    Measurements give a finding), resolve the name to the local checkout the coordinator's
    `references.local.toml` maps it to, the key its `references.toml` names. The project names its
    coordinator in its own notes (`CLAUDE.md` or `context/README.md`, such as
-   `standards-lab/context/roadmap.toml`); find that checkout from there, not by searching. Without
+   `standards-lab/roadmap/index.toml`); find that checkout from there, not by searching. Without
    one, the pool's `Read` rule (setup.md, step 2) names the checkout's path. If the key has no
    checkout, or the file isn't there, name the path tried and go on without it. Name the pool by
    its reference, its path, and the commit its checkout is at; then what it says of itself: its

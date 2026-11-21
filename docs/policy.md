@@ -221,7 +221,7 @@ a new entry. Each is one line: `<repository>` at `<revision>`, `<file>`, accepte
 
 ## Quantization floor
 
-As `ai-hosting.md` states it, under "The rules":
+As the experiment's rules state it (`standards-lab/docs/ai-hosting.md#experiment-rules`):
 
 > The quantization floor: a format is accepted when its publisher evaluated it (native MXFP4, a
 > QAT Q4_0, or an NVFP4 or FP8 checkpoint whose card evals are within about 1% of BF16).
