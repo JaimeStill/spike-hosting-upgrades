@@ -240,7 +240,7 @@ mise exec -- go run ./hosting/cmd/profile validate <the file's absolute path>
 framework's profile, the strix-halo host class. Its llama.cpp is ggml's Vulkan image at b11960
 ([docs/findings/verify-framework.md](findings/verify-framework.md)).
 
-The memory budget: the agent section about 56 GiB with its weights (the screen brief's estimate:
+The memory budget: the agent section about 56 GiB with its weights (the estimate in [the screen Decisions](https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md):
 37.5 GiB of full-attention KV at 20,480 bytes a token over c = 1966080, and 15.63 GB of weights and
 projector), E4B Q8_0 9.7 GiB and granite about 1.5 GiB (`spike-model-hosting/docs/pool.md`'s
 budgets). 56 + 9.7 + 1.5 = 67.2 GiB, 68,813 MiB. The pool is framework's GTT, 112.0 GiB
@@ -251,7 +251,7 @@ budgets). 56 + 9.7 + 1.5 = 67.2 GiB, 68,813 MiB. The pool is framework's GTT, 11
 gb10-1's profile, the nvidia-cuda host class. Its llama.cpp is ggml's CUDA image at b12063
 ([docs/findings/verify-gb10-1.md](findings/verify-gb10-1.md)).
 
-The memory budget: the agent section about 59 GiB with its weights (the screen brief's estimate:
+The memory budget: the agent section about 59 GiB with its weights (the estimate in [the screen Decisions](https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md):
 40 GiB of full-attention KV at 20,480 bytes a token over c = 2097152, and 15.63 GB of weights and
 projector), E4B Q8_0 9.7 GiB and granite about 1.5 GiB (`spike-model-hosting/docs/pool.md`'s
 budgets). 59 + 9.7 + 1.5 = 70.2 GiB, 71,885 MiB. The pool is gb10-1's system memory, MemTotal

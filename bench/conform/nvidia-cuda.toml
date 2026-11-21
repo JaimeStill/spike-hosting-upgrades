@@ -34,7 +34,7 @@ embedding = "mrutkows/granite-embedding-english-r2-GGUF:BF16"
 [sets.memory_budget]
 pool_mib = 124544
 estimated_mib = 71885
-source = "the screen brief (context/goals, 2026-11-04); spike-model-hosting docs/pool.md"
+source = "the screen Decisions, 2026-11-04 (https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md); spike-model-hosting docs/pool.md"
 
 [[models]]
 id = "gemma-4-26B-A4B-QAT-Q4_0-agent"
