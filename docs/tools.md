@@ -35,3 +35,19 @@ branch. The spike has no CI, so the merge doesn't wait on pull-request checks.
 [`.gitignore`](../.gitignore) leaves marathon's working files (`.claude/plans/`, `.claude/briefs/`)
 untracked, and the run state under `.state/`: benchmark scratch output before its findings are
 committed.
+
+## The check
+
+[`scripts/check.sh`](../scripts/check.sh), run by `mise run check`, shellchecks every tracked
+script, the ones whose first line is a sh or bash shebang, and resolves every relative link in a
+tracked Markdown file. A link is relative when it names no scheme and isn't an in-page anchor, and
+its fragment is dropped before it is resolved, so a link resolves when its file exists; the anchor
+is not checked.
+
+## Currency
+
+[`scripts/currency.sh`](../scripts/currency.sh), run by `mise run currency`, reads mise.toml and
+the bench environment (mise.bench.toml, GuideLLM's) together: `MISE_ENV=bench` loads both. mise
+lists a tool not installed here with no bump, so its pin is compared with its latest instead. A pin
+held on purpose, as GuideLLM's Python is, is reported like any other, and its comment beside the
+pin says why it is held.
