@@ -10,8 +10,8 @@ reserved for what no one publishes. The convention and its cadence are evidence 
 v1.ai.hosting; the spike decides nothing itself.
 
 The spike answers for experiment.hosting, and the coordinator's roadmap,
-`standards-lab/roadmap/index.toml`, holds its work. Its question is framed in
-`standards-lab/context/ai-hosting.md`. It replaces spike-model-benchmarks; the large-scale suite
+`standards-lab/roadmap/index.toml`, holds its work. The coordinator records its
+answer in `standards-lab/docs/ai-hosting.md`, "The spikes' answers". It replaces spike-model-benchmarks; the large-scale suite
 waits in the backlog as `model-evaluation`. Each capability in detail, the tasks in the order they
 ran, the repositories the spike reads, and its own rules are in
 [`docs/capabilities.md`](../docs/capabilities.md).
