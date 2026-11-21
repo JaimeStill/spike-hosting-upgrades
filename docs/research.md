@@ -17,10 +17,6 @@ and two images behind the newest, a closed register entry) is deleted. Git keeps
 The register's upstream states are not cached here: a survey checks them with `gh` every run
 ([blockers.md](blockers.md)).
 
-Seeded 2026-11-06 from the records that read each source, at their original read dates: gb10-1's
-screen of 2026-11-05 ("Research read 2026-11-05" and "Sources"), framework's screen of 2026-11-04,
-and the last reports of both hosts.
-
 ## llama.cpp
 
 ### #30252, idle-slot saves stall the server

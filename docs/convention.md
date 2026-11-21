@@ -181,8 +181,9 @@ start ([framework](reports/framework/2026-11-06.md) and [gb10-1](reports/gb10-1/
 - gb10-1's probe: printing `/proc/cmdline`.
 
 Three of framework's proposals leave this project's lists: spike-model-engines' currency script
-is a requirement in the answer section, and the project's own granite conversion and an
-embedding scenario are gaps there (goal record, "Pending edits").
+is a requirement in `standards-lab/docs/ai-hosting.md`, "Inputs for later goals", and the
+project's own granite conversion and an embedding scenario are gaps there (goal record, "Pending
+edits").
 
 ## The blocker register
 

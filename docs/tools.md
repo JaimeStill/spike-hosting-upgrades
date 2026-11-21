@@ -24,10 +24,11 @@ pin in the file.
 
 [`.claude/marathon.toml`](../.claude/marathon.toml) declares the project kind: this spike is
 context (a project-local Claude Code skill, dated reports, GuideLLM scenarios, and minimal
-scripts), checked by `mise run check`, and declares no gate. Its goals live in the coordinator's
-roadmap, `standards-lab/roadmap/index.toml`. Its currency command, `mise run currency`, reports the
-mise pins ([Currency](#currency)); the engine pins stay with spike-model-engines, whose suite this
-spike runs read-only.
+scripts), checked by `mise run check`, and declares no gate. Any further work on this spike is a
+goal in the coordinator's roadmap, `standards-lab/roadmap/index.toml`; its answer is recorded in
+`standards-lab/docs/ai-hosting.md`, "The spikes' answers". Its currency command,
+`mise run currency`, reports the mise pins ([Currency](#currency)); the engine pins stay with
+spike-model-engines, whose suite this spike runs read-only.
 
 Its `[remote]` table names the remote platform and the commands that publish and merge a finished
 branch. The spike has no CI, so the merge doesn't wait on pull-request checks.

@@ -148,8 +148,8 @@ rest of the file is audio-b.yaml's ([audio-b](#audio-b)).
 
 ## Conform profiles
 
-`bench/conform/strix-halo.toml` (framework) and `bench/conform/nvidia-cuda.toml` (gb10-1) are each
-a host's conform profile, in spike-model-hosting's profile schema
+`bench/conform/strix-halo.toml` (framework) and `bench/conform/nvidia-cuda.toml` (gb10-1) are each a
+host's conform profile, in spike-model-hosting's profile schema
 (`spike-model-hosting/hosting/profile/profile.go`), modelled on its
 `spike-model-hosting/devices/strix-halo/profile.toml`. Its one use is conform, the agent bar's
 tool-reliability check ([docs/policy.md](policy.md), "Agent quality bar"), which the measure mode's
@@ -157,9 +157,10 @@ candidate screen runs from spike-model-hosting's clone with -profile naming the 
 (`.claude/skills/hosting-upgrades/measure.md`, steps 4 and 7). conform reads a profile's set alone:
 its models, which it checks the router has loaded, and its roles, the model each of the consumers'
 requests goes to. So each model's id is its section's name in the router's preset,
-`spike-model-engines/host/llama-preset/models.ini`, which the host's router serves, and the set is
-the Gemma set: 26B-A4B QAT's agent section for chat and vision, E4B Q8_0 for audio, and granite BF16
-for embeddings.
+`spike-model-engines/host/llama-preset/models.ini`, as spike-model-engines' screen commit (4d5e114)
+has it; main has since dropped the Gemma agent section, so conform on this profile needs that
+section restored. The set is the Gemma set: 26B-A4B QAT's agent section for chat and vision, E4B
+Q8_0 for audio, and granite BF16 for embeddings.
 
 The profile is never rendered. The router serves spike-model-engines' preset, not this file:
 `profile render presets` would give a wrong one. Each model's c is one slot's context, since every
@@ -176,8 +177,7 @@ mise exec -- go run ./hosting/cmd/profile validate <the file's absolute path>
 
 - **kv.** Every section in the preset leaves its KV cache split: setting parallel turns llama.cpp's
   kv-unified auto default off, and no section the set loads sets kv-unified.
-- **[engine].** The host's llama.cpp image and build, the build the screen measures on. min_build
-  is the schema's floor, here the build itself.
+- **[engine].** The image flavor and the floor build the profile was written on.
 - **[defaults].** The schema requires these; every model sets its own c and slots, and no other key
   reads them. gpu_layers 999 is the preset's n-gpu-layers = all; checkpoint_min_step is llama.cpp's
   default, 8192, which the preset leaves as it is; c is spike-model-hosting's default for a model
@@ -201,23 +201,25 @@ mise exec -- go run ./hosting/cmd/profile validate <the file's absolute path>
 framework's profile, the strix-halo host class. Its llama.cpp is ggml's Vulkan image at b11960
 ([docs/findings/verify-framework.md](findings/verify-framework.md)).
 
-The memory budget: the agent section about 56 GiB with its weights (the estimate in
-[the screen Decisions][screen-decisions]: 37.5 GiB of full-attention KV at 20,480 bytes a token
-over c = 1966080, and 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and granite about
-1.5 GiB (`spike-model-hosting/docs/pool.md`'s budgets). 56 + 9.7 + 1.5 = 67.2 GiB, 68,813 MiB.
-The pool is framework's GTT, 112.0 GiB
+The memory budget: the agent section about 56 GiB with its weights ([the screen
+Decisions][screen-decisions]; its parts, from the screen brief: 37.5 GiB of full-attention KV at
+20,480 bytes a token over c = 1966080, and 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and
+granite about 1.5 GiB (`spike-model-hosting/docs/pool.md`'s budgets). 56 + 9.7 + 1.5 = 67.2 GiB,
+68,813 MiB. The pool is framework's GTT, 112.0 GiB
 ([docs/reports/framework/2026-10-30-2.md](reports/framework/2026-10-30-2.md), Inventory).
 
 ### nvidia-cuda
 
-gb10-1's profile, the nvidia-cuda host class. Its llama.cpp is ggml's CUDA image at b12063
-([docs/findings/verify-gb10-1.md](findings/verify-gb10-1.md)).
+gb10-1's profile, the nvidia-cuda host class, on ggml's CUDA image. Its `min_build` b12063 is the
+build the profile was written on ([docs/findings/verify-gb10-1.md](findings/verify-gb10-1.md));
+gb10-1 has since moved to b12098 ([the gb10-1 screen](screens/gb10-1/2026-11-05.md), "The engine
+move").
 
-The memory budget: the agent section about 59 GiB with its weights (the estimate in
-[the screen Decisions][screen-decisions]: 40 GiB of full-attention KV at 20,480 bytes a token over
-c = 2097152, and 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and granite about 1.5 GiB
-(`spike-model-hosting/docs/pool.md`'s budgets). 59 + 9.7 + 1.5 = 70.2 GiB, 71,885 MiB. The pool is
-gb10-1's system memory, MemTotal 127,533,180 kB, 124,544 MiB
+The memory budget: the agent section about 59 GiB with its weights ([the screen
+Decisions][screen-decisions]; its parts, from the screen brief: 40 GiB of full-attention KV at
+20,480 bytes a token over c = 2097152, and 15.63 GB of weights and projector), E4B Q8_0 9.7 GiB and
+granite about 1.5 GiB (`spike-model-hosting/docs/pool.md`'s budgets). 59 + 9.7 + 1.5 = 70.2 GiB,
+71,885 MiB. The pool is gb10-1's system memory, MemTotal 127,533,180 kB, 124,544 MiB
 ([docs/reports/gb10-1/2026-10-31.md](reports/gb10-1/2026-10-31.md), Inventory).
 
 [screen-decisions]: https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md

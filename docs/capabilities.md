@@ -1,8 +1,7 @@
-# Capabilities, path, references, and rules
+# Capabilities, references, and rules
 
-This page details the spike's built capabilities, the tasks it ran in order, the repositories it
-reads, and its rules. [`context/README.md`](../context/README.md) holds the capability map and the
-evidence these serve.
+This page details the spike's built capabilities, the repositories it reads, and its rules.
+[`context/README.md`](../context/README.md) holds the capability map and the evidence these serve.
 
 ## Capabilities
 
@@ -49,39 +48,12 @@ evidence these serve.
   the blocker register, the research cache, per-host load targets, and what stays with
   `model-evaluation`, each statement citing its record.
 
-## Path
-
-The tasks ran in this order, and each names the evidence items it proves.
-
-1. `skill`: the skill and its first dated report for each of framework and gb10-1, with
-   read-only, no-root host probes (evidence 1, 2).
-2. `verify-framework`: framework's top-ranked upgrade, verified by anchors A and B before and
-   after, then adopted or rolled back; it also settles the report's take and hold items, with
-   rollbacks, and the skill gains its verify mode (evidence 3, 5). Its record is
-   `docs/findings/verify-framework.md`.
-3. `verify-gb10`: the same on gb10-1, its root steps the architect's (evidence 3, 5).
-4. `screen`: the pool's candidates screened for both host classes, each supported one verified
-   beside its role's incumbent (evidence 4). Its records are
-   `docs/screens/framework/2026-11-04.md` and `docs/screens/gb10-1/2026-11-05.md`.
-5. `skill-revision`: the skill redesigned from the screen's evaluation into two modes, `survey`
-   (the public record, with a configuration review and discovery) and `measure` (local cells
-   under one harness), with per-host load targets, a blocker register, a research cache, a build
-   gate, per-host run noise, and logged step helpers; verified by a survey of gb10-1 and a
-   measure on framework (evidence 1, 3, 4).
-6. `answer`: a second dated report per host from the revised survey, each stating what moved
-   since the host's last report; the convention and its cadence; README "The answer"; and the
-   answer section (evidence 2, 6). Its records are `docs/reports/framework/2026-11-06.md`,
-   `docs/reports/gb10-1/2026-11-06-2.md`, and `docs/convention.md`.
-
 ## References
 
-The spike reads these repositories for its setup, the anchors, and the verify and screen tasks,
-and never writes to them, with one exception: experiment.hosting owns spike-model-engines while
-the experiment runs, so its spikes may change that repository's `host/` (scripts and presets)
-through pull requests, each citing the finding behind it. The skill takes none of them as inputs,
-except the findings a host descriptor lists under Measurements and the pool its Pool section names,
-which the survey gates. Each is a key in the coordinator's `references.toml`, with its local
-checkout in `references.local.toml`:
+The spike reads these repositories for its setup, the anchors, and the verify and screen tasks, and
+never writes to them. The skill takes none of them as inputs, except the findings a host descriptor
+lists under Measurements and the pool its Pool section names, which the survey gates. Each is a key
+in the coordinator's `references.toml`, with its local checkout in `references.local.toml`:
 
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.
@@ -114,5 +86,5 @@ session. In short:
   from its clone with the version as its argument. A candidate needing its own preset arguments
   is an escalation.
 - **Quantization floor** and **model origin**, as `docs/policy.md` states them; its origin rule is
-  stricter than `ai-strategy.md`'s.
+  stricter than `standards-lab/context/ai-strategy.md`'s.
 - **Hosts.** framework and gb10-1; gb10-2 is reserved for spike-ai-pipeline.
