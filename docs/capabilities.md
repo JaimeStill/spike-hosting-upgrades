@@ -1,7 +1,8 @@
 # Capabilities, path, references, and rules
 
 This page details the spike's built capabilities, the tasks it ran in order, the repositories it
-reads, and its rules, for the map and the evidence in [`context/README.md`](../context/README.md).
+reads, and its rules. [`context/README.md`](../context/README.md) holds the capability map and the
+evidence these serve.
 
 ## Capabilities
 
@@ -50,7 +51,7 @@ reads, and its rules, for the map and the evidence in [`context/README.md`](../c
 
 ## Path
 
-The tasks, in the order they run; each cites the evidence it proves.
+The tasks ran in this order, and each names the evidence items it proves.
 
 1. `skill`: the skill and its first dated report for each of framework and gb10-1, with
    read-only, no-root host probes (evidence 1, 2).
@@ -79,8 +80,8 @@ and never writes to them, with one exception: experiment.hosting owns spike-mode
 the experiment runs, so its spikes may change that repository's `host/` (scripts and presets)
 through pull requests, each citing the finding behind it. The skill takes none of them as inputs,
 except the findings a host descriptor lists under Measurements and the pool its Pool section names,
-which the survey gates. Each is a key in the
-coordinator's `references.toml`, with its local checkout in `references.local.toml`:
+which the survey gates. Each is a key in the coordinator's `references.toml`, with its local
+checkout in `references.local.toml`:
 
 - `spike-model-engines`: anchors A and B and their last readings, the `engines` suite, and the
   engine guides.

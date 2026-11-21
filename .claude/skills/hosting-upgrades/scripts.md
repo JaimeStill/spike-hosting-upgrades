@@ -1,9 +1,9 @@
 # The bundled scripts
 
-This page gives the reasoning behind the skill's bundled scripts, under [scripts/](scripts/), that
-their names and headers don't carry, one section per script. A run never loads it: the mode files
-say how a run uses each script, and this page is for whoever changes one. Each script's header
-says what it does and how it is run, and points at its section here with a `See` line.
+This page gives the reasoning behind the skill's bundled scripts in [scripts/](scripts/) that
+their names and headers don't carry, one section per script, for whoever changes a script. A run
+never loads it; the mode files say how a run uses each script. Each script's header says what the
+script does and how it is run, and points at its section here with a `See` line.
 
 ## probe.sh
 
@@ -153,11 +153,11 @@ is in [setup.md](setup.md), "Probe".
   per-request timings.
 - **Stopping a run** under the memory floor kills the process and every descendant, deepest first.
 - **A tier cut short** keeps its list's header (tier, dataset, seed) above its first N samples.
-- **Summaries.** A cell's line is one a benchmark (a sweep level); "full" checks the scenario's
-  `max_requests` against the successful count. A tier's Inspect log gives samples done and
-  passing, the sample times, the largest reply, and the replies that stopped at a token or context
-  limit (cap hits). The watch's GPU readings, clocks and throttle reasons, print each distinct
-  reading with its count.
+- **Summaries.** A cell's summary has one line per benchmark (a sweep level is one); "full"
+  checks the scenario's `max_requests` against the successful count. A tier's Inspect log gives
+  samples done and passing, the sample times, the largest reply, and the replies that stopped at a
+  token or context limit (cap hits). The watch's GPU readings, clocks and throttle reasons, print
+  each distinct reading with its count.
 - **The image check** is the registry's manifest check: an anonymous pull token, as
   fix-in-image.sh takes, then a HEAD of the tag's manifest, 200 for a published image and 404 for
   none.
@@ -198,10 +198,10 @@ is in [setup.md](setup.md), "Probe".
   page at a time by its Link header (`rel="next"`, a path on ghcr.io; the last page has none). The
   200-page bound stops a registry that never ends its list. The registry needs an anonymous pull
   token sent as a header, which WebFetch can't send, so the script fetches it with curl, as
-  spike-model-engines' `scripts/currency.sh` does. The tag list, not the releases list, because
-  an image can be published for a build with no GitHub release (server-cuda13-b12169 had none);
-  llama.cpp publishes images only nightly and on manual runs, so its newest release often has none
-  either. The git tag `b<N>` exists either way, and the compare reads it.
+  spike-model-engines' `scripts/currency.sh` does. It reads the tag list, not the releases list,
+  because an image can be published for a build with no GitHub release (server-cuda13-b12169 had
+  none); llama.cpp publishes images only nightly and on manual runs, so its newest release often
+  has none either. The git tag `b<N>` exists either way, and the compare reads it.
 - **The flavors** are those spike-model-engines' `scripts/currency.sh` reads for each class:
   cuda13 for gb10, vulkan for strix-halo.
 - **The compare** is GitHub's compare API,

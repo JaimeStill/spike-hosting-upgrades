@@ -5,10 +5,10 @@ The judgement calls the check can't enforce, one line each, for the standards-re
 
 The architecture pages that apply, in the architecture repository:
 
-- `principles/comments.md`: every comment is one of the five kinds, in scripts (including the
-  skill's bundled scripts) and every configuration file (TOML, YAML, `.gitignore`); a script's
-  header is its package documentation, and a configuration file's header is a short description
-  plus `See` lines to the docs/ page that holds its reasoning.
+- `principles/comments.md`: every comment in a script (the skill's bundled scripts included) or a
+  configuration file (TOML, YAML, `.gitignore`) is one of the five kinds. A script's header is its
+  package documentation; a configuration file's header is a short description plus `See` lines to
+  the `docs/` page that holds its reasoning.
 - `principles/minimal-footprint.md`
 - `principles/rolling-currency.md`
 - `principles/validation-first.md`
@@ -51,7 +51,7 @@ The architecture pages that apply, in the architecture repository:
   log.
 - The screen records the retired screen mode wrote, `docs/screens/<host>/<YYYY-MM-DD>.md`, are
   history: never edited, and read as the host's earlier readings.
-- The one edit a report, measure record, or screen record takes is a dead link repointed to the
+- A report, measure record, or screen record takes one edit only: a dead link repointed to the
   same file at a fixed commit.
 - A finding, under `docs/findings/<task>.md` (or the retired verify mode's `verify-<host>.md`, now
   history), says what was measured, when, on which engine version, host stack, and network path,

@@ -8,8 +8,8 @@ Each statement cites the record that shows it. Where the record doesn't show a s
 statement says so, and "What the record doesn't show yet" collects those gaps.
 
 The decisions cited as "Decisions" are in the goal record,
-[`context/goals/experiment.hosting.spike-hosting-upgrades.md`](https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md),
-"Decisions", by their task prefix. The two second surveys, both of 2026-11-06, are framework's
+[`context/goals/experiment.hosting.spike-hosting-upgrades.md`][goal-record], "Decisions", by their
+task prefix. The two second surveys, both of 2026-11-06, are framework's
 [2026-11-06](reports/framework/2026-11-06.md) and gb10-1's
 [2026-11-06-2](reports/gb10-1/2026-11-06-2.md).
 
@@ -89,11 +89,10 @@ pending updates to 0) ([framework](reports/framework/2026-11-06.md), "What moved
   ([measure](measures/framework/2026-11-06.md)).
 - **Its cells agreed in that task's plan round.** Every benchmark is agreed with the architect in
   the task's plan round, and BUILD runs none the brief doesn't name (the experiment's rules,
-  `standards-lab/docs/ai-hosting.md#experiment-rules`). framework's measure
-  ran "from the commands the skill-revision brief agreed"
-  ([measure](measures/framework/2026-11-06.md), its opening), with each arm capped at 10 minutes
-  (Decisions, "skill-revision: verified by a paper survey of gb10-1 … and a measure on
-  framework").
+  `standards-lab/docs/ai-hosting.md#experiment-rules`). framework's measure ran "from the commands
+  the skill-revision brief agreed" ([measure](measures/framework/2026-11-06.md), its opening), with
+  each arm capped at 10 minutes (Decisions, "skill-revision: verified by a paper survey of gb10-1 …
+  and a measure on framework").
 
 A take item needs no measurement. It is applied with the next host update (survey.md,
 "Verdicts"). A hold item is measured only when it is one of the host's items, which a measure
@@ -289,3 +288,5 @@ convention. It keeps:
 - **No embedding scenario.** `bench/` has no embedding scenario, so no embedding candidate can be
   measured ([framework](reports/framework/2026-11-06.md) and
   [gb10-1](reports/gb10-1/2026-11-06-2.md), "Needs measurement").
+
+[goal-record]: https://github.com/JaimeStill/spike-hosting-upgrades/blob/7a7bfeb65de35b1b227cc2b4fee985d763fa53a9/context/goals/experiment.hosting.spike-hosting-upgrades.md

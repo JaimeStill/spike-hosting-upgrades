@@ -1,7 +1,8 @@
 # The tools
 
-The spike's mise environments, marathon's settings, and what git leaves untracked; each
-configuration file's header points at its section with a `See` line.
+This page gives the reasoning behind the spike's configuration: its mise environments, marathon's
+settings, what git leaves untracked, and the check and currency scripts. Each configuration file's
+header points at its section with a `See` line.
 
 ## The main environment
 
@@ -11,21 +12,22 @@ the network.
 
 ## The bench environment
 
-[`mise.bench.toml`](../mise.bench.toml) holds the load tool the spike measures with from the
-laptop, GuideLLM, and the runtimes it needs. It lives in its own environment, not mise.toml, so
-`mise run check` never installs it. Activate it with `MISE_ENV=bench`: `MISE_ENV=bench mise
-install`, then `MISE_ENV=bench mise exec -- guidellm`. mise's pipx backend installs GuideLLM
-through uv, with its vision and audio extras, which the vision cells' image requests and the
-audio-chat cells' audio requests need. Python's hold reason stays beside its pin in the file.
+[`mise.bench.toml`](../mise.bench.toml) holds GuideLLM, the load tool the spike runs from the
+laptop, and the runtimes it needs. It lives in its own environment, not mise.toml, so
+`mise run check` never installs it. Activate it with `MISE_ENV=bench`:
+`MISE_ENV=bench mise install`, then `MISE_ENV=bench mise exec -- guidellm`. mise's pipx backend
+installs GuideLLM through uv, with its vision and audio extras, which the vision cells' image
+requests and the audio-chat cells' audio requests need. The reason Python is held stays beside its
+pin in the file.
 
 ## marathon
 
 [`.claude/marathon.toml`](../.claude/marathon.toml) declares the project kind: this spike is
 context (a project-local Claude Code skill, dated reports, GuideLLM scenarios, and minimal
-scripts), checked by `mise run check`. Its goals live in the coordinator's roadmap,
-`standards-lab/roadmap/index.toml`. `mise run currency` reports every mise tool pinned behind its
-latest, those of mise.toml and of the bench environment (mise.bench.toml). The engine pins stay
-with spike-model-engines, whose suite this spike runs read-only. No gate.
+scripts), checked by `mise run check`, and declares no gate. Its goals live in the coordinator's
+roadmap, `standards-lab/roadmap/index.toml`. Its currency command, `mise run currency`, reports the
+mise pins ([Currency](#currency)); the engine pins stay with spike-model-engines, whose suite this
+spike runs read-only.
 
 Its `[remote]` table names the remote platform and the commands that publish and merge a finished
 branch. The spike has no CI, so the merge doesn't wait on pull-request checks.
@@ -43,7 +45,7 @@ script, the ones whose first line is a sh or bash shebang, and resolves every re
 tracked Markdown file. A link is relative when it names no scheme and isn't an in-page anchor, and
 its fragment is dropped before it is resolved, so a link resolves when its file exists; the anchor
 is not checked. It then runs marathon's lint-context and lint-references, which mise.toml pins
-with marathon's release. It runs both lints, then fails if either failed; a lint missing from PATH
+with marathon's release, and fails if either failed, after both have run. A lint missing from PATH
 fails with `FAIL: <lint> is not on PATH; run mise install`.
 
 ## Currency
