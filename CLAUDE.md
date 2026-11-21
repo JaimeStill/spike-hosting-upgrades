@@ -14,8 +14,8 @@ workflow, so start from `context/README.md`.
   `standards-lab/docs/ai-hosting.md#experiment-rules`, and the spike's own, `docs/capabilities.md`,
   "Rules", before any host step.
 - **Standards:** `STANDARDS.md`, with pointers into the architecture repository.
-- **Check:** `mise run check`, which shellchecks every tracked shell script and resolves every
-  relative Markdown link.
+- **Check:** `mise run check`, which shellchecks every tracked shell script, resolves every
+  relative Markdown link, and runs marathon's lint-context and lint-references.
 - **Currency:** `mise run currency`, which reports every pin behind its latest.
 - **Goals:** the coordinator's roadmap, `standards-lab/roadmap/index.toml`, holds this spike's
   work.

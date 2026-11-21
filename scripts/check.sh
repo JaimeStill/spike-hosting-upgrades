@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Shellchecks every tracked file whose first line is a sh or bash shebang, and checks that every
-# relative link in a tracked Markdown file resolves to a tracked or present file. Reads no network.
+# Shellchecks every tracked file whose first line is a sh or bash shebang, checks that every
+# relative link in a tracked Markdown file resolves to a tracked or present file, and runs
+# lint-context and lint-references. Reads no network.
 #
 # See docs/tools.md#the-check
 set -uo pipefail
@@ -34,7 +35,17 @@ check_relative_links() {
   return "$status"
 }
 
+run_lint() {
+  if ! command -v "$1" >/dev/null; then
+    echo "FAIL: $1 is not on PATH; run mise install" >&2
+    return 1
+  fi
+  "$1"
+}
+
 fail=0
 shellcheck_scripts || fail=1
 check_relative_links || fail=1
+run_lint lint-context || fail=1
+run_lint lint-references || fail=1
 exit "$fail"

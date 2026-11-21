@@ -42,7 +42,9 @@ committed.
 script, the ones whose first line is a sh or bash shebang, and resolves every relative link in a
 tracked Markdown file. A link is relative when it names no scheme and isn't an in-page anchor, and
 its fragment is dropped before it is resolved, so a link resolves when its file exists; the anchor
-is not checked.
+is not checked. It then runs marathon's lint-context and lint-references, which mise.toml pins
+with marathon's release. It runs both lints, then fails if either failed; a lint missing from PATH
+fails with `FAIL: <lint> is not on PATH; run mise install`.
 
 ## Currency
 
