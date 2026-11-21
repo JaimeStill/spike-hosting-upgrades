@@ -8,12 +8,11 @@ system updates and failed units, and applies nothing. Two anchor cells verify ea
 own host before it is adopted, so local runs are reserved for what no one publishes. The
 convention and its cadence are evidence for v1.ai.hosting; the spike decides nothing itself.
 
-The spike answers a question for experiment.hosting. The coordinator's roadmap,
-`standards-lab/roadmap/index.toml`, holds the spike's work, and the coordinator records the answer
-in `standards-lab/docs/ai-hosting.md`, "The spikes' answers". The spike replaces
-spike-model-benchmarks; the large-scale suite waits in the backlog as `model-evaluation`.
-[`docs/capabilities.md`](../docs/capabilities.md) details each capability, the tasks in the order
-they ran, the repositories the spike reads, and the spike's own rules.
+The spike answers a question for experiment.hosting. Any further work on this spike is a goal in
+the coordinator's roadmap, `standards-lab/roadmap/index.toml`; its answer is recorded in
+`standards-lab/docs/ai-hosting.md`, "The spikes' answers". The large-scale suite waits in the
+backlog as `model-evaluation`. [`docs/capabilities.md`](../docs/capabilities.md) details each
+capability, the repositories the spike reads, and the spike's own rules.
 
 ## The question
 

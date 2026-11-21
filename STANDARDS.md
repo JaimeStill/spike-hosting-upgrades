@@ -5,10 +5,8 @@ The judgement calls the check can't enforce, one line each, for the standards-re
 
 The architecture pages that apply, in the architecture repository:
 
-- `principles/comments.md`: every comment in a script (the skill's bundled scripts included) or a
-  configuration file (TOML, YAML, `.gitignore`) is one of the five kinds. A script's header is its
-  package documentation; a configuration file's header is a short description plus `See` lines to
-  the `docs/` page that holds its reasoning.
+- `principles/comments.md`: the reasoning a comment points to lives in `docs/` or the skill's
+  own pages.
 - `principles/minimal-footprint.md`
 - `principles/rolling-currency.md`
 - `principles/validation-first.md`
@@ -22,12 +20,12 @@ The architecture pages that apply, in the architecture repository:
 ## Scripts
 
 - Only a step that must be idempotent is scripted, beside step helpers a session sources and calls
-  one step at a time in the architect's view, each command logged with its time so the records
-  quote the log; a helper never runs a benchmark on its own (the experiment's scripting rule,
-  2026-11-06). Engine changes on a host run spike-model-engines' `engines` suite read-only from
-  its clone. The skill's bundled scripts only read, except measure's step helpers
-  (`scripts/measure-lib.sh`), which change a host only by loading and unloading models through
-  the router's API.
+  one step at a time in the architect's view, each command logged with its time so the records quote
+  the log; a helper never runs a benchmark on its own (the experiment's scripting rule,
+  `standards-lab/docs/ai-hosting.md#experiment-rules`). Engine changes on a host run
+  spike-model-engines' `engines` suite read-only from its clone. The skill's bundled scripts only
+  read, except measure's step helpers (`scripts/measure-lib.sh`), which change a host only by
+  loading and unloading models through the router's API.
 - No Python is authored, and a mise task runs one script or one command.
 
 ## Hosts

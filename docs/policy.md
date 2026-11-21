@@ -12,8 +12,9 @@ In the architect's words, of 2026-10-30:
 > model should exclude it from consideration.
 
 This is the architect's rule of 2026-10-30, and it is stricter than the workspace's constraint
-(`ai-strategy.md`, "Constraint: model origin"), which avoids such models where an alternative
-serves. The spike excludes them, and excludes a model they had a hand in at the levels below.
+(`standards-lab/context/ai-strategy.md`, "Constraint: model origin"), which avoids such models where
+an alternative serves. The spike excludes them, and excludes a model they had a hand in at the
+levels below.
 
 **Adversarial entity.** Any of:
 

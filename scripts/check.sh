@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shellchecks every tracked file whose first line is a sh or bash shebang, checks that every
-# relative link in a tracked Markdown file resolves to a tracked or present file, and runs
+# relative link in a tracked Markdown file resolves to a present file or directory, and runs
 # lint-context and lint-references. Reads no network.
 #
 # See docs/tools.md#the-check

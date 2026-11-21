@@ -4,9 +4,9 @@ What convention evaluates an upgrade to the hosting stack (a host's hardware con
 model host, or its models) from what others publish, rather than from benchmarks of our own? This
 spike builds a project-local Claude Code skill that gathers the public record for each host class,
 engine, and model, cites it, and writes a dated report of ranked upgrades per host, then verifies
-the top upgrades on our hosts with anchor cells A and B. Its answer is evidence for standards-lab's
-`experiment.hosting` intake, which decides the upgrade-evaluation convention and cadence
-`v1.ai.hosting` specifies.
+the top upgrades on our hosts with anchor cells A and B. Its answer is the evidence behind
+v1.ai.hosting's `upgrades` task, which rebuilds the convention and the skill on vLLM
+(`standards-lab/docs/ai-hosting.md`, "The spikes' answers").
 
 - The skill: `.claude/skills/hosting-upgrades/`. It runs on one host at a time, reading the
   project's host descriptors (`docs/hosts/`, each purpose with its load target) and policy
@@ -36,6 +36,12 @@ our own?
 **Answer:** A skill surveys each host weekly and on events, ranking every upgrade from cited
 public sources against the host's load targets; the host measures only what no source settles,
 and an adoption leaves a chain of dated records.
+
+Terms: anchors A and B and the ASR cells ([docs/bench.md](docs/bench.md)); set A, the four-model
+set both hosts serve ([docs/hosts/framework.md](docs/hosts/framework.md), "Purposes"); the engine
+and keep rules ([measure.md](.claude/skills/hosting-upgrades/measure.md), "8. The verdict"); the
+pool and its gates (`spike-model-hosting/docs/pool.md`;
+[models.md](.claude/skills/hosting-upgrades/models.md)).
 
 1. **The skill.** One project-local Claude Code skill,
    [`.claude/skills/hosting-upgrades/`](.claude/skills/hosting-upgrades/SKILL.md), has three
